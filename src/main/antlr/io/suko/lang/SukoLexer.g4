@@ -6,6 +6,29 @@ lexer grammar SukoLexer;
 // puramente léxicas (gramáticas combinadas geram erro 176/120).
 // ============================================================
 
+@members {
+    // Um '"' só é tratado como início de string literal se houver um
+    // '"' de fecho antes de cruzar '<', '>' ou uma quebra de linha —
+    // exatamente o que separa um literal de string Suko real (curto,
+    // numa linha só, sem marcação) de uma aspa solta em texto (ex:
+    // 5" polegadas). Sem isto, o lexer não tem como distinguir os dois
+    // casos, porque não existe modo de lexer separado para texto de tag
+    // (ver ARCHITECTURE.md sobre a rejeição de um modo TEXT dedicado).
+    // Limitação aceite: um literal de string Suko não pode conter '<'
+    // ou '>' literal.
+    private boolean canStartStringLiteral() {
+        for (int i = 1; ; i++) {
+            int c = _input.LA(i);
+            if (c == '"') {
+                return true;
+            }
+            if (c == -1 || c == '<' || c == '>' || c == '\n') {
+                return false;
+            }
+        }
+    }
+}
+
 // --- palavras-chave ---
 PACKAGE   : 'package';
 IMPORT    : 'import';
@@ -104,7 +127,7 @@ BLOCK_COMMENT
 // no parser, ver SukoParser.g4 / regra textRun).
 
 STRING_START
-    : '"' -> pushMode(STRING_MODE)
+    : '"' {canStartStringLiteral()}? -> pushMode(STRING_MODE)
     ;
 
 // Qualquer caractere não coberto por nenhuma regra acima — ex:
