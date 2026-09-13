@@ -27,4 +27,23 @@ class JteEmitterTest {
         // comportamento do gg.jte.
         assertEquals("\n<p>Hello, World!</p>", html);
     }
+
+    @Test
+    void preservesWhitespaceImmediatelyAfterInterpolation() throws Exception {
+        // Regressão: o espaço entre "{name}" e "!" fica, no fonte, logo a
+        // seguir ao "}" que fecha a interpolação — não pertence a nenhum
+        // token (WS é sempre `-> skip`, ver textOf() em SukoAstBuilder), por
+        // isso o textRun seguinte (" !") precisa de recuar o seu início para
+        // o capturar. Sem essa correção o espaço desaparecia: "World!" em vez
+        // de "World !".
+        String source = """
+            component Greeting(String name) {
+              <p>{name} !</p>
+            }
+            """;
+
+        String html = JteRenderSupport.render(source, "Greeting", Map.of("name", "World"));
+
+        assertEquals("\n<p>World !</p>", html);
+    }
 }

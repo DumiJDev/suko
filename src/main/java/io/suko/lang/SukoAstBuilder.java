@@ -165,20 +165,28 @@ public class SukoAstBuilder {
      * DESVIO DO BRIEF (mínimo, necessário para preservar o próprio objetivo do
      * brief): o lexer descarta espaço/tab/quebra de linha via `WS -> skip`
      * (SukoLexer.g4), o que os remove inteiramente do stream de tokens — não
-     * ficam nem em canal escondido. Um espaço logo antes de `{` ou `<` (ex.:
-     * "Hello, {name}!") não pertence a NENHUM token: fica fora do intervalo
-     * [start,stop] do textRun (que termina no último token visível, a
-     * vírgula) e fora do próximo nó (que começa em `{`). O ctx.getStop() por
-     * si só perde esse espaço — reproduzido em teste: o .jte gerado sem esta
-     * correção era "Hello,${name}!" (sem espaço). A correção fica só do lado
-     * Java: estende o fim do intervalo capturado sobre espaço em branco cru
-     * imediatamente a seguir ao último token do textRun, até ao primeiro
-     * carácter não-espaço (que será sempre o início de outro token/regra,
-     * nunca outro textRun órfão, porque texto puramente espaço entre tags não
-     * gera nó nenhum). Não requer mudança na gramática. */
+     * ficam nem em canal escondido. Um espaço adjacente a `{`, `}`, `<` ou `>`
+     * (ex.: "Hello, {name}!" ou "{name} !") não pertence a NENHUM token: fica
+     * fora do intervalo [start,stop] do textRun de um dos dois lados — quer no
+     * fim (espaço logo antes de `{`/`<` seguinte, que o ctx.getStop() do
+     * textRun não alcança porque termina no último token visível) quer no
+     * início (espaço logo depois de `}`/`>` anterior, que o ctx.getStart() do
+     * textRun não alcança porque começa no primeiro token visível). Ambos os
+     * lados foram reproduzidos em teste: sem a correção, "Hello, {name}!"
+     * emitia "Hello,${name}!" (falta o espaço à direita da vírgula) e
+     * "{name} !" emitia "${name}!" (falta o espaço à esquerda de "!"). A
+     * correção fica só do lado Java: estende o início e o fim do intervalo
+     * capturado sobre espaço em branco cru imediatamente adjacente ao
+     * textRun, até ao primeiro carácter não-espaço de cada lado (que será
+     * sempre o fim/início de outro token/regra, nunca outro textRun órfão,
+     * porque texto puramente espaço entre tags não gera nó nenhum — não há
+     * risco de dupla contagem). Não requer mudança na gramática. */
     private String textOf(SukoParser.TextRunContext ctx) {
         int start = ctx.getStart().getStartIndex();
         int stop = ctx.getStop().getStopIndex();
+        while (start - 1 >= 0 && isSkippedWhitespace(source.charAt(start - 1))) {
+            start--;
+        }
         while (stop + 1 < source.length() && isSkippedWhitespace(source.charAt(stop + 1))) {
             stop++;
         }
