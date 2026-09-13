@@ -85,4 +85,19 @@ class SukoGrammarFixesTest {
             "component A(String p = \"R$ 10\") { <p>x</p> }");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
+
+    @Test
+    void looseQuoteInTagTextIsPlainText() {
+        List<String> errors = parseErrors(
+            "component A() { <p>Ecrã de 5\" polegadas</p> }");
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
+
+    @Test
+    void realStringLiteralsStillWork() {
+        // regressão: garante que o predicado não quebra strings normais
+        List<String> errors = parseErrors(
+            "component A(String label = \"Dashboard\") { <p>{label}</p> }");
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
 }
