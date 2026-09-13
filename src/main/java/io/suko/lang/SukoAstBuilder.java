@@ -96,6 +96,9 @@ public class SukoAstBuilder {
     }
 
     Statement buildStatement(SukoParser.TemplateStatementContext ctx) {
+        if (ctx.ifStmt() != null) {
+            return buildIfStmt(ctx.ifStmt());
+        }
         if (ctx.htmlElement() != null) {
             return buildHtmlElement(ctx.htmlElement());
         }
@@ -105,7 +108,23 @@ public class SukoAstBuilder {
         if (ctx.textRun() != null) {
             return new Statement.TextRun(textOf(ctx.textRun()), spanOf(ctx.textRun()));
         }
-        throw new IllegalStateException("templateStatement ainda não suportado nesta tarefa: " + ctx.getText());
+        throw new IllegalStateException("templateStatement ainda não suportado: " + ctx.getText());
+    }
+
+    private Statement.IfStmt buildIfStmt(SukoParser.IfStmtContext ctx) {
+        Expr condition = buildExpr(ctx.expression());
+        List<Statement> thenBranch = buildStatements(ctx.templateBlock(0).templateStatement());
+
+        List<Statement> elseBranch;
+        if (ctx.ifStmt() != null) {
+            elseBranch = List.of(buildIfStmt(ctx.ifStmt()));
+        } else if (ctx.templateBlock().size() > 1) {
+            elseBranch = buildStatements(ctx.templateBlock(1).templateStatement());
+        } else {
+            elseBranch = List.of();
+        }
+
+        return new Statement.IfStmt(condition, thenBranch, elseBranch, spanOf(ctx));
     }
 
     private Statement.HtmlElement buildHtmlElement(SukoParser.HtmlElementContext ctx) {
