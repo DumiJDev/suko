@@ -71,8 +71,27 @@ WS
     : [ \t\r\n]+ -> skip
     ;
 
+// "//" só conta como comentário quando seguido de espaço/tab (estilo
+// "// texto") ou de quebra de linha imediata (comentário vazio). Isto
+// distingue de propósito "// comentário" de "http://x.com" em texto —
+// nenhuma URL tem espaço logo depois de "//". Limitação aceite: um "//"
+// sozinho no fim absoluto do ficheiro (sem newline a seguir) não conta
+// como comentário.
+//
+// DESVIO DO BRIEF (mínimo, necessário para compilar): o brief escreve os
+// dois alts de nível superior separados por "|" com um único "-> skip"
+// pendurado no fim. O ANTLR 4.13.1 rejeita isso — "->command in lexer
+// rule LINE_COMMENT must be last element of single outermost alt" (erro
+// 133 na geração) — porque um comando lexer só se aplica a UM alt
+// outermost, não a vários. A correção é agrupar as duas alternativas
+// numa sub-regra entre parênteses, tornando a regra um único alt
+// outermost ao qual "-> skip" se aplica; o comportamento léxico
+// pretendido pelo brief é preservado exatamente.
 LINE_COMMENT
-    : '//' ~[\r\n]* -> skip
+    : ( '//' [ \t] ~[\r\n]*
+      | '//' '\r'? '\n'
+      )
+    -> skip
     ;
 
 BLOCK_COMMENT
