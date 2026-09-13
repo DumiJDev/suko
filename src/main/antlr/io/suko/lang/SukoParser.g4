@@ -229,4 +229,5 @@ stringPart
     | STRING_ESCAPE
     | SIMPLE_INTERP_START
     | EXPR_INTERP_START expression RBRACE
+    | SIMPLE_DOLLAR
     ;
