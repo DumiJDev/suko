@@ -75,6 +75,23 @@ public class JteEmitter {
             case Expr.PrimaryExpr primary -> primary.text();
             case Expr.StringLiteralExpr stringLiteral -> emitStringLiteral(stringLiteral);
             case Expr.AccessExpr access -> emitExpr(access.target()) + "." + access.memberName();
+            // DESVIO DO BRIEF: quando o callee de uma chamada é ele próprio um
+            // SafeAccessExpr (ex.: `label?.length()`), a gramática produz
+            // CallExpr(callee=SafeAccessExpr(target, member), args) — a chamada
+            // "()" tem de aplicar-se DENTRO do ramo não-nulo do ternário de
+            // desaçucaramento, não ao resultado do ternário já fechado. Emitir
+            // cada nó independentemente e concatenar "()" a seguir (como o
+            // brief propunha literalmente) produziria
+            // "(alvo == null ? null : alvo.membro)()", que não compila (não se
+            // pode invocar o resultado de um ternário) e, mesmo que compilasse,
+            // não protegeria a própria chamada do método contra NPE. Por isso
+            // este caso é tratado aqui, como uma forma só sua, antes do caso
+            // genérico de CallExpr.
+            case Expr.CallExpr call when call.callee() instanceof Expr.SafeAccessExpr safeAccess -> {
+                String target = emitExpr(safeAccess.target());
+                yield "(" + target + " == null ? null : " + target + "." + safeAccess.memberName()
+                    + "(" + emitArgs(call.args()) + "))";
+            }
             case Expr.CallExpr call -> emitExpr(call.callee()) + "(" + emitArgs(call.args()) + ")";
             case Expr.NotExpr not -> "!" + emitExpr(not.operand());
             case Expr.UnaryMinusExpr unaryMinus -> "-" + emitExpr(unaryMinus.operand());
@@ -83,6 +100,14 @@ public class JteEmitter {
             case Expr.TernaryExpr ternary -> emitExpr(ternary.condition()) + " ? "
                 + emitExpr(ternary.whenTrue()) + " : " + emitExpr(ternary.whenFalse());
             case Expr.ParenExpr paren -> "(" + emitExpr(paren.inner()) + ")";
+            case Expr.SafeAccessExpr safeAccess -> {
+                String target = emitExpr(safeAccess.target());
+                yield "(" + target + " == null ? null : " + target + "." + safeAccess.memberName() + ")";
+            }
+            case Expr.ElvisExpr elvis -> {
+                String left = emitExpr(elvis.left());
+                yield "(" + left + " == null ? " + emitExpr(elvis.right()) + " : " + left + ")";
+            }
         };
     }
 
