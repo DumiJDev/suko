@@ -50,7 +50,22 @@ public class JteEmitter {
             case Statement.Interpolation interpolation ->
                 out.append("${").append(emitExpr(interpolation.expr())).append('}');
             case Statement.HtmlElement element -> emitHtmlElement(element, out);
+            case Statement.IfStmt ifStmt -> emitIfStmt(ifStmt, out);
         }
+    }
+
+    private void emitIfStmt(Statement.IfStmt ifStmt, StringBuilder out) {
+        out.append("@if(").append(emitExpr(ifStmt.condition())).append(")\n");
+        for (Statement statement : ifStmt.thenBranch()) {
+            emitStatement(statement, out);
+        }
+        if (!ifStmt.elseBranch().isEmpty()) {
+            out.append("\n@else\n");
+            for (Statement statement : ifStmt.elseBranch()) {
+                emitStatement(statement, out);
+            }
+        }
+        out.append("\n@endif\n");
     }
 
     private void emitHtmlElement(Statement.HtmlElement element, StringBuilder out) {

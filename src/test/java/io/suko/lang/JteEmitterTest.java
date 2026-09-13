@@ -105,4 +105,24 @@ class JteEmitterTest {
         assertEquals("\n<p>3</p>", withValue);
         assertEquals("\n<p>-1</p>", withNull);
     }
+
+    @Test
+    void rendersIfElse() throws Exception {
+        String source = """
+            component Status(boolean ok) {
+              if (ok) {
+                <p>Tudo bem</p>
+              } else {
+                <p>Falhou</p>
+              }
+            }
+            """;
+
+        assertEquals("<p>Tudo bem</p>\n", stripJteControlLines(JteRenderSupport.render(source, "Status", Map.of("ok", true))));
+        assertEquals("<p>Falhou</p>\n", stripJteControlLines(JteRenderSupport.render(source, "Status", Map.of("ok", false))));
+    }
+
+    private static String stripJteControlLines(String html) {
+        return html.lines().filter(line -> !line.isBlank()).reduce("", (a, b) -> a + b + "\n");
+    }
 }
