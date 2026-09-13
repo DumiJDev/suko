@@ -19,11 +19,9 @@ SWITCH    : 'switch';
 CASE      : 'case';
 DEFAULT   : 'default';
 NULLLIT   : 'null';
-TRUELIT   : 'true';
-FALSELIT  : 'false';
 
 BooleanLiteral
-    : TRUELIT | FALSELIT
+    : 'true' | 'false'
     ;
 
 // --- pontuação / operadores ---
