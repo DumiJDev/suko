@@ -100,4 +100,11 @@ class SukoGrammarFixesTest {
             "component A(String label = \"Dashboard\") { <p>{label}</p> }");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
+
+    @Test
+    void unaryMinus() {
+        List<String> errors = parseErrors(
+            "component A(int x) { <p>{-1}</p> <p>{-x}</p> }");
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
 }

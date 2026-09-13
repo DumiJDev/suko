@@ -201,6 +201,7 @@ expression
     | expression DOT Identifier                              # AccessExpr
     | expression LPAREN argList? RPAREN                       # CallExpr
     | NOT expression                                          # NotExpr
+    | MINUS expression                                        # UnaryMinusExpr
     | expression op=(STAR|SLASH|PERCENT) expression           # MulExpr
     | expression op=(PLUS|MINUS) expression                   # AddExpr
     | expression op=(LT|LE|GT|GE) expression                  # RelExpr
