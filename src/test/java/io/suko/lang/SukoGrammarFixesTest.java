@@ -78,4 +78,11 @@ class SukoGrammarFixesTest {
             "// comentário de topo\ncomponent A() {\n  <p>x</p> // comentário no fim da linha\n}");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
+
+    @Test
+    void dollarSignWithoutIdentifierInString() {
+        List<String> errors = parseErrors(
+            "component A(String p = \"R$ 10\") { <p>x</p> }");
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
 }

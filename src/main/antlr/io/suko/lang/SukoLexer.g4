@@ -140,6 +140,15 @@ SIMPLE_INTERP_START
     : '$' [a-zA-Z_][a-zA-Z0-9_]*
     ;
 
+// "$" sem identificador a seguir (ex: "R$ 10") não é início de
+// interpolação — é texto literal. Como SIMPLE_INTERP_START/
+// EXPR_INTERP_START exigem pelo menos mais um carácter e casam mais
+// texto quando aplicável, esta regra só entra em jogo quando nenhuma
+// delas casa (maximal-munch do ANTLR já resolve a prioridade).
+SIMPLE_DOLLAR
+    : '$'
+    ;
+
 STRING_TEXT
     : ~["\\$]+
     ;
