@@ -140,15 +140,24 @@ namedSlot
 // coincidem não é expressável em BNF puro — fica para a análise
 // semântica (fase pós-parse).
 
+// Nomes de tag/atributo HTML podem ter hífen (data-id, my-button), ao
+// contrário de identificadores de expressão Java (onde "a-b" é
+// subtração). Por isso esta regra é do PARSER, não do lexer: reconstrói
+// o nome a partir de Identifier/MINUS já lexados separadamente, em vez
+// de alargar o Identifier léxico (o que quebraria "a-b" em expressões).
+htmlName
+    : Identifier (MINUS Identifier)*
+    ;
+
 htmlElement
-    : LT Identifier attribute* SLASHGT                                        # SelfClosingElement
-    | LT Identifier attribute* GT templateStatement* LTSLASH Identifier GT     # OpenElement
+    : LT htmlName attribute* SLASHGT                                        # SelfClosingElement
+    | LT htmlName attribute* GT templateStatement* LTSLASH htmlName GT       # OpenElement
     ;
 
 attribute
-    : Identifier EQ stringLiteral
-    | Identifier EQ LBRACE expression RBRACE
-    | Identifier
+    : htmlName EQ stringLiteral
+    | htmlName EQ LBRACE expression RBRACE
+    | htmlName
     ;
 
 // Interpolação de nível de statement, dentro ou fora de uma tag.
