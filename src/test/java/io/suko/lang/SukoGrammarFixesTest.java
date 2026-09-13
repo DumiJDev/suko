@@ -56,4 +56,12 @@ class SukoGrammarFixesTest {
             "component A() { <div data-id=\"1\">x</div> <my-button>y</my-button> }");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
+
+    @Test
+    void voidElementsWithoutSelfClosingSlash() {
+        List<String> errors = parseErrors(
+            "component A() { <p>a<br>b</p> <input type=\"text\"> </div> }"
+                .replace(" </div>", "")); // sem tag de fecho pendurada
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
 }

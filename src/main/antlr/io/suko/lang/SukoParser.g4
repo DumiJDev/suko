@@ -2,6 +2,20 @@ parser grammar SukoParser;
 
 options { tokenVocab = SukoLexer; }
 
+@members {
+    // Elementos HTML5 que nunca têm filhos nem tag de fecho. Usado como
+    // predicado semântico para desambiguar VoidElement de OpenElement
+    // sem introduzir ambiguidade real na gramática (ver htmlElement).
+    private static final java.util.Set<String> VOID_ELEMENT_NAMES = java.util.Set.of(
+        "area", "base", "br", "col", "embed", "hr", "img", "input",
+        "link", "meta", "source", "track", "wbr"
+    );
+
+    private boolean isVoidElementName(String name) {
+        return VOID_ELEMENT_NAMES.contains(name);
+    }
+}
+
 // ============================================================
 // Suko — Parser
 // ============================================================
@@ -85,8 +99,21 @@ templateStatement
 // posição de caractere no fonte (start/stop do token stream), não
 // pela concatenação ingênua do texto de cada token — isso preserva
 // espaçamento e hifenização exatamente como no .sk original.
+// NOTA (tarefa 3): também exclui LTSLASH ("</"), não só LT. Sem isso, um
+// "</algumaCoisa>" perdido (por exemplo, o resultado de o parser escolher
+// a alternativa VoidElement para uma tag que na verdade não é vazia) seria
+// silenciosamente engolido como texto solto em vez de gerar um erro de
+// parse — e isso torna OpenElement/VoidElement genuinamente ambíguos do
+// ponto de vista estrutural (fora do predicado semântico, que o ANTLR não
+// consegue usar durante a predição porque depende do texto já casado
+// nesta mesma invocação da regra): há sempre uma leitura alternativa do
+// input em que a tag "fecha cedo" (VoidElement) e o que sobra vira texto.
+// Excluindo LTSLASH, essa leitura alternativa deixa de ser válida sempre
+// que exista mesmo uma tag de fecho pendente mais adiante, e a ambiguidade
+// desaparece sem precisar que o predicado seja avaliado durante a
+// predição — ele só entra para validar/confirmar depois da escolha.
 textRun
-    : ( ~(LBRACE | RBRACE | LT) )+
+    : ( ~(LBRACE | RBRACE | LT | LTSLASH) )+
     ;
 
 varDecl
@@ -150,8 +177,9 @@ htmlName
     ;
 
 htmlElement
-    : LT htmlName attribute* SLASHGT                                        # SelfClosingElement
-    | LT htmlName attribute* GT templateStatement* LTSLASH htmlName GT       # OpenElement
+    : LT htmlName attribute* SLASHGT                                                                       # SelfClosingElement
+    | LT open=htmlName attribute* GT {!isVoidElementName($open.text)}? templateStatement* LTSLASH close=htmlName GT  # OpenElement
+    | LT tag=htmlName attribute* GT {isVoidElementName($tag.text)}?                                          # VoidElement
     ;
 
 attribute
