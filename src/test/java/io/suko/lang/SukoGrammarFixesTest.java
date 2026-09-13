@@ -114,4 +114,12 @@ class SukoGrammarFixesTest {
             "component A() { Foo() { row { item -> <li>{item}</li> } } } component Foo() { }");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
+
+    @Test
+    void slotFillWithoutRenderPropStillWorks() {
+        // Regressão: verifica que a forma original (sem parâmetro render-prop) continua válida.
+        List<String> errors = parseErrors(
+            "component A() { Foo() { row { <li>Static</li> } } } component Foo() { }");
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
 }
