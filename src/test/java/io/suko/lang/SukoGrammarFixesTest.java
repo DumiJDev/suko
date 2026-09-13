@@ -107,4 +107,11 @@ class SukoGrammarFixesTest {
             "component A(int x) { <p>{-1}</p> <p>{-x}</p> }");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
+
+    @Test
+    void renderPropSlotFillSyntax() {
+        List<String> errors = parseErrors(
+            "component A() { Foo() { row { item -> <li>{item}</li> } } } component Foo() { }");
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
 }
