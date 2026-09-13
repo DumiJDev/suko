@@ -4,7 +4,8 @@ import java.util.List;
 
 public sealed interface Expr permits
     Expr.PrimaryExpr, Expr.StringLiteralExpr, Expr.AccessExpr, Expr.CallExpr,
-    Expr.NotExpr, Expr.UnaryMinusExpr, Expr.BinaryExpr, Expr.TernaryExpr, Expr.ParenExpr {
+    Expr.NotExpr, Expr.UnaryMinusExpr, Expr.BinaryExpr, Expr.TernaryExpr, Expr.ParenExpr,
+    Expr.SafeAccessExpr, Expr.ElvisExpr {
 
     SourceSpan span();
 
@@ -40,5 +41,11 @@ public sealed interface Expr permits
     }
 
     record ParenExpr(Expr inner, SourceSpan span) implements Expr {
+    }
+
+    record SafeAccessExpr(Expr target, String memberName, SourceSpan span) implements Expr {
+    }
+
+    record ElvisExpr(Expr left, Expr right, SourceSpan span) implements Expr {
     }
 }

@@ -90,4 +90,19 @@ class JteEmitterTest {
 
         assertEquals("\n<p>1</p><p>3</p>", html);
     }
+
+    @Test
+    void rendersNullSafeAccessAndElvis() throws Exception {
+        String source = """
+            component Price(String label) {
+              <p>{label?.length() ?: -1}</p>
+            }
+            """;
+
+        String withValue = JteRenderSupport.render(source, "Price", java.util.Collections.singletonMap("label", "abc"));
+        String withNull = JteRenderSupport.render(source, "Price", java.util.Collections.singletonMap("label", null));
+
+        assertEquals("\n<p>3</p>", withValue);
+        assertEquals("\n<p>-1</p>", withNull);
+    }
 }

@@ -163,8 +163,12 @@ public class SukoAstBuilder {
             case SukoParser.TernaryExprContext c -> new Expr.TernaryExpr(
                 buildExpr(c.expression(0)), buildExpr(c.expression(1)), buildExpr(c.expression(2)), spanOf(c));
             case SukoParser.ParenExprContext c -> new Expr.ParenExpr(buildExpr(c.expression()), spanOf(c));
+            case SukoParser.SafeAccessExprContext c ->
+                new Expr.SafeAccessExpr(buildExpr(c.expression()), c.Identifier().getText(), spanOf(c));
+            case SukoParser.ElvisExprContext c ->
+                new Expr.ElvisExpr(buildExpr(c.expression(0)), buildExpr(c.expression(1)), spanOf(c));
             default -> throw new IllegalStateException(
-                "Tipo de expressão ainda não suportado (ver tarefa 11 para ?./?:): " + ctx.getClass());
+                "Tipo de expressão ainda não suportado: " + ctx.getClass());
         };
     }
 
