@@ -139,14 +139,50 @@ public class SukoAstBuilder {
     }
 
     Expr buildExpr(SukoParser.ExpressionContext ctx) {
-        if (ctx instanceof SukoParser.PrimaryExprContext c) {
-            SukoParser.PrimaryContext primary = c.primary();
-            if (primary.stringLiteral() != null) {
-                return buildStringLiteral(primary.stringLiteral());
-            }
-            return new Expr.PrimaryExpr(primary.getText(), spanOf(primary));
+        return switch (ctx) {
+            case SukoParser.PrimaryExprContext c -> buildPrimary(c.primary());
+            case SukoParser.AccessExprContext c ->
+                new Expr.AccessExpr(buildExpr(c.expression()), c.Identifier().getText(), spanOf(c));
+            case SukoParser.CallExprContext c -> new Expr.CallExpr(
+                buildExpr(c.expression()), buildArgs(c.argList()), spanOf(c));
+            case SukoParser.NotExprContext c -> new Expr.NotExpr(buildExpr(c.expression()), spanOf(c));
+            case SukoParser.UnaryMinusExprContext c ->
+                new Expr.UnaryMinusExpr(buildExpr(c.expression()), spanOf(c));
+            case SukoParser.MulExprContext c ->
+                new Expr.BinaryExpr(buildExpr(c.expression(0)), c.op.getText(), buildExpr(c.expression(1)), spanOf(c));
+            case SukoParser.AddExprContext c ->
+                new Expr.BinaryExpr(buildExpr(c.expression(0)), c.op.getText(), buildExpr(c.expression(1)), spanOf(c));
+            case SukoParser.RelExprContext c ->
+                new Expr.BinaryExpr(buildExpr(c.expression(0)), c.op.getText(), buildExpr(c.expression(1)), spanOf(c));
+            case SukoParser.EqExprContext c ->
+                new Expr.BinaryExpr(buildExpr(c.expression(0)), c.op.getText(), buildExpr(c.expression(1)), spanOf(c));
+            case SukoParser.AndExprContext c ->
+                new Expr.BinaryExpr(buildExpr(c.expression(0)), "&&", buildExpr(c.expression(1)), spanOf(c));
+            case SukoParser.OrExprContext c ->
+                new Expr.BinaryExpr(buildExpr(c.expression(0)), "||", buildExpr(c.expression(1)), spanOf(c));
+            case SukoParser.TernaryExprContext c -> new Expr.TernaryExpr(
+                buildExpr(c.expression(0)), buildExpr(c.expression(1)), buildExpr(c.expression(2)), spanOf(c));
+            case SukoParser.ParenExprContext c -> new Expr.ParenExpr(buildExpr(c.expression()), spanOf(c));
+            default -> throw new IllegalStateException(
+                "Tipo de expressão ainda não suportado (ver tarefa 11 para ?./?:): " + ctx.getClass());
+        };
+    }
+
+    private Expr buildPrimary(SukoParser.PrimaryContext ctx) {
+        if (ctx.stringLiteral() != null) {
+            return buildStringLiteral(ctx.stringLiteral());
         }
-        throw new IllegalStateException("Tipo de expressão ainda não suportado nesta tarefa: " + ctx.getClass());
+        return new Expr.PrimaryExpr(ctx.getText(), spanOf(ctx));
+    }
+
+    private List<Expr> buildArgs(SukoParser.ArgListContext ctx) {
+        List<Expr> args = new ArrayList<>();
+        if (ctx != null) {
+            for (SukoParser.ArgContext argCtx : ctx.arg()) {
+                args.add(buildExpr(argCtx.expression()));
+            }
+        }
+        return args;
     }
 
     private Expr.StringLiteralExpr buildStringLiteral(SukoParser.StringLiteralContext ctx) {

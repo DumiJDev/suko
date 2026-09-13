@@ -74,7 +74,25 @@ public class JteEmitter {
         return switch (expr) {
             case Expr.PrimaryExpr primary -> primary.text();
             case Expr.StringLiteralExpr stringLiteral -> emitStringLiteral(stringLiteral);
+            case Expr.AccessExpr access -> emitExpr(access.target()) + "." + access.memberName();
+            case Expr.CallExpr call -> emitExpr(call.callee()) + "(" + emitArgs(call.args()) + ")";
+            case Expr.NotExpr not -> "!" + emitExpr(not.operand());
+            case Expr.UnaryMinusExpr unaryMinus -> "-" + emitExpr(unaryMinus.operand());
+            case Expr.BinaryExpr binary ->
+                emitExpr(binary.left()) + " " + binary.operator() + " " + emitExpr(binary.right());
+            case Expr.TernaryExpr ternary -> emitExpr(ternary.condition()) + " ? "
+                + emitExpr(ternary.whenTrue()) + " : " + emitExpr(ternary.whenFalse());
+            case Expr.ParenExpr paren -> "(" + emitExpr(paren.inner()) + ")";
         };
+    }
+
+    private String emitArgs(java.util.List<Expr> args) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < args.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(emitExpr(args.get(i)));
+        }
+        return sb.toString();
     }
 
     private String emitStringLiteral(Expr.StringLiteralExpr stringLiteral) {
