@@ -158,8 +158,12 @@ slotBlock
     : LBRACE (namedSlot | templateStatement)* RBRACE
     ;
 
+// A segunda forma ("row { item -> ... }") é o preenchimento de um slot
+// com parâmetro (render-prop): "item" é o nome que a expressão dentro
+// do templateBlock usa para o valor passado pelo componente. Ver
+// SlotParam no AST (subprojeto 1, secção "Sintaxe de slots").
 namedSlot
-    : Identifier templateBlock
+    : Identifier (Identifier ARROW)? templateBlock
     ;
 
 // --- Elementos HTML crus ---
