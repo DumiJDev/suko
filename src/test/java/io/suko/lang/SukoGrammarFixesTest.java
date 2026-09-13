@@ -49,4 +49,11 @@ class SukoGrammarFixesTest {
         List<String> errors = parseErrors("component A() { if (true) { <p>x</p> } }");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
+
+    @Test
+    void hyphenatedTagAndAttributeNames() {
+        List<String> errors = parseErrors(
+            "component A() { <div data-id=\"1\">x</div> <my-button>y</my-button> }");
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
 }
