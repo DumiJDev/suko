@@ -64,4 +64,18 @@ class SukoGrammarFixesTest {
                 .replace(" </div>", "")); // sem tag de fecho pendurada
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
+
+    @Test
+    void urlInsideTextIsNotTreatedAsComment() {
+        List<String> errors = parseErrors(
+            "component A() {\n  <p>Veja http://x.com agora</p>\n}");
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
+
+    @Test
+    void lineCommentsStillWork() {
+        List<String> errors = parseErrors(
+            "// comentário de topo\ncomponent A() {\n  <p>x</p> // comentário no fim da linha\n}");
+        assertTrue(errors.isEmpty(), "Erros: " + errors);
+    }
 }
