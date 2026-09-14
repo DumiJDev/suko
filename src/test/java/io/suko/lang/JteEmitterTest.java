@@ -207,9 +207,15 @@ class JteEmitterTest {
 
     @Test
     void rendersRequiredSingleSlot() throws Exception {
+        // DESVIO DO BRIEF (documentado, tarefa 18, retroativo à tarefa 16):
+        // `{header}` sozinho deixou de compilar desde que todo SlotParam
+        // passou a ser emitido como `Function<T, Content>` em vez de
+        // `Content` — ler o slot exige agora uma chamada explícita
+        // (`{header(null)}`), tratada pelo emitter como `.apply(null)`
+        // (ver Step 3 do brief da tarefa 18 / JteEmitter.emitExpr).
         String source = """
             component Card(slot<String> header) {
-              <div class="card">{header}</div>
+              <div class="card">{header(null)}</div>
             }
 
             component Page() {
@@ -263,15 +269,70 @@ class JteEmitterTest {
         // Statement, sem essa restrição de tipo de expressão), que exercita
         // o mesmo comportamento observável (fallback quando o slot não é
         // preenchido) sem tropeçar nesta limitação.
+        //
+        // DESVIO ADICIONAL (documentado, tarefa 18): desde que todo
+        // `slot<T>` passa a ser emitido como `Function<T, Content>` (nunca
+        // `Content` puro — ver Step 1 do brief da tarefa 18), `{title}`
+        // sozinho não compila mais (precisa de `{title(null)}`, tratado
+        // pelo emitter como `.apply(null)` — Step 3), e o item do `for`
+        // sobre `actions` (agora `List<Function<String, Content>>`, não
+        // `List<Content>`) precisa de mudar de `Content` para
+        // `Function<String, Content>` desqualificado — "Function"
+        // desqualificado sofre do MESMO problema de "cannot find symbol"
+        // já documentado para "Content"/"List" na tarefa 17, então
+        // `JteEmitter.javaType` foi estendido (ver comentário lá) para
+        // sintetizar também "java.util.function.Function" a partir do
+        // nome simples "Function" — verificado por probe direto contra o
+        // TemplateEngine real antes de assumir esta forma (ver ruling do
+        // brief desta tarefa, Step 6).
+        //
+        // DESVIO ADICIONAL, e correção à sugestão literal do brief (Step
+        // 6): o brief propõe `{action(null)}` dentro do `for` (mesma forma
+        // usada para `title(null)`), mas `action` aqui é uma variável do
+        // `for` (não um `SlotParam` do componente `Toolbar` — esse é
+        // `actions`, no plural), então a heurística sintática de
+        // `emitExpr` (Step 3: "identificador simples cujo texto está em
+        // `slotNames`, o conjunto de nomes de SlotParam DECLARADOS no
+        // componente") não a reconhece, e `action(null)` seria emitido
+        // literalmente como uma chamada de método `action(null)` sobre uma
+        // variável — não compila em Java ("action" não é um método).
+        // Verificado (RED genuíno) contra o compilador real do gg.jte.
+        // Escrever `{action.apply(null)}` explicitamente no .sk contorna
+        // isto: `action.apply` é um `AccessExpr` comum (não um
+        // `PrimaryExpr` simples), então cai no caso genérico de `CallExpr`
+        // e emite exatamente `action.apply(null)`, que compila porque
+        // `action` é de facto `Function<String, Content>`. Isto é
+        // consistente com a decisão de desenho da tarefa (nenhuma
+        // resolução de nomes/tabela de símbolos nesta camada) — a
+        // heurística de `.apply` implícito só cobre o caso mais comum
+        // (ler diretamente um SlotParam pelo seu próprio nome), não
+        // qualquer variável de tipo `Function` derivada dele.
+        //
+        // DESVIO ADICIONAL, e correção a uma suposição errada minha nesta
+        // mesma tarefa: `if (title == null)` DEIXOU de funcionar como
+        // "slot não preenchido" — verificado (RED genuíno, não hipótese)
+        // contra o compilador e o motor reais. A razão: o valor por
+        // omissão de um SlotParam Cardinality.ONE já não é o literal
+        // `null` (isso mudou no Step 1 desta tarefa, ver comentário em
+        // `JteEmitter.jteParamDeclaration`) — é sempre uma instância de
+        // `Function` (mesmo quando "vazia", devolve `null` quando chamada:
+        // `(String it) -> null`), precisamente porque `gg.jte`, no modo de
+        // render sem tipos usado por `JteRenderSupport`
+        // (`params.getOrDefault(...)`), exige um valor-alvo tipado para o
+        // lambda de omissão. Consequência: `title` nunca é `null` como
+        // REFERÊNCIA — o slot "vazio" agora só se distingue chamando-o e
+        // comparando o RESULTADO (`title.apply(null) == null`), não a
+        // própria referência da função. Ajustado para `if (title.apply(null)
+        // == null)`.
         String source = """
             component Toolbar(slot<String> title = null, List<slot<String>> actions = null) {
-              if (title == null) {
+              if (title.apply(null) == null) {
                 <div>sem-titulo</div>
               } else {
-                <div>{title}</div>
+                <div>{title(null)}</div>
               }
-              for (Content action : actions) {
-                <span>{action}</span>
+              for (Function<String, Content> action : actions) {
+                <span>{action.apply(null)}</span>
               }
             }
 
@@ -297,6 +358,57 @@ class JteEmitterTest {
 
         String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTitle", Map.of());
         assertTrue(withoutTitle.contains("sem-titulo"));
+    }
+
+    @Test
+    void rendersRenderPropSlot() throws Exception {
+        // DESVIO DO BRIEF (documentado, tarefa 18, Step 4): o brief usa
+        // `java.util.List<String> items` como tipo do ValueParam. Verificado
+        // diretamente contra o parser real que isto reproduz o mesmo
+        // bloqueio já documentado na ruling da tarefa 13: `type` não aceita
+        // nomes qualificados ("extraneous input '.' expecting Identifier").
+        // Trocado por "List<String>" desqualificado — e, como um
+        // `ValueParam` comum (não-slot) de tipo "List" nunca tinha sido
+        // exercitado antes desta tarefa, isto expôs um gap real e
+        // diferente: "List" desqualificado também não resolve no Java
+        // gerado pelo gg.jte (mesmo sintoma de "cannot find symbol" já
+        // documentado para "Content" na tarefa 17). Corrigido estendendo
+        // `JteEmitter.javaType` (ver comentário lá) para sintetizar
+        // "java.util.List" a partir do nome simples "List", seguindo o
+        // mesmo padrão já estabelecido — não uma resolução geral de
+        // imports. `java.util.List.of("a", "b")`, por outro lado, é um
+        // VALOR (expressão), não um tipo: `expression` aceita cadeias de
+        // `AccessExpr`/`CallExpr` sobre qualquer `Identifier` inicial, e
+        // "java" é apenas mais um identificador nessa cadeia — verificado
+        // que isto parseia sem erro (diferente da regra `type`, que é
+        // fechada a `Identifier typeArguments? arrayMarker*` sem `DOT`).
+        // `{row(item)}` (não `{row.apply(item)}`) é usado de propósito
+        // aqui — diferente do `action.apply(null)` da tarefa 17 acima,
+        // `row` É literalmente o nome do `SlotParam` declarado em
+        // `ItemList`, então esta chamada exercita a própria heurística de
+        // `.apply` implícito da Step 3 (identificador simples cujo texto
+        // está em `slotNames`), não o contorno manual usado para a
+        // variável de `for` do outro teste.
+        String source = """
+            component ItemList(List<String> items, slot<String> row) {
+              <ul>
+              for (String item : items) {
+                <li>{row(item)}</li>
+              }
+              </ul>
+            }
+
+            component Page() {
+              ItemList(items = java.util.List.of("a", "b")) {
+                row { item -> <b>{item}</b> }
+              }
+            }
+            """;
+
+        String html = JteRenderSupport.renderWithDependencies(source, "Page", Map.of());
+
+        assertTrue(html.contains("<b>a</b>"));
+        assertTrue(html.contains("<b>b</b>"));
     }
 
     private static String stripJteControlLines(String html) {
