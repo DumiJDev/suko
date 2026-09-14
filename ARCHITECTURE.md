@@ -69,6 +69,30 @@
   pela posição de caractere no fonte, não por concatenação de
   tokens.
 
+## Limitações conhecidas (fim do subprojeto 1)
+
+O `examples/Card.sk` acima é a **referência da superfície da
+linguagem**, não do que o emitter já renderiza. Confirmado
+empiricamente contra o `gg.jte` 3.1.12 real (tarefas 13, 17 e a
+sondagem da tarefa 19):
+
+- **Generics de componente são só sintaxe.** `component Card<T>(...)`
+  faz parse e o `<T>` é carregado no AST, mas nunca é emitido: o
+  `gg.jte` não tem forma de declarar uma variável de tipo própria do
+  template. O `<T>` do `@param <T> List<T> x` serve apenas para evitar
+  quebra por espaços num tipo já concreto; `@param <T> T item` gera
+  Java corrompido e não compila. Vale mesmo no caso opaco (`Box<T>(T
+  value)`), porque a falha está na declaração da variável de tipo, não
+  no acesso a membros. Renderização genérica real exige o Suko fazer
+  erasure para um tipo-limite (`<T extends Item>`) no momento do
+  emit — sintaxe e análise que ainda não existem.
+- **Tipos qualificados não fazem parse.** `java.util.List<T>` é
+  rejeitado (`type: Identifier typeArguments? arrayMarker*`).
+- **Não há imports automáticos.** O `.jte` gerado não importa nada; o
+  tipo tem de ser resolúvel tal como escrito.
+- **`</` literal em texto livre** é erro de parse (consequência aceite
+  da desambiguação do `textRun`).
+
 ## Validação feita até agora
 
 Rodei o ANTLR (4.11.1, disponível localmente neste ambiente) contra
@@ -93,5 +117,7 @@ ambiente com JDK completo pra confirmar em código.
 3. Implementar `JteEmitter` para o subconjunto do `Card.sk`
    (sem generics ainda) e validar o `.jte` gerado compilando de
    verdade com `gg.jte`.
-4. Adicionar generics, slots nomeados múltiplos e switch no emitter.
+4. Adicionar slots nomeados múltiplos e switch no emitter. (Generics
+   reais ficam bloqueados — ver "Limitações conhecidas"; dependem de
+   sintaxe de tipo-limite + erasure, trabalho de um subprojeto futuro.)
 5. Escrever testes golden-file: `.sk` de entrada → `.jte` esperado.
