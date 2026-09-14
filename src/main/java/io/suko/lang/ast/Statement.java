@@ -3,7 +3,7 @@ package io.suko.lang.ast;
 import java.util.List;
 
 public sealed interface Statement permits Statement.HtmlElement, Statement.TextRun, Statement.Interpolation,
-        Statement.IfStmt {
+        Statement.IfStmt, Statement.ForStmt {
 
     SourceSpan span();
 
@@ -22,5 +22,9 @@ public sealed interface Statement permits Statement.HtmlElement, Statement.TextR
 
     record IfStmt(Expr condition, List<Statement> thenBranch, List<Statement> elseBranch,
                   SourceSpan span) implements Statement {
+    }
+
+    record ForStmt(Type itemType, String itemName, Expr iterable, List<Statement> body,
+                   SourceSpan span) implements Statement {
     }
 }

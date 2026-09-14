@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JteEmitterTest {
 
@@ -120,6 +121,52 @@ class JteEmitterTest {
 
         assertEquals("<p>Tudo bem</p>\n", stripJteControlLines(JteRenderSupport.render(source, "Status", Map.of("ok", true))));
         assertEquals("<p>Falhou</p>\n", stripJteControlLines(JteRenderSupport.render(source, "Status", Map.of("ok", false))));
+    }
+
+    @Test
+    void rendersForLoopOverGenericList() throws Exception {
+        // DESVIO DO BRIEF: o brief literal usa
+        // `component Items<T>(java.util.List<T> items) { for (T item : items) ... }`.
+        // Dois problemas reais, verificados contra os motores reais (ANTLR e
+        // gg.jte), impedem essa forma exata:
+        //   1. A gramática do Suko (`type: Identifier typeArguments? arrayMarker*`,
+        //      SukoParser.g4) não aceita nomes de tipo qualificados com ponto —
+        //      "java.util.List<T>" falha a analisar ("extraneous input '.'
+        //      expecting Identifier"), um gap pré-existente e não relacionado ao
+        //      `for`, fora do âmbito desta tarefa (que é só AST/emitter do forStmt).
+        //   2. Mesmo contornando (1) usando um tipo não-qualificado, a sintaxe real
+        //      de `@param` do gg.jte (verificada por experimento direto contra o
+        //      motor real, JavaParamInfo.parse, jte 3.1.12) NÃO suporta declarar um
+        //      parâmetro de tipo genérico próprio do template (`@param <T> ...`) —
+        //      o "<...>" só serve para não partir tipos genéricos já concretos
+        //      (ex.: "List<String>") ao separar tipo de nome; não declara uma
+        //      variável de tipo nova. Um `T` desligado nunca resolve para uma
+        //      classe Java real. Não há mecanismo de import no JteEmitter (tarefa
+        //      13 não o adiciona — SukoFile.imports() ainda não é lido por
+        //      JteEmitter.emit) que pudesse mitigar (1) de outra forma.
+        // Por isso este teste mantém `Items<T>` na declaração do componente (para
+        // continuar a exercitar ComponentDecl.typeParameters(), como o brief pede)
+        // mas usa um tipo concreto e não-qualificado (String[]) para o próprio
+        // parâmetro/for-loop, evitando os dois gaps acima. O mecanismo do
+        // Statement.ForStmt/emitForStmt em si é agnóstico ao tipo do item — o
+        // emitter só copia o texto do tipo tal como escrito — por isso este teste
+        // continua a validar genuinamente o `for` desaçucarado para `@for`/`@endfor`
+        // através do motor gg.jte real.
+        String source = """
+            component Items<T>(String[] items) {
+              <ul>
+              for (String item : items) {
+                <li>{item}</li>
+              }
+              </ul>
+            }
+            """;
+
+        String html = JteRenderSupport.render(source, "Items", Map.of("items", new String[] {"a", "b", "c"}));
+
+        assertTrue(html.contains("<li>a</li>"));
+        assertTrue(html.contains("<li>b</li>"));
+        assertTrue(html.contains("<li>c</li>"));
     }
 
     private static String stripJteControlLines(String html) {
