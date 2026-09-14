@@ -102,6 +102,9 @@ public class SukoAstBuilder {
         if (ctx.ifStmt() != null) {
             return buildIfStmt(ctx.ifStmt());
         }
+        if (ctx.switchStmt() != null) {
+            return buildSwitchStmt(ctx.switchStmt());
+        }
         if (ctx.htmlElement() != null) {
             return buildHtmlElement(ctx.htmlElement());
         }
@@ -137,6 +140,43 @@ public class SukoAstBuilder {
             buildExpr(ctx.expression()),
             buildStatements(ctx.templateBlock().templateStatement()),
             spanOf(ctx));
+    }
+
+    private Statement.SwitchStmt buildSwitchStmt(SukoParser.SwitchStmtContext ctx) {
+        Expr subject = buildExpr(ctx.expression());
+
+        List<Statement.SwitchCase> cases = new ArrayList<>();
+        for (SukoParser.SwitchCaseContext caseCtx : ctx.switchCase()) {
+            // DESVIO DO BRIEF: `caseCtx.expression()` (sem índice) não compila —
+            // switchCase referencia `expression` duas vezes na gramática
+            // (`CASE expression ARROW (templateBlock | expression SEMI)`), por
+            // isso o ANTLR gera `List<ExpressionContext> expression()` em vez de
+            // `ExpressionContext expression()` (confirmado no parser gerado,
+            // SukoParser.java, SwitchCaseContext). O brief assumia a forma de
+            // acessor de uma regra com uma só ocorrência de `expression`
+            // (como switchStmt/defaultCase, onde `expression()` sem índice é de
+            // facto um ExpressionContext único). Corrigido para
+            // `caseCtx.expression(0)`, que é o valor do case (a primeira
+            // ocorrência); a segunda, `caseCtx.expression(1)`, é a
+            // expressão-corpo do ramo `-> expression;`, já usada corretamente
+            // pelo brief mais abaixo.
+            cases.add(new Statement.SwitchCase(buildExpr(caseCtx.expression(0)), buildCaseBody(
+                caseCtx.templateBlock(), caseCtx.expression(1))));
+        }
+
+        List<Statement> defaultCase = ctx.defaultCase() == null
+            ? List.of()
+            : buildCaseBody(ctx.defaultCase().templateBlock(), ctx.defaultCase().expression());
+
+        return new Statement.SwitchStmt(subject, cases, defaultCase, spanOf(ctx));
+    }
+
+    private List<Statement> buildCaseBody(SukoParser.TemplateBlockContext blockCtx, SukoParser.ExpressionContext exprCtx) {
+        if (blockCtx != null) {
+            return buildStatements(blockCtx.templateStatement());
+        }
+        // "case X -> expression;" — trata a expressão como uma única interpolação.
+        return List.of(new Statement.Interpolation(buildExpr(exprCtx), spanOf(exprCtx)));
     }
 
     private Statement.HtmlElement buildHtmlElement(SukoParser.HtmlElementContext ctx) {

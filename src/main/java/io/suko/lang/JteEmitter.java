@@ -52,7 +52,30 @@ public class JteEmitter {
             case Statement.HtmlElement element -> emitHtmlElement(element, out);
             case Statement.IfStmt ifStmt -> emitIfStmt(ifStmt, out);
             case Statement.ForStmt forStmt -> emitForStmt(forStmt, out);
+            case Statement.SwitchStmt switchStmt -> emitSwitchStmt(switchStmt, out);
         }
+    }
+
+    private void emitSwitchStmt(Statement.SwitchStmt switchStmt, StringBuilder out) {
+        String subject = emitExpr(switchStmt.subject());
+        boolean first = true;
+        for (Statement.SwitchCase switchCase : switchStmt.cases()) {
+            out.append(first ? "@if(" : "@elseif(").append(subject).append(".equals(")
+                .append(emitExpr(switchCase.matchValue())).append("))\n");
+            for (Statement statement : switchCase.body()) {
+                emitStatement(statement, out);
+            }
+            out.append('\n');
+            first = false;
+        }
+        if (!switchStmt.defaultCase().isEmpty()) {
+            out.append("@else\n");
+            for (Statement statement : switchStmt.defaultCase()) {
+                emitStatement(statement, out);
+            }
+            out.append('\n');
+        }
+        out.append("@endif\n");
     }
 
     private void emitForStmt(Statement.ForStmt forStmt, StringBuilder out) {

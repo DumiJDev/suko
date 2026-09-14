@@ -169,6 +169,23 @@ class JteEmitterTest {
         assertTrue(html.contains("<li>c</li>"));
     }
 
+    @Test
+    void rendersSwitchWithDefault() throws Exception {
+        String source = """
+            component Role(String role) {
+              switch (role) {
+                case "admin" -> { <p>Admin</p> }
+                case "guest" -> { <p>Visitante</p> }
+                default -> { <p>Desconhecido</p> }
+              }
+            }
+            """;
+
+        assertTrue(JteRenderSupport.render(source, "Role", Map.of("role", "admin")).contains("<p>Admin</p>"));
+        assertTrue(JteRenderSupport.render(source, "Role", Map.of("role", "guest")).contains("<p>Visitante</p>"));
+        assertTrue(JteRenderSupport.render(source, "Role", Map.of("role", "other")).contains("<p>Desconhecido</p>"));
+    }
+
     private static String stripJteControlLines(String html) {
         return html.lines().filter(line -> !line.isBlank()).reduce("", (a, b) -> a + b + "\n");
     }
