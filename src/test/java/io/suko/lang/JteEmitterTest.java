@@ -205,6 +205,25 @@ class JteEmitterTest {
         assertTrue(html.contains("<a href=\"/\">Home</a>"));
     }
 
+    @Test
+    void rendersRequiredSingleSlot() throws Exception {
+        String source = """
+            component Card(slot<String> header) {
+              <div class="card">{header}</div>
+            }
+
+            component Page() {
+              Card() {
+                header { <b>Título</b> }
+              }
+            }
+            """;
+
+        String html = JteRenderSupport.renderWithDependencies(source, "Page", Map.of());
+
+        assertTrue(html.contains("<b>Título</b>"));
+    }
+
     private static String stripJteControlLines(String html) {
         return html.lines().filter(line -> !line.isBlank()).reduce("", (a, b) -> a + b + "\n");
     }
