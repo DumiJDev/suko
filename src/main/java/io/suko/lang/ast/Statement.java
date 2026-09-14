@@ -3,7 +3,7 @@ package io.suko.lang.ast;
 import java.util.List;
 
 public sealed interface Statement permits Statement.HtmlElement, Statement.TextRun, Statement.Interpolation,
-        Statement.IfStmt, Statement.ForStmt {
+        Statement.IfStmt, Statement.ForStmt, Statement.SwitchStmt {
 
     SourceSpan span();
 
@@ -26,5 +26,14 @@ public sealed interface Statement permits Statement.HtmlElement, Statement.TextR
 
     record ForStmt(Type itemType, String itemName, Expr iterable, List<Statement> body,
                    SourceSpan span) implements Statement {
+    }
+
+    // `defaultCase` vazio = `default` ausente; a checagem de exaustividade é
+    // semântica, fora deste subprojeto.
+    record SwitchStmt(Expr subject, List<SwitchCase> cases, List<Statement> defaultCase,
+                      SourceSpan span) implements Statement {
+    }
+
+    record SwitchCase(Expr matchValue, List<Statement> body) {
     }
 }
