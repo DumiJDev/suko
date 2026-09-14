@@ -122,6 +122,18 @@ public class SukoAstBuilder {
 
     // `slotBlock`, quando presente, é ignorado nesta tarefa — tratado nas
     // tarefas 16-18.
+    //
+    // `qualifiedName` aceita sintaticamente nomes com ponto (`ui.NavLink(...)`),
+    // mas `ctx.qualifiedName().getText()` copia esse texto tal como escrito para
+    // `componentName`, e `JteEmitter.emitComponentCall` emite literalmente
+    // "@template." + componentName. O gg.jte trata pontos em `@template.` como
+    // separadores de caminho (`ui/NavLink.jte`), enquanto o compilador escreve
+    // cada componente num `.jte` plano nomeado por `ComponentDecl.name()` (que é
+    // um `Identifier` único, nunca composto) — uma chamada com nome composto
+    // falha em tempo de render com `TemplateNotFoundException`, não em tempo de
+    // build. Não há verificação nem teste para este caso; fica para a análise
+    // semântica (subprojetos 2-3) rejeitar nomes de chamada compostos, ou para
+    // o emitter aprender a resolver sub-pacotes, se isso vier a ser suportado.
     private Statement.ComponentCallStmt buildComponentCallStmt(SukoParser.ComponentCallContext ctx) {
         List<Statement.Arg> args = new ArrayList<>();
         if (ctx.argList() != null) {
