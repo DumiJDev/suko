@@ -20,9 +20,14 @@ Para chegar lá, o produto está dividido em 4 subprojetos, cada um com
 o seu ciclo spec → plano → implementação:
 
 1. **Núcleo da linguagem** (este documento) — gramática, AST,
-   `JteEmitter`. Critério de conclusão: um componente com slots,
-   generics e slots com parâmetro compila para `.jte` e renderiza de
-   verdade via `gg.jte`.
+   `JteEmitter`. Critério de conclusão: um componente com slots e slots
+   com parâmetro compila para `.jte` e renderiza de verdade via
+   `gg.jte`. Generics de componente (`component Card<T>(...)`) ficam
+   como sintaxe válida no AST mas **não renderizam** — `gg.jte` não tem
+   forma de declarar uma variável de tipo própria do template; ver
+   "Limitações conhecidas" em `ARCHITECTURE.md`. Renderização real de
+   generics (via erasure para tipo-limite) é trabalho de um subprojeto
+   futuro dedicado, fora do âmbito dos subprojetos 2-4 abaixo.
 2. **Verificador Suko** — tabela de símbolos de componentes; valida
    chamadas de componente, slots (presença/cardinalidade/parâmetros),
    tipos de children, estrutura HTML, escape e URLs perigosas.
