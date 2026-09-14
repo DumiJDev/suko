@@ -51,7 +51,17 @@ public class JteEmitter {
                 out.append("${").append(emitExpr(interpolation.expr())).append('}');
             case Statement.HtmlElement element -> emitHtmlElement(element, out);
             case Statement.IfStmt ifStmt -> emitIfStmt(ifStmt, out);
+            case Statement.ForStmt forStmt -> emitForStmt(forStmt, out);
         }
+    }
+
+    private void emitForStmt(Statement.ForStmt forStmt, StringBuilder out) {
+        out.append("@for(").append(javaType(forStmt.itemType())).append(' ').append(forStmt.itemName())
+            .append(" : ").append(emitExpr(forStmt.iterable())).append(")\n");
+        for (Statement statement : forStmt.body()) {
+            emitStatement(statement, out);
+        }
+        out.append("\n@endfor\n");
     }
 
     private void emitIfStmt(Statement.IfStmt ifStmt, StringBuilder out) {

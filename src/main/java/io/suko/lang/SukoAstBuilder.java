@@ -96,6 +96,9 @@ public class SukoAstBuilder {
     }
 
     Statement buildStatement(SukoParser.TemplateStatementContext ctx) {
+        if (ctx.forStmt() != null) {
+            return buildForStmt(ctx.forStmt());
+        }
         if (ctx.ifStmt() != null) {
             return buildIfStmt(ctx.ifStmt());
         }
@@ -125,6 +128,15 @@ public class SukoAstBuilder {
         }
 
         return new Statement.IfStmt(condition, thenBranch, elseBranch, spanOf(ctx));
+    }
+
+    private Statement.ForStmt buildForStmt(SukoParser.ForStmtContext ctx) {
+        return new Statement.ForStmt(
+            buildType(ctx.type()),
+            ctx.Identifier().getText(),
+            buildExpr(ctx.expression()),
+            buildStatements(ctx.templateBlock().templateStatement()),
+            spanOf(ctx));
     }
 
     private Statement.HtmlElement buildHtmlElement(SukoParser.HtmlElementContext ctx) {
