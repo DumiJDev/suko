@@ -53,7 +53,19 @@ public class JteEmitter {
             case Statement.IfStmt ifStmt -> emitIfStmt(ifStmt, out);
             case Statement.ForStmt forStmt -> emitForStmt(forStmt, out);
             case Statement.SwitchStmt switchStmt -> emitSwitchStmt(switchStmt, out);
+            case Statement.ComponentCallStmt call -> emitComponentCall(call, out);
         }
+    }
+
+    private void emitComponentCall(Statement.ComponentCallStmt call, StringBuilder out) {
+        out.append("@template.").append(call.componentName()).append('(');
+        for (int i = 0; i < call.args().size(); i++) {
+            if (i > 0) out.append(", ");
+            Statement.Arg arg = call.args().get(i);
+            arg.name().ifPresent(name -> out.append(name).append(" = "));
+            out.append(emitExpr(arg.value()));
+        }
+        out.append(")\n");
     }
 
     private void emitSwitchStmt(Statement.SwitchStmt switchStmt, StringBuilder out) {

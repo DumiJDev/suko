@@ -186,6 +186,25 @@ class JteEmitterTest {
         assertTrue(JteRenderSupport.render(source, "Role", Map.of("role", "other")).contains("<p>Desconhecido</p>"));
     }
 
+    @Test
+    void rendersComponentComposition() throws Exception {
+        String source = """
+            component NavLink(String label, String href) {
+              <a href={href}>{label}</a>
+            }
+
+            component Menu(String activeLabel) {
+              <nav>
+              NavLink(label = activeLabel, href = "/")
+              </nav>
+            }
+            """;
+
+        String html = JteRenderSupport.renderWithDependencies(source, "Menu", Map.of("activeLabel", "Home"));
+
+        assertTrue(html.contains("<a href=\"/\">Home</a>"));
+    }
+
     private static String stripJteControlLines(String html) {
         return html.lines().filter(line -> !line.isBlank()).reduce("", (a, b) -> a + b + "\n");
     }
