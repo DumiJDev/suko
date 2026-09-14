@@ -50,12 +50,7 @@ public class JteEmitter {
     }
 
     public String emit(ComponentDecl component) {
-        java.util.Set<String> slotNames = new java.util.HashSet<>();
-        for (Param param : component.params()) {
-            if (param instanceof Param.SlotParam slotParam) {
-                slotNames.add(slotParam.name());
-            }
-        }
+        java.util.Set<String> slotNames = slotNamesOf(component);
 
         StringBuilder out = new StringBuilder();
         for (Param param : component.params()) {
@@ -66,6 +61,53 @@ public class JteEmitter {
             emitStatement(statement, out, slotNames);
         }
         return out.toString();
+    }
+
+    public record EmitResult(String jteSource, java.util.List<io.suko.lang.ast.SourceMapEntry> sourceMap) {
+    }
+
+    public EmitResult emitWithSourceMap(ComponentDecl component) {
+        java.util.List<io.suko.lang.ast.SourceMapEntry> entries = new ArrayList<>();
+        String jteSource = emit(component);
+
+        // Reconstrói o mapeamento percorrendo as mesmas statements de novo,
+        // desta vez só para registar em que linha do .jte cada Statement de
+        // topo começou a ser escrito. Suficiente para localizar erros por
+        // linha (não por coluna) nos subprojetos 2/3.
+        StringBuilder probe = new StringBuilder();
+        for (Param param : component.params()) {
+            probe.append("@param ").append(jteParamDeclaration(param)).append('\n');
+        }
+        probe.append('\n');
+        int lineSoFar = countLines(probe.toString());
+
+        java.util.Set<String> slotNames = slotNamesOf(component);
+        for (Statement statement : component.body()) {
+            entries.add(new io.suko.lang.ast.SourceMapEntry(lineSoFar + 1, statement.span()));
+            StringBuilder single = new StringBuilder();
+            emitStatement(statement, single, slotNames);
+            lineSoFar += countLines(single.toString());
+        }
+
+        return new EmitResult(jteSource, entries);
+    }
+
+    private int countLines(String text) {
+        int lines = 0;
+        for (int i = 0; i < text.length(); i++) {
+            if (text.charAt(i) == '\n') lines++;
+        }
+        return lines;
+    }
+
+    private java.util.Set<String> slotNamesOf(ComponentDecl component) {
+        java.util.Set<String> slotNames = new java.util.HashSet<>();
+        for (Param param : component.params()) {
+            if (param instanceof Param.SlotParam slotParam) {
+                slotNames.add(slotParam.name());
+            }
+        }
+        return slotNames;
     }
 
     private String jteParamDeclaration(Param param) {
