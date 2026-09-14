@@ -3,7 +3,7 @@ package io.suko.lang.ast;
 import java.util.List;
 
 public sealed interface Statement permits Statement.HtmlElement, Statement.TextRun, Statement.Interpolation,
-        Statement.IfStmt, Statement.ForStmt, Statement.SwitchStmt {
+        Statement.IfStmt, Statement.ForStmt, Statement.SwitchStmt, Statement.ComponentCallStmt {
 
     SourceSpan span();
 
@@ -35,5 +35,11 @@ public sealed interface Statement permits Statement.HtmlElement, Statement.TextR
     }
 
     record SwitchCase(Expr matchValue, List<Statement> body) {
+    }
+
+    record ComponentCallStmt(String componentName, List<Arg> args, SourceSpan span) implements Statement {
+    }
+
+    record Arg(java.util.Optional<String> name, Expr value) {
     }
 }

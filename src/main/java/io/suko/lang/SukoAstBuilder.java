@@ -96,6 +96,9 @@ public class SukoAstBuilder {
     }
 
     Statement buildStatement(SukoParser.TemplateStatementContext ctx) {
+        if (ctx.componentCall() != null) {
+            return buildComponentCallStmt(ctx.componentCall());
+        }
         if (ctx.forStmt() != null) {
             return buildForStmt(ctx.forStmt());
         }
@@ -115,6 +118,21 @@ public class SukoAstBuilder {
             return new Statement.TextRun(textOf(ctx.textRun()), spanOf(ctx.textRun()));
         }
         throw new IllegalStateException("templateStatement ainda não suportado: " + ctx.getText());
+    }
+
+    // `slotBlock`, quando presente, é ignorado nesta tarefa — tratado nas
+    // tarefas 16-18.
+    private Statement.ComponentCallStmt buildComponentCallStmt(SukoParser.ComponentCallContext ctx) {
+        List<Statement.Arg> args = new ArrayList<>();
+        if (ctx.argList() != null) {
+            for (SukoParser.ArgContext argCtx : ctx.argList().arg()) {
+                Optional<String> name = argCtx.Identifier() == null
+                    ? Optional.empty()
+                    : Optional.of(argCtx.Identifier().getText());
+                args.add(new Statement.Arg(name, buildExpr(argCtx.expression())));
+            }
+        }
+        return new Statement.ComponentCallStmt(ctx.qualifiedName().getText(), args, spanOf(ctx));
     }
 
     private Statement.IfStmt buildIfStmt(SukoParser.IfStmtContext ctx) {

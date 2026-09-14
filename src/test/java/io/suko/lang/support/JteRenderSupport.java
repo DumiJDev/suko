@@ -58,4 +58,25 @@ public final class JteRenderSupport {
         templateEngine.render(componentName + ".jte", params, output);
         return output.toString();
     }
+
+    /** Compila TODOS os componentes do ficheiro para .jte (necessário quando um
+     * componente chama outro) e renderiza o indicado por entryComponent. */
+    public static String renderWithDependencies(String sukoSource, String entryComponent, Map<String, Object> params) throws IOException {
+        SukoLexer lexer = new SukoLexer(CharStreams.fromString(sukoSource));
+        SukoParser parser = new SukoParser(new CommonTokenStream(lexer));
+        SukoFile file = new SukoAstBuilder(sukoSource).build(parser.compilationUnit());
+
+        Path tempDir = Files.createTempDirectory("suko-jte-render-multi");
+        JteEmitter emitter = new JteEmitter();
+        for (ComponentDecl component : file.components()) {
+            Files.writeString(tempDir.resolve(component.name() + ".jte"), emitter.emit(component));
+        }
+
+        CodeResolver codeResolver = new DirectoryCodeResolver(tempDir);
+        TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Html);
+
+        TemplateOutput output = new StringOutput();
+        templateEngine.render(entryComponent + ".jte", params, output);
+        return output.toString();
+    }
 }
