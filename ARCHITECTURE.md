@@ -4,18 +4,19 @@
 .sk (fonte Suko)
       │
       ▼
- ANTLR Lexer/Parser (gerado a partir de Suko.g4)
+ ANTLR Lexer/Parser (gerado a partir de SukoLexer.g4 + SukoParser.g4)
       │  produz: ParseTree
       ▼
  SukoAstBuilder (Visitor)
       │  produz: AST tipado (SukoFile, ComponentDecl, Statement, Expr, ...)
       ▼
- Análise semântica
+ Análise semântica  [subprojeto 2 — AINDA NÃO IMPLEMENTADA]
       │  - resolve imports/alias
       │  - checa slots nomeados obrigatórios/proibidos
       │  - checa abertura/fechamento de tag coincidindo
-      │  - checa tipos de generics em uso (checagem leve, delega
-      │    tipagem profunda ao javac na próxima fase)
+      │  - rejeita o que não é suportado (generics, nomes de
+      │    componente compostos), delegando tipagem Java profunda
+      │    ao javac na fase seguinte (subprojeto 3)
       ▼
  JteEmitter (Visitor sobre o AST)
       │  produz: arquivo .jte equivalente, 1:1 por componente
@@ -43,12 +44,29 @@
 - **1 componente Suko → 1 template JTE.** Mantém rastreabilidade
   simples: erro de renderização em produção aponta pro `.jte`
   gerado, que por sua vez mapeia 1:1 de volta pro `.sk` de origem
-  via source maps (a implementar).
+  via source maps. O nome do `.jte` é o nome simples do componente
+  (`ComponentDecl.name()`), num diretório plano — ainda não há regra
+  para dois componentes com o mesmo nome simples em pacotes
+  diferentes. O source map existe como `JteEmitter.EmitResult`
+  (linha do `.jte` → `SourceSpan` do `.sk`), mas nada em `src/main`
+  escreve ficheiros: não há ainda um driver de compilação
+  (`.sk` no disco → `.jte` + `.map` no disco); os testes fazem-no à
+  mão. Esse driver é o ponto de entrada natural do plugin de build
+  (subprojeto 4) e o sítio onde o verificador (subprojeto 2) se liga.
 - **Slots nomeados** (`Layout(...) { Sidebar { } Content { } }`)
-  viram parâmetros de `Content`/`Content<T>` do próprio JTE
-  (o JTE já suporta parâmetros de conteúdo/`@Content` nativamente),
-  então a tradução é direta — não é preciso inventar um mecanismo
-  de runtime novo, só desaçucarar a sintaxe.
+  viram parâmetros de conteúdo do próprio JTE (o JTE já suporta
+  parâmetros de conteúdo/`@Content` nativamente), então a tradução é
+  direta — não é preciso inventar um mecanismo de runtime novo, só
+  desaçucarar a sintaxe. **Forma concreta escolhida (tarefa 18 do
+  subprojeto 1, revista face ao desenho original):** *todo* `slot<T>` é
+  emitido uniformemente como `java.util.function.Function<T,
+  gg.jte.Content>` (e `List<slot<T>>` como
+  `java.util.List<Function<T, gg.jte.Content>>`), nunca como
+  `gg.jte.Content` nu — mesmo quando o slot não é um render-prop. A
+  razão é ter uma só forma no Java gerado, em vez de duas (`Content`
+  para slot simples, `Function` para render-prop) que o emitter teria
+  de escolher sem tabela de símbolos. Consequências visíveis ao autor
+  de `.sk`, ver "Limitações conhecidas".
 - **Texto dentro de tags resolvido no parser, não no lexer.** A
   primeira tentativa usava um modo léxico `TEXT` (entrado via ação
   do parser logo após o `>` de uma tag de abertura) para lexar
@@ -71,10 +89,13 @@
 
 ## Limitações conhecidas (fim do subprojeto 1)
 
-O `examples/Card.sk` acima é a **referência da superfície da
-linguagem**, não do que o emitter já renderiza. Confirmado
-empiricamente contra o `gg.jte` 3.1.12 real (tarefas 13, 17 e a
-sondagem da tarefa 19):
+`examples/Card.sk` é a **referência da superfície da linguagem**, não
+do que o emitter já renderiza — e, com a decisão de roadmap sobre
+generics abaixo, é hoje um programa que o verificador do subprojeto 2
+terá de rejeitar. Cada item abaixo foi confirmado empiricamente
+(contra o `gg.jte` 3.1.12 real nas tarefas 13/17/19 do subprojeto 1, ou
+por sondagem direta ao parser/emitter durante a revisão de
+arquitetura):
 
 - **Generics de componente são só sintaxe.** `component Card<T>(...)`
   faz parse e o `<T>` é carregado no AST, mas nunca é emitido: o
@@ -84,40 +105,107 @@ sondagem da tarefa 19):
   Java corrompido e não compila. Vale mesmo no caso opaco (`Box<T>(T
   value)`), porque a falha está na declaração da variável de tipo, não
   no acesso a membros. Renderização genérica real exige o Suko fazer
-  erasure para um tipo-limite (`<T extends Item>`) no momento do
-  emit — sintaxe e análise que ainda não existem.
+  erasure para um tipo-limite no momento do emit — análise que não
+  existe. A *sintaxe* de limite, essa, já existe na gramática
+  (`typeParameter: Identifier (COLON type)?`, ou seja `<T: Item>`),
+  mas o `SukoAstBuilder` descarta o limite (`ComponentDecl.typeParameters`
+  é `List<String>`). O mesmo vale para argumentos de tipo no ponto de
+  chamada: `Box<String>(v = "x")` faz parse e os `<String>` são
+  descartados em silêncio (`ComponentCallStmt` não tem campo para eles).
+  **Decisão de roadmap:** o verificador (subprojeto 2) rejeita ambas as
+  formas com um erro explícito de "ainda não suportado"; a renderização
+  real de generics é um subprojeto dedicado, fora dos subprojetos 2-4.
+- **Ler um slot exige chamá-lo.** Como todo `slot<T>` é emitido como
+  `Function<T, Content>` (ver "Decisões de design"), `{header}` não
+  compila: o `.sk` tem de escrever `{header(null)}` para um slot sem
+  parâmetro (o emitter traduz um identificador conhecido como slot para
+  `.apply(...)`). Pelo mesmo motivo: (a) testar "slot não preenchido" é
+  `header.apply(null) == null`, não `header == null` — o valor por
+  omissão de um slot é uma função que devolve `null`, nunca a
+  referência `null`; (b) iterar um `List<slot<T>>` obriga o `.sk` a
+  escrever o tipo do item como `Function<T, Content>`, tipos do JTE que
+  vazam para a superfície da linguagem; (c) `{slot ?: "fallback"}` não
+  compila (ramos de tipos incompatíveis). Nada disto é verificado hoje:
+  o erro aparece como erro de compilação Java no `.jte` gerado.
 - **Tipos qualificados não fazem parse.** `java.util.List<T>` é
   rejeitado (`type: Identifier typeArguments? arrayMarker*`).
 - **Não há imports automáticos.** O `.jte` gerado não importa nada; o
-  tipo tem de ser resolúvel tal como escrito.
+  tipo tem de ser resolúvel tal como escrito. Na prática o emitter
+  compensa com uma lista fechada de nomes sintetizados em
+  `JteEmitter.javaType` (`Content` → `gg.jte.Content`, `List` →
+  `java.util.List`, `Function` → `java.util.function.Function`) — o que
+  torna esses três nomes efetivamente reservados: um tipo do utilizador
+  com um desses nomes é reescrito em silêncio. `SukoFile.imports()`
+  nunca é lido, e o `as` de `import ... as X;` é descartado pelo AST
+  builder, apesar de o diagrama acima prometer "resolve imports/alias".
+- **Chamada de componente com nome composto falha em runtime.**
+  `ui.NavLink(...)` faz parse e é emitido literalmente como
+  `@template.ui.NavLink(...)`; o `gg.jte` lê o ponto como separador de
+  caminho (`ui/NavLink.jte`) e falha com `TemplateNotFoundException` em
+  tempo de render, não em tempo de build.
+- **Conteúdo anónimo num bloco de chamada é descartado em silêncio.**
+  A gramática aceita `Layout() { <p>x</p> side { ... } }`
+  (`slotBlock: LBRACE (namedSlot | templateStatement)* RBRACE`), mas o
+  AST builder só lê os `namedSlot` — o `<p>x</p>` desaparece sem erro.
+  Não existe conceito de "children por omissão" na linguagem.
+- **`var` faz parse mas rebenta o compilador.** `var x = 1;` está em
+  `templateStatement` na gramática e na spec do subprojeto 1, mas
+  `Statement` não tem variante `VarDecl` e o `SukoAstBuilder` lança
+  `IllegalStateException("templateStatement ainda não suportado")`.
+- **Interpolação dentro de literal de string não funciona.**
+  `{"Olá ${name}!"}` é erro de parse, embora o lexer tenha os tokens
+  (`SIMPLE_INTERP_START`, `EXPR_INTERP_START`) e `stringPart` os aceite;
+  `Expr.StringPart` só tem a variante `Literal`.
+- **Erros de parse não param a compilação.** Não há `ErrorListener` em
+  `src/main`: o ANTLR imprime o erro no stderr e o `SukoAstBuilder`
+  continua a percorrer uma árvore com nós de erro, produzindo `.jte`
+  corrompido em silêncio. Diagnóstico de sintaxe é infraestrutura em
+  falta, não coberta por nenhum subprojeto até agora.
 - **`</` literal em texto livre** é erro de parse (consequência aceite
   da desambiguação do `textRun`).
+- **Um literal de string Suko não pode conter `<` nem `>`**
+  (consequência aceite do predicado `canStartStringLiteral` do lexer,
+  que é o que permite aspas soltas em prosa: `<p>5" tela</p>`).
+- **Um `//` no fim absoluto do ficheiro, sem newline a seguir,** não
+  conta como comentário (consequência aceite da desambiguação
+  comentário-vs-URL).
+- **Espaço em branco órfão entre dois statements não-textRun irmãos é
+  perdido** (`{x} {y}` emite `${x}${y}`).
+- **Backtick não escapado dentro de um slot fill corrompe o `.jte`
+  gerado** (o conteúdo do fill é escrito dentro de `` @`...` `` sem
+  escape). É um bug de fidelidade de output, não de segurança: `.sk` é
+  código do developer, não input não-confiável.
 
 ## Validação feita até agora
 
-Rodei o ANTLR (4.11.1, disponível localmente neste ambiente) contra
-`SukoLexer.g4` + `SukoParser.g4` — geração limpa, sem erros nem
-avisos de ambiguidade, inclusive depois do pivô acima. Esse
-ambiente não tem um JDK completo instalado (só JRE, sem `javac`) e
-não tem acesso à rede para instalar um, então não consegui
-compilar as classes geradas nem rodar um parse de verdade contra o
-`Card.sk`. Revisei manualmente token a token os trechos mais
-arriscados do exemplo (texto misturado com `for`/interpolação/tags
-aninhadas) e a estrutura bate com a gramática — mas o próximo passo
-real é rodar `./gradlew generateGrammarSource compileJava` num
-ambiente com JDK completo pra confirmar em código.
+O subprojeto 1 está concluído e mergeado (`76f9306`). A validação já
+não é análise estática da gramática: a suite de testes compila `.sk`
+para `.jte` e renderiza o resultado com o motor `gg.jte` 3.1.12 real
+(`JteRenderSupport`), incluindo golden-files (`src/test/resources/golden/`)
+e um teste ponta-a-ponta. A prática de regenerar as gramáticas
+(`gradle generateSukoLexer generateSukoParser --console=plain`) e
+confirmar ausência da palavra `warning` na saída continua a valer para
+qualquer alteração aos `.g4`.
 
-## Próximos passos técnicos (em ordem)
+Nota sobre `src/test/resources/golden/Card.jte`: é um golden de *texto*
+emitido, não um `.jte` que compile — contém `@param java.util.List<T>`
+com um `T` nunca declarado, exatamente a limitação de generics acima.
 
-1. Rodar `./gradlew generateGrammarSource compileJava` (ou
-   `compileTestJava` com um teste simples) num ambiente com JDK
-   completo, usando `Card.sk` como smoke test — isso ainda não foi
-   validado de fato em código, só na análise estática do ANTLR.
-2. Implementar `SukoAstBuilder` cobrindo o exemplo `Card.sk`.
-3. Implementar `JteEmitter` para o subconjunto do `Card.sk`
-   (sem generics ainda) e validar o `.jte` gerado compilando de
-   verdade com `gg.jte`.
-4. Adicionar slots nomeados múltiplos e switch no emitter. (Generics
-   reais ficam bloqueados — ver "Limitações conhecidas"; dependem de
-   sintaxe de tipo-limite + erasure, trabalho de um subprojeto futuro.)
-5. Escrever testes golden-file: `.sk` de entrada → `.jte` esperado.
+## Roadmap por subprojeto
+
+Cada subprojeto tem o seu ciclo spec → plano → implementação em
+`docs/superpowers/specs/` e `docs/superpowers/plans/`.
+
+1. **Núcleo da linguagem** — CONCLUÍDO. Gramática, AST,
+   `SukoAstBuilder`, `JteEmitter`, source map em memória.
+2. **Verificador Suko** — próximo. Tabela de símbolos de componentes,
+   validação de chamadas/slots, estrutura HTML, escape e URLs
+   perigosas. É também onde a infraestrutura de diagnóstico nasce (hoje
+   não existe nenhuma — ver "Erros de parse não param a compilação").
+3. **Verificação Java** — stub Java por componente via `JavacTask`, com
+   mapeamento de posições de volta ao `.sk`.
+4. **Integração no build** — plugin Gradle/Maven, modo watch, erros
+   formatados no terminal.
+
+Fora destes quatro, como subprojeto dedicado e sem data: renderização
+real de componentes genéricos (erasure para tipo-limite).
