@@ -50,13 +50,20 @@ public class JteEmitter {
     }
 
     public String emit(ComponentDecl component) {
+        java.util.Set<String> slotNames = new java.util.HashSet<>();
+        for (Param param : component.params()) {
+            if (param instanceof Param.SlotParam slotParam) {
+                slotNames.add(slotParam.name());
+            }
+        }
+
         StringBuilder out = new StringBuilder();
         for (Param param : component.params()) {
             out.append("@param ").append(jteParamDeclaration(param)).append('\n');
         }
         out.append('\n');
         for (Statement statement : component.body()) {
-            emitStatement(statement, out);
+            emitStatement(statement, out, slotNames);
         }
         return out.toString();
     }
@@ -76,10 +83,34 @@ public class JteEmitter {
         // o subprojeto 2, não bloqueia esta tarefa.
         return switch (param) {
             case Param.ValueParam p -> javaType(p.type()) + " " + p.name();
+            // DESVIO DO BRIEF (documentado, tarefa 18, Step 1): o brief propõe
+            // `= (T it) -> null` como valor por omissão. Verificado (RED
+            // genuíno) contra o compilador Java real embutido no gg.jte que
+            // isto falha a compilar SÓ no modo de render "sem tipos"
+            // (`TemplateEngine.render(nome, Map<String,Object>, out)`, usado
+            // por `JteRenderSupport`) — nesse modo, o próprio gg.jte gera
+            // `params.getOrDefault("title", (T it) -> null)` e faz o cast
+            // do RESULTADO para `Function<T, Content>`; mas `Map.getOrDefault`
+            // tem assinatura `V getOrDefault(Object, V)`, e o tipo-alvo do
+            // lambda no segundo argumento é inferido a partir de `V` (que
+            // resolve a `Object`, o tipo do Map), não do cast externo — daí
+            // "incompatible types: Object is not a functional interface".
+            // Um literal `null` simples (usado nas tarefas 16/17 para
+            // Content/List) não sofre disto, porque `null` é atribuível a
+            // qualquer tipo de referência independentemente do tipo-alvo
+            // inferido. A correção é dar ao próprio lambda um cast explícito
+            // ANTES de ele ser passado como valor por omissão — assim, seja
+            // qual for o `V` que `getOrDefault` infira, o lambda já tem o seu
+            // tipo funcional fixado pelo cast interno, e o cast externo
+            // gerado pelo gg.jte passa a ser sobre um valor já bem tipado
+            // (Function<T,Content> -> Function<T,Content>, sem-op).
             case Param.SlotParam p when p.cardinality() == Cardinality.ONE ->
-                "gg.jte.Content " + p.name() + (p.defaultValue().isPresent() ? " = null" : "");
+                "java.util.function.Function<" + javaType(p.elementType()) + ", gg.jte.Content> " + p.name()
+                    + (p.defaultValue().isPresent() ? " = (java.util.function.Function<" + javaType(p.elementType())
+                        + ", gg.jte.Content>) (" + javaType(p.elementType()) + " it) -> null" : "");
             case Param.SlotParam p ->
-                "java.util.List<gg.jte.Content> " + p.name() + (p.defaultValue().isPresent() ? " = java.util.List.of()" : "");
+                "java.util.List<java.util.function.Function<" + javaType(p.elementType()) + ", gg.jte.Content>> " + p.name()
+                    + (p.defaultValue().isPresent() ? " = java.util.List.of()" : "");
         };
     }
 
@@ -102,9 +133,42 @@ public class JteEmitter {
         // NÃO é um mecanismo geral de resolução de imports — nomes
         // qualificados continuam por resolver no subprojeto 2/3, tal como
         // a ruling da tarefa 13 já documentou.
-        String baseName = "Content".equals(type.name()) && type.typeArguments().isEmpty()
-            ? "gg.jte.Content"
-            : type.name();
+        // DESVIO DO BRIEF (documentado, tarefa 18): estende o mesmo padrão de
+        // síntese de nome qualificado que a tarefa 17 introduziu para
+        // "Content" também a "List" desqualificado. O teste desta tarefa
+        // (`rendersRenderPropSlot`) usa `List<String> items` como
+        // ValueParam comum (não-slot) — a ruling da tarefa 13 já provou que
+        // `type` não aceita nomes qualificados (`java.util.List<String>`
+        // falha com "extraneous input '.'"), então o `.sk` só pode escrever
+        // "List" desqualificado. Confirmado por probe direto contra o
+        // TemplateEngine real (ver `probeBareListDoesNotCompile`/
+        // `probeBareListSynthesisCompiles` em JteEmitterTest) que
+        // `@param List<String> items` gerado por gg.jte falha a compilar
+        // ("cannot find symbol: class List", sem import automático — mesmo
+        // sintoma já documentado para "Content" na tarefa 17), e que
+        // qualificar para `java.util.List<String>` resolve. Diferente de
+        // "Content" (nunca genérico em uso real neste emitter), "List" é
+        // sempre usado com argumento de tipo, mas a condição de guarda
+        // (`typeArguments().isEmpty()`) não se aplica aqui propositadamente
+        // — qualificamos "List" com ou sem argumentos, já que
+        // `java.util.List` sem argumentos também é válido e não há
+        // ambiguidade com outro "List" no escopo (mesmo raciocínio de
+        // "não é um mecanismo geral de resolução de imports" da tarefa 17:
+        // continua a ser uma lista fechada de nomes bem conhecidos do
+        // domínio, não uma tentativa de resolver imports arbitrários).
+        // "Function" entra na mesma lista fechada pela mesma razão (tarefa
+        // 18): desde que todo slot<T> passa a ser emitido como
+        // `Function<T, Content>` (Step 1 abaixo), iterar sobre um
+        // `List<slot<T>>` num `for` do .sk precisa de escrever o item como
+        // `Function<T, Content>` — e "Function" desqualificado tem
+        // exatamente o mesmo problema de "cannot find symbol" que "List" e
+        // "Content" já tinham (confirmado pelo mesmo tipo de probe).
+        String baseName = switch (type.name()) {
+            case "Content" -> type.typeArguments().isEmpty() ? "gg.jte.Content" : type.name();
+            case "List" -> "java.util.List";
+            case "Function" -> "java.util.function.Function";
+            default -> type.name();
+        };
         StringBuilder sb = new StringBuilder(baseName);
         if (!type.typeArguments().isEmpty()) {
             sb.append('<');
@@ -118,26 +182,26 @@ public class JteEmitter {
         return sb.toString();
     }
 
-    private void emitStatement(Statement statement, StringBuilder out) {
+    private void emitStatement(Statement statement, StringBuilder out, java.util.Set<String> slotNames) {
         switch (statement) {
             case Statement.TextRun textRun -> out.append(textRun.text());
             case Statement.Interpolation interpolation ->
-                out.append("${").append(emitExpr(interpolation.expr())).append('}');
-            case Statement.HtmlElement element -> emitHtmlElement(element, out);
-            case Statement.IfStmt ifStmt -> emitIfStmt(ifStmt, out);
-            case Statement.ForStmt forStmt -> emitForStmt(forStmt, out);
-            case Statement.SwitchStmt switchStmt -> emitSwitchStmt(switchStmt, out);
-            case Statement.ComponentCallStmt call -> emitComponentCall(call, out);
+                out.append("${").append(emitExpr(interpolation.expr(), slotNames)).append('}');
+            case Statement.HtmlElement element -> emitHtmlElement(element, out, slotNames);
+            case Statement.IfStmt ifStmt -> emitIfStmt(ifStmt, out, slotNames);
+            case Statement.ForStmt forStmt -> emitForStmt(forStmt, out, slotNames);
+            case Statement.SwitchStmt switchStmt -> emitSwitchStmt(switchStmt, out, slotNames);
+            case Statement.ComponentCallStmt call -> emitComponentCall(call, out, slotNames);
         }
     }
 
-    private void emitComponentCall(Statement.ComponentCallStmt call, StringBuilder out) {
+    private void emitComponentCall(Statement.ComponentCallStmt call, StringBuilder out, java.util.Set<String> slotNames) {
         out.append("@template.").append(call.componentName()).append('(');
         boolean first = true;
         for (Statement.Arg arg : call.args()) {
             if (!first) out.append(", ");
             arg.name().ifPresent(name -> out.append(name).append(" = "));
-            out.append(emitExpr(arg.value()));
+            out.append(emitExpr(arg.value(), slotNames));
             first = false;
         }
         java.util.Map<String, java.util.List<Statement.SlotFill>> grouped = new java.util.LinkedHashMap<>();
@@ -152,12 +216,12 @@ public class JteEmitter {
                 || resolveSlotCardinality(call.componentName(), entry.getKey()) == Cardinality.MANY;
             if (!wrapAsList) {
                 out.append(entry.getKey()).append(" = ");
-                emitSlotFillContent(fills.get(0), out);
+                emitSlotFillContent(fills.get(0), out, slotNames);
             } else {
                 out.append(entry.getKey()).append(" = java.util.List.of(");
                 for (int i = 0; i < fills.size(); i++) {
                     if (i > 0) out.append(", ");
-                    emitSlotFillContent(fills.get(i), out);
+                    emitSlotFillContent(fills.get(i), out, slotNames);
                 }
                 out.append(")");
             }
@@ -183,22 +247,32 @@ public class JteEmitter {
         return null;
     }
 
-    private void emitSlotFillContent(Statement.SlotFill slotFill, StringBuilder out) {
-        out.append("@`");
+    private void emitSlotFillContent(Statement.SlotFill slotFill, StringBuilder out, java.util.Set<String> slotNames) {
+        // DESVIO DO BRIEF (documentado, tarefa 18, Step 2): todo slot fill
+        // passa a ser envolvido num lambda, mesmo quando o .sk não fornece
+        // um `lambdaParamName` explícito (caso "slot simples" da tarefa
+        // 16) — porque, desde esta tarefa, TODO SlotParam é emitido como
+        // `Function<T, Content>` (nunca `Content` puro), então o valor
+        // atribuído ao parâmetro do fill tem sempre de ser um lambda de
+        // aridade 1, independentemente de o corpo do fill usar ou não o
+        // argumento. `__ignored` é o nome sintético usado quando o corpo
+        // não referencia o parâmetro.
+        String lambdaParam = slotFill.lambdaParamName().orElse("__ignored");
+        out.append(lambdaParam).append(" -> @`");
         for (Statement statement : slotFill.body()) {
-            emitStatement(statement, out);
+            emitStatement(statement, out, slotNames);
         }
         out.append('`');
     }
 
-    private void emitSwitchStmt(Statement.SwitchStmt switchStmt, StringBuilder out) {
-        String subject = emitExpr(switchStmt.subject());
+    private void emitSwitchStmt(Statement.SwitchStmt switchStmt, StringBuilder out, java.util.Set<String> slotNames) {
+        String subject = emitExpr(switchStmt.subject(), slotNames);
         boolean first = true;
         for (Statement.SwitchCase switchCase : switchStmt.cases()) {
             out.append(first ? "@if(" : "@elseif(").append(subject).append(".equals(")
-                .append(emitExpr(switchCase.matchValue())).append("))\n");
+                .append(emitExpr(switchCase.matchValue(), slotNames)).append("))\n");
             for (Statement statement : switchCase.body()) {
-                emitStatement(statement, out);
+                emitStatement(statement, out, slotNames);
             }
             out.append('\n');
             first = false;
@@ -206,41 +280,41 @@ public class JteEmitter {
         if (!switchStmt.defaultCase().isEmpty()) {
             out.append("@else\n");
             for (Statement statement : switchStmt.defaultCase()) {
-                emitStatement(statement, out);
+                emitStatement(statement, out, slotNames);
             }
             out.append('\n');
         }
         out.append("@endif\n");
     }
 
-    private void emitForStmt(Statement.ForStmt forStmt, StringBuilder out) {
+    private void emitForStmt(Statement.ForStmt forStmt, StringBuilder out, java.util.Set<String> slotNames) {
         out.append("@for(").append(javaType(forStmt.itemType())).append(' ').append(forStmt.itemName())
-            .append(" : ").append(emitExpr(forStmt.iterable())).append(")\n");
+            .append(" : ").append(emitExpr(forStmt.iterable(), slotNames)).append(")\n");
         for (Statement statement : forStmt.body()) {
-            emitStatement(statement, out);
+            emitStatement(statement, out, slotNames);
         }
         out.append("\n@endfor\n");
     }
 
-    private void emitIfStmt(Statement.IfStmt ifStmt, StringBuilder out) {
-        out.append("@if(").append(emitExpr(ifStmt.condition())).append(")\n");
+    private void emitIfStmt(Statement.IfStmt ifStmt, StringBuilder out, java.util.Set<String> slotNames) {
+        out.append("@if(").append(emitExpr(ifStmt.condition(), slotNames)).append(")\n");
         for (Statement statement : ifStmt.thenBranch()) {
-            emitStatement(statement, out);
+            emitStatement(statement, out, slotNames);
         }
         if (!ifStmt.elseBranch().isEmpty()) {
             out.append("\n@else\n");
             for (Statement statement : ifStmt.elseBranch()) {
-                emitStatement(statement, out);
+                emitStatement(statement, out, slotNames);
             }
         }
         out.append("\n@endif\n");
     }
 
-    private void emitHtmlElement(Statement.HtmlElement element, StringBuilder out) {
+    private void emitHtmlElement(Statement.HtmlElement element, StringBuilder out, java.util.Set<String> slotNames) {
         out.append('<').append(element.tagName());
         for (Statement.Attribute attribute : element.attributes()) {
             out.append(' ').append(attribute.name()).append("=\"")
-                .append("${").append(emitExpr(attribute.value())).append('}').append('"');
+                .append("${").append(emitExpr(attribute.value(), slotNames)).append('}').append('"');
         }
         if (element.selfClosing()) {
             out.append("/>");
@@ -248,16 +322,16 @@ public class JteEmitter {
         }
         out.append('>');
         for (Statement child : element.children()) {
-            emitStatement(child, out);
+            emitStatement(child, out, slotNames);
         }
         out.append("</").append(element.tagName()).append('>');
     }
 
-    String emitExpr(Expr expr) {
+    String emitExpr(Expr expr, java.util.Set<String> slotNames) {
         return switch (expr) {
             case Expr.PrimaryExpr primary -> primary.text();
             case Expr.StringLiteralExpr stringLiteral -> emitStringLiteral(stringLiteral);
-            case Expr.AccessExpr access -> emitExpr(access.target()) + "." + access.memberName();
+            case Expr.AccessExpr access -> emitExpr(access.target(), slotNames) + "." + access.memberName();
             // DESVIO DO BRIEF: quando o callee de uma chamada é ele próprio um
             // SafeAccessExpr (ex.: `label?.length()`), a gramática produz
             // CallExpr(callee=SafeAccessExpr(target, member), args) — a chamada
@@ -271,34 +345,48 @@ public class JteEmitter {
             // este caso é tratado aqui, como uma forma só sua, antes do caso
             // genérico de CallExpr.
             case Expr.CallExpr call when call.callee() instanceof Expr.SafeAccessExpr safeAccess -> {
-                String target = emitExpr(safeAccess.target());
+                String target = emitExpr(safeAccess.target(), slotNames);
                 yield "(" + target + " == null ? null : " + target + "." + safeAccess.memberName()
-                    + "(" + emitArgs(call.args()) + "))";
+                    + "(" + emitArgs(call.args(), slotNames) + "))";
             }
-            case Expr.CallExpr call -> emitExpr(call.callee()) + "(" + emitArgs(call.args()) + ")";
-            case Expr.NotExpr not -> "!" + emitExpr(not.operand());
-            case Expr.UnaryMinusExpr unaryMinus -> "-" + emitExpr(unaryMinus.operand());
+            // Tarefa 18, Step 3: uma chamada `nome(args)` sobre um único
+            // identificador simples que coincide com o nome de um SlotParam
+            // do componente atual é a forma que o .sk usa para LER um slot
+            // (que passou a ser sempre `Function<T, Content>` — ver nota da
+            // classe). O JteEmitter não tem tabela de símbolos própria
+            // (isso é o verificador do subprojeto 2), mas o conjunto de
+            // nomes de slot do componente sendo emitido está sempre
+            // disponível localmente (vem dos `Param.SlotParam` do próprio
+            // `ComponentDecl`), então basta esta verificação sintática —
+            // sem ambiguidade real, porque não há outra forma de "chamar"
+            // um identificador solto em Suko além de invocar uma função ou
+            // ler um slot.
+            case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p && slotNames.contains(p.text()) ->
+                p.text() + ".apply(" + emitArgs(call.args(), slotNames) + ")";
+            case Expr.CallExpr call -> emitExpr(call.callee(), slotNames) + "(" + emitArgs(call.args(), slotNames) + ")";
+            case Expr.NotExpr not -> "!" + emitExpr(not.operand(), slotNames);
+            case Expr.UnaryMinusExpr unaryMinus -> "-" + emitExpr(unaryMinus.operand(), slotNames);
             case Expr.BinaryExpr binary ->
-                emitExpr(binary.left()) + " " + binary.operator() + " " + emitExpr(binary.right());
-            case Expr.TernaryExpr ternary -> emitExpr(ternary.condition()) + " ? "
-                + emitExpr(ternary.whenTrue()) + " : " + emitExpr(ternary.whenFalse());
-            case Expr.ParenExpr paren -> "(" + emitExpr(paren.inner()) + ")";
+                emitExpr(binary.left(), slotNames) + " " + binary.operator() + " " + emitExpr(binary.right(), slotNames);
+            case Expr.TernaryExpr ternary -> emitExpr(ternary.condition(), slotNames) + " ? "
+                + emitExpr(ternary.whenTrue(), slotNames) + " : " + emitExpr(ternary.whenFalse(), slotNames);
+            case Expr.ParenExpr paren -> "(" + emitExpr(paren.inner(), slotNames) + ")";
             case Expr.SafeAccessExpr safeAccess -> {
-                String target = emitExpr(safeAccess.target());
+                String target = emitExpr(safeAccess.target(), slotNames);
                 yield "(" + target + " == null ? null : " + target + "." + safeAccess.memberName() + ")";
             }
             case Expr.ElvisExpr elvis -> {
-                String left = emitExpr(elvis.left());
-                yield "(" + left + " == null ? " + emitExpr(elvis.right()) + " : " + left + ")";
+                String left = emitExpr(elvis.left(), slotNames);
+                yield "(" + left + " == null ? " + emitExpr(elvis.right(), slotNames) + " : " + left + ")";
             }
         };
     }
 
-    private String emitArgs(java.util.List<Expr> args) {
+    private String emitArgs(java.util.List<Expr> args, java.util.Set<String> slotNames) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < args.size(); i++) {
             if (i > 0) sb.append(", ");
-            sb.append(emitExpr(args.get(i)));
+            sb.append(emitExpr(args.get(i), slotNames));
         }
         return sb.toString();
     }
