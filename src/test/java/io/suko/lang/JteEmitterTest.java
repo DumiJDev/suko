@@ -411,6 +411,23 @@ class JteEmitterTest {
         assertTrue(html.contains("<b>b</b>"));
     }
 
+    @Test
+    void rendersValueParamDefaultWhenOmittedAtCallSite() throws Exception {
+        String source = """
+            component Greeting(String name, String punctuation = "!") {
+              <p>{name}{punctuation}</p>
+            }
+
+            component Page() {
+              Greeting(name = "Ana")
+            }
+            """;
+
+        String html = JteRenderSupport.renderWithDependencies(source, "Page", Map.of());
+
+        assertTrue(html.contains("Ana!"));
+    }
+
     private static String stripJteControlLines(String html) {
         return html.lines().filter(line -> !line.isBlank()).reduce("", (a, b) -> a + b + "\n");
     }

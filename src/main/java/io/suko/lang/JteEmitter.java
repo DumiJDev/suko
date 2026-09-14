@@ -54,7 +54,7 @@ public class JteEmitter {
 
         StringBuilder out = new StringBuilder();
         for (Param param : component.params()) {
-            out.append("@param ").append(jteParamDeclaration(param)).append('\n');
+            out.append("@param ").append(jteParamDeclaration(param, slotNames)).append('\n');
         }
         out.append('\n');
         for (Statement statement : component.body()) {
@@ -74,14 +74,17 @@ public class JteEmitter {
         // desta vez só para registar em que linha do .jte cada Statement de
         // topo começou a ser escrito. Suficiente para localizar erros por
         // linha (não por coluna) nos subprojetos 2/3.
+        // TAREFA 22: slotNames precisa de estar disponível já aqui (antes só
+        // era calculado depois do probe) porque jteParamDeclaration agora
+        // também passa por emitExpr para o valor por omissão de ValueParam.
+        java.util.Set<String> slotNames = slotNamesOf(component);
         StringBuilder probe = new StringBuilder();
         for (Param param : component.params()) {
-            probe.append("@param ").append(jteParamDeclaration(param)).append('\n');
+            probe.append("@param ").append(jteParamDeclaration(param, slotNames)).append('\n');
         }
         probe.append('\n');
         int lineSoFar = countLines(probe.toString());
 
-        java.util.Set<String> slotNames = slotNamesOf(component);
         for (Statement statement : component.body()) {
             entries.add(new io.suko.lang.ast.SourceMapEntry(lineSoFar + 1, statement.span()));
             StringBuilder single = new StringBuilder();
@@ -110,7 +113,7 @@ public class JteEmitter {
         return slotNames;
     }
 
-    private String jteParamDeclaration(Param param) {
+    private String jteParamDeclaration(Param param, java.util.Set<String> slotNames) {
         // DESVIO DO BRIEF (documentado, tarefa 17): o valor por omissão de um
         // SlotParam vindo do .sk é ignorado aqui de propósito. A gramática
         // `param: type Identifier (EQ expression)?` só aceita `expression`
@@ -124,7 +127,36 @@ public class JteEmitter {
         // omissão real de slot — essa lacuna de sintaxe fica marcada para
         // o subprojeto 2, não bloqueia esta tarefa.
         return switch (param) {
-            case Param.ValueParam p -> javaType(p.type()) + " " + p.name();
+            // TAREFA 22 (correção pós-plano): ao contrário de SlotParam (tarefas
+            // 17/18), aqui o valor por omissão é uma expressão Suko normal, já
+            // totalmente suportada pela gramática — não há gap de sintaxe a
+            // contornar. Emitimos o Expr real via emitExpr, não um valor
+            // sintetizado.
+            //
+            // DECISÃO DE DESIGN (tarefa 22, ponto levantado pelo próprio
+            // brief): jteParamDeclaration passou a receber o `slotNames` real
+            // do componente, em vez de um `Set.of()` fixo, apesar de na
+            // prática o valor por omissão de um ValueParam nunca poder
+            // referenciar de forma útil o nome de um slot do mesmo
+            // componente — no ponto em que o valor por omissão é avaliado
+            // (parâmetros do template ainda não estão todos "ligados" entre
+            // si; um `slot<T>` nunca é um identificador comum em Java, só
+            // existe como parâmetro do próprio método), uma referência dessas
+            // seria sempre um identificador Java por resolver, falhando a
+            // compilação de qualquer forma, com ou sem o `.apply(...)`
+            // sintético que emitExpr acrescentaria via CallExpr. Optámos por
+            // passar o `slotNames` real, e não `Set.of()`, porque: (1) é
+            // gratuito — `slotNames` já está calculado em ambos os pontos de
+            // chamada (emit/emitWithSourceMap) antes de jteParamDeclaration
+            // ser invocado (bastou adiantar o cálculo em
+            // emitWithSourceMap, que antes só o fazia depois do probe); (2)
+            // evita reproduzir a mesma armadilha latente que a revisão da
+            // tarefa 18 já assinalou para emitStringLiteral — um `Set.of()`
+            // aqui ficaria como uma bomba-relógio para uma futura tarefa que
+            // viesse a permitir, por exemplo, referências entre parâmetros
+            // dentro da própria lista de parâmetros.
+            case Param.ValueParam p -> javaType(p.type()) + " " + p.name()
+                + p.defaultValue().map(expr -> " = " + emitExpr(expr, slotNames)).orElse("");
             // DESVIO DO BRIEF (documentado, tarefa 18, Step 1): o brief propõe
             // `= (T it) -> null` como valor por omissão. Verificado (RED
             // genuíno) contra o compilador Java real embutido no gg.jte que

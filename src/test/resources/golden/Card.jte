@@ -1,6 +1,6 @@
 @param String title
 @param java.util.List<T> items
-@param String emptyLabel
+@param String emptyLabel = "Sem itens"
 
 <div class="${"card"}"><h2>${title}</h2>@if(items.size() > 0)
 <ul>@for(T item : items)
