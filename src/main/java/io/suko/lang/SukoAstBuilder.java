@@ -67,13 +67,24 @@ public class SukoAstBuilder {
             : Optional.of(buildExpr(ctx.expression()));
 
         if (type.isSlot()) {
-            Type elementType = type.typeArguments().isEmpty()
-                ? new Type("Object", List.of(), 0)
-                : type.typeArguments().get(0);
-            return new Param.SlotParam(elementType, name, Cardinality.ONE, defaultValue, spanOf(ctx));
+            return new Param.SlotParam(slotElementType(type), name, Cardinality.ONE, defaultValue, spanOf(ctx));
+        }
+
+        boolean isListOfSlot = "List".equals(type.name())
+            && type.typeArguments().size() == 1
+            && type.typeArguments().get(0).isSlot();
+        if (isListOfSlot) {
+            Type slotType = type.typeArguments().get(0);
+            return new Param.SlotParam(slotElementType(slotType), name, Cardinality.MANY, defaultValue, spanOf(ctx));
         }
 
         return new Param.ValueParam(type, name, defaultValue, spanOf(ctx));
+    }
+
+    private Type slotElementType(Type slotType) {
+        return slotType.typeArguments().isEmpty()
+            ? new Type("Object", List.of(), 0)
+            : slotType.typeArguments().get(0);
     }
 
     private Type buildType(SukoParser.TypeContext ctx) {

@@ -67,7 +67,7 @@ public final class JteRenderSupport {
         SukoFile file = new SukoAstBuilder(sukoSource).build(parser.compilationUnit());
 
         Path tempDir = Files.createTempDirectory("suko-jte-render-multi");
-        JteEmitter emitter = new JteEmitter();
+        JteEmitter emitter = new JteEmitter(file.components());
         for (ComponentDecl component : file.components()) {
             Files.writeString(tempDir.resolve(component.name() + ".jte"), emitter.emit(component));
         }
