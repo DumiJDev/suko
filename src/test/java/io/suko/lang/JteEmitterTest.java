@@ -224,6 +224,81 @@ class JteEmitterTest {
         assertTrue(html.contains("<b>Título</b>"));
     }
 
+    @Test
+    void rendersOptionalAndMultipleSlots() throws Exception {
+        // DESVIO DO BRIEF (documentado, tarefa 17): a fonte .sk original do
+        // brief usa nomes de tipo QUALIFICADOS (`java.util.List<slot<String>>`,
+        // `gg.jte.Content`). Verificado diretamente contra o parser gerado
+        // que isto reproduz o mesmo bloqueio já documentado na ruling da
+        // tarefa 13: `type: Identifier typeArguments? arrayMarker*` não
+        // aceita ponto ("extraneous input '.' expecting Identifier"). Por
+        // isso aqui usamos `List<slot<String>>` (sem qualificação — "List"
+        // já é o nome verificado por `buildParam` para detectar
+        // Cardinality.MANY) e `Content` (sem qualificação) no for-loop.
+        // Confirmado por probe direto contra o TemplateEngine real que
+        // "Content"/"List" desqualificados NÃO resolvem no Java gerado por
+        // gg.jte (sem import automático nenhum para tipos fora de
+        // java.lang) — por isso `JteEmitter.javaType` foi ajustado (ver
+        // comentário lá) para sintetizar "gg.jte.Content" a partir do nome
+        // simples "Content" escrito no .sk, o mesmo padrão que
+        // `jteParamDeclaration` já usa para os próprios SlotParam.
+        //
+        // DESVIO ADICIONAL (documentado, tarefa 17): o brief original usa
+        // `{title ?: "sem-titulo"}` para expressar o fallback. Verificado
+        // (RED genuíno, não hipótese) contra o compilador Java real dentro
+        // do gg.jte: `title` é sempre do tipo `gg.jte.Content` (todo
+        // SlotParam é emitido como Content/List<Content>, nunca como o T de
+        // `slot<T>` — ver nota da classe sobre slots serem uniformemente
+        // Function<T, Content>/Content), e "sem-titulo" é um `String`. O
+        // desaçucaramento de `?:` gera
+        // `(title == null ? "sem-titulo" : title)`, uma expressão
+        // condicional poli cujos dois ramos (String, Content) não têm
+        // supertipo comum aceite por nenhuma sobrecarga de
+        // `TemplateOutput.writeUserContent` — falha a compilar
+        // ("Content cannot be converted to String" / "String cannot be
+        // converted to Content"). Isto não é um bug do emitter: é uma
+        // limitação real de mistura de tipos ao usar `?:` sobre um slot,
+        // que só a análise semântica dos subprojetos 2/3 poderia detectar/
+        // proibir. Adaptado aqui para `if/else` (ambos os ramos permanecem
+        // Statement, sem essa restrição de tipo de expressão), que exercita
+        // o mesmo comportamento observável (fallback quando o slot não é
+        // preenchido) sem tropeçar nesta limitação.
+        String source = """
+            component Toolbar(slot<String> title = null, List<slot<String>> actions = null) {
+              if (title == null) {
+                <div>sem-titulo</div>
+              } else {
+                <div>{title}</div>
+              }
+              for (Content action : actions) {
+                <span>{action}</span>
+              }
+            }
+
+            component WithActions() {
+              Toolbar() {
+                title { <b>Editar</b> }
+                actions { <button>Salvar</button> }
+                actions { <button>Cancelar</button> }
+              }
+            }
+
+            component WithoutTitle() {
+              Toolbar() {
+                actions { <button>Só</button> }
+              }
+            }
+            """;
+
+        String withActions = JteRenderSupport.renderWithDependencies(source, "WithActions", Map.of());
+        assertTrue(withActions.contains("<b>Editar</b>"));
+        assertTrue(withActions.contains("<button>Salvar</button>"));
+        assertTrue(withActions.contains("<button>Cancelar</button>"));
+
+        String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTitle", Map.of());
+        assertTrue(withoutTitle.contains("sem-titulo"));
+    }
+
     private static String stripJteControlLines(String html) {
         return html.lines().filter(line -> !line.isBlank()).reduce("", (a, b) -> a + b + "\n");
     }
