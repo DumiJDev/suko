@@ -144,7 +144,24 @@ public class SukoAstBuilder {
                 args.add(new Statement.Arg(name, buildExpr(argCtx.expression())));
             }
         }
-        return new Statement.ComponentCallStmt(ctx.qualifiedName().getText(), args, spanOf(ctx));
+        List<Statement.SlotFill> slotFills = new ArrayList<>();
+        if (ctx.slotBlock() != null) {
+            for (SukoParser.NamedSlotContext slotCtx : ctx.slotBlock().namedSlot()) {
+                String paramName = slotCtx.Identifier(0).getText();
+                Optional<String> lambdaParamName = slotCtx.Identifier().size() > 1
+                    ? Optional.of(slotCtx.Identifier(1).getText())
+                    : Optional.empty();
+                // Desvio do brief: NamedSlotContext não tem método templateBlock() —
+                // a regra `namedSlot` embute `templateStatement*` diretamente (sem
+                // envolver num `templateBlock`, ao contrário de outras regras como
+                // `componentDecl` ou `ifStatement`). Confirmado lendo o parser gerado
+                // (build/generated-src/antlr/main/io/suko/lang/SukoParser.java).
+                List<Statement> body = buildStatements(slotCtx.templateStatement());
+                slotFills.add(new Statement.SlotFill(paramName, lambdaParamName, body));
+            }
+        }
+
+        return new Statement.ComponentCallStmt(ctx.qualifiedName().getText(), args, slotFills, spanOf(ctx));
     }
 
     private Statement.IfStmt buildIfStmt(SukoParser.IfStmtContext ctx) {

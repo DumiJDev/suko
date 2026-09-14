@@ -37,9 +37,15 @@ public sealed interface Statement permits Statement.HtmlElement, Statement.TextR
     record SwitchCase(Expr matchValue, List<Statement> body) {
     }
 
-    record ComponentCallStmt(String componentName, List<Arg> args, SourceSpan span) implements Statement {
+    record ComponentCallStmt(String componentName, List<Arg> args, List<SlotFill> slotFills,
+                             SourceSpan span) implements Statement {
     }
 
     record Arg(java.util.Optional<String> name, Expr value) {
+    }
+
+    /** paramName é o nome do slot; lambdaParamName só é usado por slots render-prop (tarefa 18). */
+    record SlotFill(String paramName, java.util.Optional<String> lambdaParamName,
+                    List<Statement> body) {
     }
 }

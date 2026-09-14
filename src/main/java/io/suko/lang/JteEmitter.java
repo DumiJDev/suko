@@ -59,11 +59,21 @@ public class JteEmitter {
 
     private void emitComponentCall(Statement.ComponentCallStmt call, StringBuilder out) {
         out.append("@template.").append(call.componentName()).append('(');
-        for (int i = 0; i < call.args().size(); i++) {
-            if (i > 0) out.append(", ");
-            Statement.Arg arg = call.args().get(i);
+        boolean first = true;
+        for (Statement.Arg arg : call.args()) {
+            if (!first) out.append(", ");
             arg.name().ifPresent(name -> out.append(name).append(" = "));
             out.append(emitExpr(arg.value()));
+            first = false;
+        }
+        for (Statement.SlotFill slotFill : call.slotFills()) {
+            if (!first) out.append(", ");
+            out.append(slotFill.paramName()).append(" = @`");
+            for (Statement statement : slotFill.body()) {
+                emitStatement(statement, out);
+            }
+            out.append('`');
+            first = false;
         }
         out.append(")\n");
     }
