@@ -3,13 +3,13 @@ package com.example.ui;
 import com.example.ui.layout.Layout as Layout;
 import com.example.model.Item;
 
-component Card<T>(String title, List<T> items, String emptyLabel = "Sem itens") {
+component Card(String title, List<String> items, String emptyLabel = "Sem itens") {
   <div class="card">
     <h2>{title}</h2>
     if (items.size() > 0) {
       <ul>
-        for (T item : items) {
-          <li>{item.name} — {item.price?.format() ?: "sem preço"}</li>
+        for (String item : items) {
+          <li>{item}</li>
         }
       </ul>
     } else {

@@ -1,10 +1,10 @@
 @param String title
-@param java.util.List<T> items
+@param java.util.List<String> items
 @param String emptyLabel = "Sem itens"
 
 <div class="${"card"}"><h2>${title}</h2>@if(items.size() > 0)
-<ul>@for(T item : items)
-<li>${item.name} — ${((item.price == null ? null : item.price.format()) == null ? "sem preço" : (item.price == null ? null : item.price.format()))}</li>
+<ul>@for(String item : items)
+<li>${item}</li>
 @endfor
 </ul>
 @else
