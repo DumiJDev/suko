@@ -15,11 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * intencional de formatação no JteEmitter falha aqui mesmo que o HTML
  * final renderizado continue correto.
  *
- * O golden de "Card" cobre o componente genérico Card<T> real (nunca
- * compilado/renderizado via gg.jte — ver ARCHITECTURE.md, "Limitações
- * conhecidas (fim do subprojeto 1)" e a ruling da tarefa 19 no ledger).
- * O texto emitido contém "T" literal, não resolvido — comportamento
- * esperado, documentado aqui deliberadamente.
+ * O golden de "Card" cobre o componente Card concreto (String items)
+ * do subprojeto 2 — ver ARCHITECTURE.md.
  */
 class JteEmitterGoldenFileTest {
 

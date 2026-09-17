@@ -2,31 +2,37 @@
 
 ```
 .sk (fonte Suko)
-      │
-      ▼
+       │
+       ▼
  ANTLR Lexer/Parser (gerado a partir de SukoLexer.g4 + SukoParser.g4)
-      │  produz: ParseTree
-      ▼
+       │  produz: ParseTree + diagnostics de parse
+       ▼
  SukoAstBuilder (Visitor)
-      │  produz: AST tipado (SukoFile, ComponentDecl, Statement, Expr, ...)
-      ▼
- Análise semântica  [subprojeto 2 — AINDA NÃO IMPLEMENTADA]
-      │  - resolve imports/alias
-      │  - checa slots nomeados obrigatórios/proibidos
-      │  - checa abertura/fechamento de tag coincidindo
-      │  - rejeita o que não é suportado (generics, nomes de
-      │    componente compostos), delegando tipagem Java profunda
-      │    ao javac na fase seguinte (subprojeto 3)
-      ▼
- JteEmitter (Visitor sobre o AST)
-      │  produz: arquivo .jte equivalente, 1:1 por componente
-      ▼
+       │  produz: AST tipado (SukoFile, ComponentDecl, Statement, Expr, ...)
+       ▼
+Análise semântica [subprojeto 2 — CONCLUÍDO]
+        │  - tabela de símbolos de componentes
+        │  - valida chamadas de componente
+        │  - valida slots (presença/cardinalidade/parâmetros)
+        │  - valida estrutura HTML, escape e URLs perigosas
+        │  - rejeita o que não é suportado (generics, nomes de
+        │    componente compostos), delegando tipagem Java profunda
+        │    ao javac na fase seguinte (subprojeto 3)
+        ▼
+  Verificação Java [subprojeto 3 — CONCLUÍDO]
+        │  - JteCompiler orquestra pipeline completo
+        │  - JavacTask compila stubs Java via javac
+        │  - Mapeia erros de compilação para .sk via source map
+        ▼
+  JteEmitter (Visitor sobre o AST)
+       │  produz: arquivo .jte equivalente, 1:1 por componente
+       ▼
  .jte (arquivo intermediário, gerado e versionável)
-      │
-      ▼
+       │
+       ▼
  Compilador JTE padrão (gg.jte) — inalterado
-      │
-      ▼
+       │
+       ▼
  Classe Java compilada, renderização em runtime
 ```
 
@@ -57,16 +63,24 @@
   viram parâmetros de conteúdo do próprio JTE (o JTE já suporta
   parâmetros de conteúdo/`@Content` nativamente), então a tradução é
   direta — não é preciso inventar um mecanismo de runtime novo, só
-  desaçucarar a sintaxe. **Forma concreta escolhida (tarefa 18 do
-  subprojeto 1, revista face ao desenho original):** *todo* `slot<T>` é
-  emitido uniformemente como `java.util.function.Function<T,
-  gg.jte.Content>` (e `List<slot<T>>` como
-  `java.util.List<Function<T, gg.jte.Content>>`), nunca como
-  `gg.jte.Content` nu — mesmo quando o slot não é um render-prop. A
-  razão é ter uma só forma no Java gerado, em vez de duas (`Content`
-  para slot simples, `Function` para render-prop) que o emitter teria
-  de escolher sem tabela de símbolos. Consequências visíveis ao autor
-  de `.sk`, ver "Limitações conhecidas".
+  desaçucarar a sintaxe. **Forma concreta escolhida (revisada pela tarefa
+  18 do subprojeto 1, corrigida nesta ronda):** *um `slot<T>` passa a ser
+  emitido como `Function<T, Content>` **se e só se** o corpo do componente
+  onde ele é declarado o invoca como função — ou seja, existe pelo menos um
+  `Expr.CallExpr` cujo `callee` é um `Expr.PrimaryExpr` com o mesmo nome do
+  slot, em qualquer lugar do corpo do componente (dentro de `if`/`for`/`switch`
+  incluso). Se não houver nenhuma invocação assim, o slot é "simples" e o
+  Java gerado usa `gg.jte.Content`/`List<gg.jte.Content>` nu, legível como
+  `{header}` sem necessidade de `.apply(null)`. Essa deteção é sintática
+  (scan do corpo por `CallExpr` sobre o próprio nome do slot), não uma
+  declaração explícita do autor do `.sk`.
+
+  Consequências visíveis ao autor de `.sk`: um slot simples pode agora ser
+  lido como `{header}` (sem `.apply(null)`); um slot render-prop ainda
+  precisa de `{header(item)}` ou `{row(item)}` para passar o parâmetro.
+  O teste `{slot ?: "fallback"}` continua sem suporte para AMBOS os casos
+  — `Content` vs `String` continuam sem supertipo comum aceite pelo
+  `?:` dessaçucarado, permanecendo como limitação para o subprojeto 2.
 - **Texto dentro de tags resolvido no parser, não no lexer.** A
   primeira tentativa usava um modo léxico `TEXT` (entrado via ação
   do parser logo após o `>` de uma tag de abertura) para lexar
@@ -87,7 +101,7 @@
   pela posição de caractere no fonte, não por concatenação de
   tokens.
 
-## Limitações conhecidas (fim do subprojeto 1)
+## Limitações conhecidas (fim do subprojeto 2)
 
 `examples/Card.sk` é a **referência da superfície da linguagem**, não
 do que o emitter já renderiza — e, com a decisão de roadmap sobre
@@ -115,18 +129,20 @@ arquitetura):
   **Decisão de roadmap:** o verificador (subprojeto 2) rejeita ambas as
   formas com um erro explícito de "ainda não suportado"; a renderização
   real de generics é um subprojeto dedicado, fora dos subprojetos 2-4.
-- **Ler um slot exige chamá-lo.** Como todo `slot<T>` é emitido como
-  `Function<T, Content>` (ver "Decisões de design"), `{header}` não
-  compila: o `.sk` tem de escrever `{header(null)}` para um slot sem
-  parâmetro (o emitter traduz um identificador conhecido como slot para
-  `.apply(...)`). Pelo mesmo motivo: (a) testar "slot não preenchido" é
-  `header.apply(null) == null`, não `header == null` — o valor por
-  omissão de um slot é uma função que devolve `null`, nunca a
-  referência `null`; (b) iterar um `List<slot<T>>` obriga o `.sk` a
-  escrever o tipo do item como `Function<T, Content>`, tipos do JTE que
-  vazam para a superfície da linguagem; (c) `{slot ?: "fallback"}` não
-  compila (ramos de tipos incompatíveis). Nada disto é verificado hoje:
-  o erro aparece como erro de compilação Java no `.jte` gerado.
+- **Ler um slot exige chamá-lo (apenas para slots render-prop).**
+  Como um slot só é emitido como `Function<T, Content>` quando invocado
+  como função no corpo do componente (ver "Decisões de design"), um slot
+  simples pode agora ser lido como `{header}` (sem `.apply(null)`).
+  Para slots render-prop, o `.sk` tem de escrever `{header(item)}` para
+  passar o parâmetro (o emitter traduz um identificador conhecido como slot
+  para `.apply(...)`). Pelo mesmo motivo: (a) testar "slot não preenchido"
+  é `header.apply(null) == null` para render-prop, não `header == null` — o
+  valor por omissão de um slot é uma função que devolve `null`, nunca a
+  referência `null`; (b) iterar um `List<slot<T>>` render-prop obriga o `.sk`
+  a escrever o tipo do item como `Function<T, Content>`; (c) `{slot ?:
+  "fallback"}` não compila (ramos de tipos incompatíveis). Nada disto é
+  verificado hoje: o erro aparece como erro de compilação Java no `.jte`
+  gerado.
 - **Tipos qualificados não fazem parse.** `java.util.List<T>` é
   rejeitado (`type: Identifier typeArguments? arrayMarker*`).
 - **Não há imports automáticos.** O `.jte` gerado não importa nada; o
@@ -187,6 +203,17 @@ e um teste ponta-a-ponta. A prática de regenerar as gramáticas
 confirmar ausência da palavra `warning` na saída continua a valer para
 qualquer alteração aos `.g4`.
 
+O subprojeto 2 está concluído: implementado `DiagnosticCollector`,
+`SukoErrorListener`, `SymbolTable` e `SemanticChecker`. Os
+componentes são registrados na tabela de símbolos e as chamadas de
+componente validadas (existência, slots obrigatórios, cardinalidade).
+
+O subprojeto 3 está concluído: implementado `JteCompiler` (pipeline
+completo de compilação) e `JavacTask` (verificação Java com stubs e
+mapeamento de erros para `.sk`). A compilação de `.jte` via `javac`
+valida a assinatura Java dos componentes e mapeia erros de compilação
+de volta ao `.sk` original usando source maps.
+
 Nota sobre `src/test/resources/golden/Card.jte`: é um golden de *texto*
 emitido, não um `.jte` que compile — contém `@param java.util.List<T>`
 com um `T` nunca declarado, exatamente a limitação de generics acima.
@@ -198,14 +225,11 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
 
 1. **Núcleo da linguagem** — CONCLUÍDO. Gramática, AST,
    `SukoAstBuilder`, `JteEmitter`, source map em memória.
-2. **Verificador Suko** — próximo. Tabela de símbolos de componentes,
-   validação de chamadas/slots, estrutura HTML, escape e URLs
-   perigosas. É também onde a infraestrutura de diagnóstico nasce (hoje
-   não existe nenhuma — ver "Erros de parse não param a compilação").
-3. **Verificação Java** — stub Java por componente via `JavacTask`, com
-   mapeamento de posições de volta ao `.sk`.
-4. **Integração no build** — plugin Gradle/Maven, modo watch, erros
-   formatados no terminal.
+2. **Verificador Suko** — CONCLUÍDO. `DiagnosticCollector`,
+   `SukoErrorListener`, `SymbolTable`, `SemanticChecker`.
+   Validadores de componentes e slots implementados.
+3. **Verificação Java** — CONCLUÍDO. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` compila stubs Java e mapeia erros para `.sk`.
+4. **Integração no build** — stub plugin Gradle/Maven, modo watch, erros formatados no terminal.
 
 Fora destes quatro, como subprojeto dedicado e sem data: renderização
 real de componentes genéricos (erasure para tipo-limite).

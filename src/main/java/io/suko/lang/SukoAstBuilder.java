@@ -128,6 +128,13 @@ public class SukoAstBuilder {
         if (ctx.textRun() != null) {
             return new Statement.TextRun(textOf(ctx.textRun()), spanOf(ctx.textRun()));
         }
+        if (ctx.varDecl() != null) {
+            SukoParser.VarDeclContext varDeclCtx = ctx.varDecl();
+            return new Statement.VarDecl(
+                varDeclCtx.Identifier().getText(),
+                buildExpr(varDeclCtx.expression()),
+                spanOf(varDeclCtx));
+        }
         throw new IllegalStateException("templateStatement ainda não suportado: " + ctx.getText());
     }
 

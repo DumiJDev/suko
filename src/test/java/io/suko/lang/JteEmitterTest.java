@@ -30,6 +30,20 @@ class JteEmitterTest {
     }
 
     @Test
+    void rendersVarDecl() throws Exception {
+        String source = """
+            component Greeting(String name) {
+              var upper = name.toUpperCase();
+              <p>{upper}</p>
+            }
+            """;
+
+        String html = JteRenderSupport.renderWithDependencies(source, "Greeting", Map.of("name", "ana"));
+
+        assertTrue(html.contains("<p>ANA</p>"));
+    }
+
+    @Test
     void preservesWhitespaceImmediatelyAfterInterpolation() throws Exception {
         // Regressão: o espaço entre "{name}" e "!" fica, no fonte, logo a
         // seguir ao "}" que fecha a interpolação — não pertence a nenhum
@@ -207,15 +221,12 @@ class JteEmitterTest {
 
     @Test
     void rendersRequiredSingleSlot() throws Exception {
-        // DESVIO DO BRIEF (documentado, tarefa 18, retroativo à tarefa 16):
-        // `{header}` sozinho deixou de compilar desde que todo SlotParam
-        // passou a ser emitido como `Function<T, Content>` em vez de
-        // `Content` — ler o slot exige agora uma chamada explícita
-        // (`{header(null)}`), tratada pelo emitter como `.apply(null)`
-        // (ver Step 3 do brief da tarefa 18 / JteEmitter.emitExpr).
+        // Slot simples (nunca invocado como função no corpo de Card) é
+        // Content nu — ler é {header}, sem `.apply(null)`. Ver
+        // docs/superpowers/specs/2026-09-14-suko-nucleo-ajustes.md, Ajuste 1.
         String source = """
             component Card(slot<String> header) {
-              <div class="card">{header(null)}</div>
+              <div class="card">{header}</div>
             }
 
             component Page() {
@@ -230,109 +241,22 @@ class JteEmitterTest {
         assertTrue(html.contains("<b>Título</b>"));
     }
 
-    @Test
+@Test
     void rendersOptionalAndMultipleSlots() throws Exception {
-        // DESVIO DO BRIEF (documentado, tarefa 17): a fonte .sk original do
-        // brief usa nomes de tipo QUALIFICADOS (`java.util.List<slot<String>>`,
-        // `gg.jte.Content`). Verificado diretamente contra o parser gerado
-        // que isto reproduz o mesmo bloqueio já documentado na ruling da
-        // tarefa 13: `type: Identifier typeArguments? arrayMarker*` não
-        // aceita ponto ("extraneous input '.' expecting Identifier"). Por
-        // isso aqui usamos `List<slot<String>>` (sem qualificação — "List"
-        // já é o nome verificado por `buildParam` para detectar
-        // Cardinality.MANY) e `Content` (sem qualificação) no for-loop.
-        // Confirmado por probe direto contra o TemplateEngine real que
-        // "Content"/"List" desqualificados NÃO resolvem no Java gerado por
-        // gg.jte (sem import automático nenhum para tipos fora de
-        // java.lang) — por isso `JteEmitter.javaType` foi ajustado (ver
-        // comentário lá) para sintetizar "gg.jte.Content" a partir do nome
-        // simples "Content" escrito no .sk, o mesmo padrão que
-        // `jteParamDeclaration` já usa para os próprios SlotParam.
-        //
-        // DESVIO ADICIONAL (documentado, tarefa 17): o brief original usa
-        // `{title ?: "sem-titulo"}` para expressar o fallback. Verificado
-        // (RED genuíno, não hipótese) contra o compilador Java real dentro
-        // do gg.jte: `title` é sempre do tipo `gg.jte.Content` (todo
-        // SlotParam é emitido como Content/List<Content>, nunca como o T de
-        // `slot<T>` — ver nota da classe sobre slots serem uniformemente
-        // Function<T, Content>/Content), e "sem-titulo" é um `String`. O
-        // desaçucaramento de `?:` gera
-        // `(title == null ? "sem-titulo" : title)`, uma expressão
-        // condicional poli cujos dois ramos (String, Content) não têm
-        // supertipo comum aceite por nenhuma sobrecarga de
-        // `TemplateOutput.writeUserContent` — falha a compilar
-        // ("Content cannot be converted to String" / "String cannot be
-        // converted to Content"). Isto não é um bug do emitter: é uma
-        // limitação real de mistura de tipos ao usar `?:` sobre um slot,
-        // que só a análise semântica dos subprojetos 2/3 poderia detectar/
-        // proibir. Adaptado aqui para `if/else` (ambos os ramos permanecem
-        // Statement, sem essa restrição de tipo de expressão), que exercita
-        // o mesmo comportamento observável (fallback quando o slot não é
-        // preenchido) sem tropeçar nesta limitação.
-        //
-        // DESVIO ADICIONAL (documentado, tarefa 18): desde que todo
-        // `slot<T>` passa a ser emitido como `Function<T, Content>` (nunca
-        // `Content` puro — ver Step 1 do brief da tarefa 18), `{title}`
-        // sozinho não compila mais (precisa de `{title(null)}`, tratado
-        // pelo emitter como `.apply(null)` — Step 3), e o item do `for`
-        // sobre `actions` (agora `List<Function<String, Content>>`, não
-        // `List<Content>`) precisa de mudar de `Content` para
-        // `Function<String, Content>` desqualificado — "Function"
-        // desqualificado sofre do MESMO problema de "cannot find symbol"
-        // já documentado para "Content"/"List" na tarefa 17, então
-        // `JteEmitter.javaType` foi estendido (ver comentário lá) para
-        // sintetizar também "java.util.function.Function" a partir do
-        // nome simples "Function" — verificado por probe direto contra o
-        // TemplateEngine real antes de assumir esta forma (ver ruling do
-        // brief desta tarefa, Step 6).
-        //
-        // DESVIO ADICIONAL, e correção à sugestão literal do brief (Step
-        // 6): o brief propõe `{action(null)}` dentro do `for` (mesma forma
-        // usada para `title(null)`), mas `action` aqui é uma variável do
-        // `for` (não um `SlotParam` do componente `Toolbar` — esse é
-        // `actions`, no plural), então a heurística sintática de
-        // `emitExpr` (Step 3: "identificador simples cujo texto está em
-        // `slotNames`, o conjunto de nomes de SlotParam DECLARADOS no
-        // componente") não a reconhece, e `action(null)` seria emitido
-        // literalmente como uma chamada de método `action(null)` sobre uma
-        // variável — não compila em Java ("action" não é um método).
-        // Verificado (RED genuíno) contra o compilador real do gg.jte.
-        // Escrever `{action.apply(null)}` explicitamente no .sk contorna
-        // isto: `action.apply` é um `AccessExpr` comum (não um
-        // `PrimaryExpr` simples), então cai no caso genérico de `CallExpr`
-        // e emite exatamente `action.apply(null)`, que compila porque
-        // `action` é de facto `Function<String, Content>`. Isto é
-        // consistente com a decisão de desenho da tarefa (nenhuma
-        // resolução de nomes/tabela de símbolos nesta camada) — a
-        // heurística de `.apply` implícito só cobre o caso mais comum
-        // (ler diretamente um SlotParam pelo seu próprio nome), não
-        // qualquer variável de tipo `Function` derivada dele.
-        //
-        // DESVIO ADICIONAL, e correção a uma suposição errada minha nesta
-        // mesma tarefa: `if (title == null)` DEIXOU de funcionar como
-        // "slot não preenchido" — verificado (RED genuíno, não hipótese)
-        // contra o compilador e o motor reais. A razão: o valor por
-        // omissão de um SlotParam Cardinality.ONE já não é o literal
-        // `null` (isso mudou no Step 1 desta tarefa, ver comentário em
-        // `JteEmitter.jteParamDeclaration`) — é sempre uma instância de
-        // `Function` (mesmo quando "vazia", devolve `null` quando chamada:
-        // `(String it) -> null`), precisamente porque `gg.jte`, no modo de
-        // render sem tipos usado por `JteRenderSupport`
-        // (`params.getOrDefault(...)`), exige um valor-alvo tipado para o
-        // lambda de omissão. Consequência: `title` nunca é `null` como
-        // REFERÊNCIA — o slot "vazio" agora só se distingue chamando-o e
-        // comparando o RESULTADO (`title.apply(null) == null`), não a
-        // própria referência da função. Ajustado para `if (title.apply(null)
-        // == null)`.
+        // "Content"/"List" desqualificados exigem o hardcode de
+        // JteEmitter.javaType (tarefa 17, inalterado nesta tarefa) — ver
+        // ARCHITECTURE.md, "Não há imports automáticos". `title`/`actions`
+        // nunca são invocados como função no corpo de Toolbar, por isso
+        // ambos são Content/List<Content> nus (não Function).
         String source = """
             component Toolbar(slot<String> title = null, List<slot<String>> actions = null) {
-              if (title.apply(null) == null) {
+              if (title == null) {
                 <div>sem-titulo</div>
               } else {
-                <div>{title(null)}</div>
+                <div>{title}</div>
               }
-              for (Function<String, Content> action : actions) {
-                <span>{action.apply(null)}</span>
+              for (Content action : actions) {
+                <span>{action}</span>
               }
             }
 
@@ -356,7 +280,7 @@ class JteEmitterTest {
         assertTrue(withActions.contains("<button>Salvar</button>"));
         assertTrue(withActions.contains("<button>Cancelar</button>"));
 
-        String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTitle", Map.of());
+String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTitle", Map.of());
         assertTrue(withoutTitle.contains("sem-titulo"));
     }
 
@@ -389,6 +313,12 @@ class JteEmitterTest {
         // `.apply` implícito da Step 3 (identificador simples cujo texto
         // está em `slotNames`), não o contorno manual usado para a
         // variável de `for` do outro teste.
+        //
+        // NOTA: este é o caso render-prop (slot invocado como função no
+        // corpo do componente declarante). Contrastar com os testes
+        // `rendersRequiredSingleSlot` e `rendersOptionalAndMultipleSlots`,
+        // onde os slots NÃO são invocados como função e portanto são
+        // `Content`/`List<Content>` nu (não `Function`).
         String source = """
             component ItemList(List<String> items, slot<String> row) {
               <ul>
