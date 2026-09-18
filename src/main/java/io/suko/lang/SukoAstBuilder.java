@@ -59,6 +59,8 @@ public class SukoAstBuilder {
         return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, spanOf(ctx));
     }
 
+    private static final Type CONTENT_ELEMENT_TYPE = new Type("Object", List.of(), 0);
+
     private Param buildParam(SukoParser.ParamContext ctx) {
         Type type = buildType(ctx.type());
         String name = ctx.Identifier().getText();
@@ -66,25 +68,39 @@ public class SukoAstBuilder {
             ? Optional.empty()
             : Optional.of(buildExpr(ctx.expression()));
 
-        if (type.isSlot()) {
-            return new Param.SlotParam(slotElementType(type), name, Cardinality.ONE, defaultValue, spanOf(ctx));
-        }
-
-        boolean isListOfSlot = "List".equals(type.name())
-            && type.typeArguments().size() == 1
-            && type.typeArguments().get(0).isSlot();
-        if (isListOfSlot) {
-            Type slotType = type.typeArguments().get(0);
-            return new Param.SlotParam(slotElementType(slotType), name, Cardinality.MANY, defaultValue, spanOf(ctx));
-        }
-
-        return new Param.ValueParam(type, name, defaultValue, spanOf(ctx));
+        return tryBuildSlotParam(type, name, defaultValue, ctx)
+            .map(Param.class::cast)
+            .orElseGet(() -> new Param.ValueParam(type, name, defaultValue, spanOf(ctx)));
     }
 
-    private Type slotElementType(Type slotType) {
-        return slotType.typeArguments().isEmpty()
-            ? new Type("Object", List.of(), 0)
-            : slotType.typeArguments().get(0);
+    private Optional<Param.SlotParam> tryBuildSlotParam(Type type, String name, Optional<Expr> defaultValue,
+            SukoParser.ParamContext ctx) {
+        if (isComponent(type)) {
+            return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.ONE, false, defaultValue, spanOf(ctx)));
+        }
+        if (isRenderProp(type)) {
+            return Optional.of(new Param.SlotParam(type.typeArguments().get(0), name, Cardinality.ONE, true, defaultValue, spanOf(ctx)));
+        }
+        if ("List".equals(type.name()) && type.typeArguments().size() == 1) {
+            Type inner = type.typeArguments().get(0);
+            if (isComponent(inner)) {
+                return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.MANY, false, defaultValue, spanOf(ctx)));
+            }
+            if (isRenderProp(inner)) {
+                return Optional.of(new Param.SlotParam(inner.typeArguments().get(0), name, Cardinality.MANY, true, defaultValue, spanOf(ctx)));
+            }
+        }
+        return Optional.empty();
+    }
+
+    private boolean isComponent(Type type) {
+        return "Component".equals(type.name()) && type.typeArguments().isEmpty();
+    }
+
+    private boolean isRenderProp(Type type) {
+        return "Function".equals(type.name())
+            && type.typeArguments().size() == 2
+            && isComponent(type.typeArguments().get(1));
     }
 
     private Type buildType(SukoParser.TypeContext ctx) {

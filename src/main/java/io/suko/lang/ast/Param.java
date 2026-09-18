@@ -9,7 +9,7 @@ public sealed interface Param permits Param.ValueParam, Param.SlotParam {
     record ValueParam(Type type, String name, Optional<Expr> defaultValue, SourceSpan span) implements Param {
     }
 
-    record SlotParam(Type elementType, String name, Cardinality cardinality,
+    record SlotParam(Type elementType, String name, Cardinality cardinality, boolean renderProp,
                       Optional<Expr> defaultValue, SourceSpan span) implements Param {
     }
 }

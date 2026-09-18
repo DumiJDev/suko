@@ -97,8 +97,8 @@ class JavacTaskTest {
         ComponentDecl card = new ComponentDecl(
             "Card", List.of(),
             List.of(
-                new Param.SlotParam(new Type("Content", List.of(), 0), "header", Cardinality.ONE, Optional.empty(), new SourceSpan(1, 1, 0, 5)),
-                new Param.SlotParam(new Type("String", List.of(), 0), "title", Cardinality.ONE, Optional.empty(), new SourceSpan(1, 1, 0, 5))
+                new Param.SlotParam(new Type("Content", List.of(), 0), "header", Cardinality.ONE, false, Optional.empty(), new SourceSpan(1, 1, 0, 5)),
+                new Param.SlotParam(new Type("String", List.of(), 0), "title", Cardinality.ONE, false, Optional.empty(), new SourceSpan(1, 1, 0, 5))
             ),
             List.of(),
             new SourceSpan(1, 1, 0, 10)

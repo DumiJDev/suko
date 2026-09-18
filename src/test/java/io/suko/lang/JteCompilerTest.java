@@ -55,8 +55,9 @@ class JteCompilerTest {
 
     @Test
     void reportsMissingRequiredSlot() {
+        // MIGRADO (tarefa 2, subprojeto 6): `slot<String>` -> `Component`.
         String source = """
-            component Card(slot<String> header) {
+            component Card(Component header) {
               <div>{header}</div>
             }
             component Page() {
