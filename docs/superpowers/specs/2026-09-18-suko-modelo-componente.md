@@ -182,25 +182,25 @@ nenhuma hierarquia Java sealed nova (`PlainText`/`HTMLComponent`/
 existente. O trabalho novo desta secção só é preciso para o caso mais
 estreito: uma chamada de componente em **posição de expressão**.
 
-### Desenho
+### Desenho (corrigido pós-implementação — ver nota abaixo)
 
-- Novo nó de AST: `Expr.ComponentCallExpr(String componentName,
-  List<Arg> args, SourceSpan span)` — como `ComponentCallStmt`, mas sem
-  `slotFills` (não se preenchem slots inline dentro duma expressão; se
-  for preciso, a chamada continua a poder ser feita em posição de
-  statement).
-- Gramática: permitir `componentCall` sem `slotBlock` (i.e., só
-  `qualifiedName typeArguments? LPAREN argList? RPAREN`, sem o `{ }`
-  final) também dentro de `primary`/`expression`, não só de
-  `templateStatement`.
-- Emitter: `emitExpr` ganha um caso para `ComponentCallExpr` — resolve
-  o nome do alvo (via `callResolver`, tal como a forma statement já
-  faz) e embrulha em bloco de conteúdo JTE: `@`@template.X(args)``,
-  produzindo um valor `Content` avaliável inline (mesmo mecanismo já
-  usado nos slot fills, aplicado agora a uma posição nova).
-- Verificador: `Expr.ComponentCallExpr` é validado com a mesma lógica
-  de existência/aridade que `ComponentCallStmt` já tem — partilhar
-  código de validação entre os dois, não duplicar.
+**Correção (registada no topo do plano de implementação,
+`docs/superpowers/plans/2026-09-18-suko-modelo-componente.md`, secção
+"Descoberta feita ao escrever este plano"):** a proposta original desta
+secção — um nó de AST novo `Expr.ComponentCallExpr` e uma mudança de
+gramática para aceitar `componentCall` sem `slotBlock` dentro de
+`primary`/`expression` — **não foi necessária**. A gramática já
+existente (`SukoParser.g4`, `expression LPAREN argList? RPAREN #
+CallExpr`) já permite `CardA()` em qualquer posição de expressão, e
+`SukoAstBuilder.buildExpr` já constrói isto como `Expr.CallExpr(callee
+= PrimaryExpr("CardA"), args = [])` sem qualquer alteração ao
+`SukoAstBuilder`. O único trabalho novo ficou concentrado no
+`JteEmitter`: reconhecer, dentro de `emitExpr`, quando o `callee` de um
+`CallExpr` é um nome de componente conhecido (não um slot, não uma
+chamada Java arbitrária) e embrulhar em bloco de conteúdo JTE —
+mantendo `Expr` sem nenhuma variante nova. Verificador: a mesma lógica
+de existência/aridade que `ComponentCallStmt` já tinha é reaproveitada
+para este caso de `CallExpr`, sem hierarquia de validação duplicada.
 
 ### Risco a verificar empiricamente antes de implementar
 

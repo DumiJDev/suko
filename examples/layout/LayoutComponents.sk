@@ -2,7 +2,7 @@ package com.example.ui.layout;
 
 import com.example.ui.Button as Button;
 
-component Layout(String title, slot<Content> header, slot<Content> sidebar, slot<Content> footer, slot<Content> body) {
+component Layout(String title, Component header, Component sidebar, Component footer, Component body) {
   <html>
     <head>
       <title>{title}</title>
@@ -76,4 +76,12 @@ component Select(String id, String name, boolean required = false, Content optio
   <select id={id} name={name} required={required}>
     {options}
   </select>
+}
+
+component ItemList(List<String> items, Function<String, Component> row) {
+  <ul class="item-list">
+    for (String item : items) {
+      <li>{row(item)}</li>
+    }
+  </ul>
 }
