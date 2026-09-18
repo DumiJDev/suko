@@ -460,6 +460,34 @@ public class JteEmitter {
             // ler um slot.
             case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p && slotNames.contains(p.text()) ->
                 p.text() + ".apply(" + emitArgs(call.args(), slotNames) + ")";
+            // Tarefa 5 (subprojeto 6): um `CallExpr` cujo callee é um nome
+            // simples presente em `componentsByName` é uma chamada de
+            // componente usada como VALOR de expressão (ex.: dentro de um
+            // ternário atribuído a `var`), não uma chamada Java comum — tem
+            // de ser emitida como bloco de conteúdo JTE
+            // (`@`@template.Nome(args)``), a mesma forma confirmada
+            // empiricamente pela sonda da Tarefa 1. Este `case` vem DEPOIS
+            // do `case` de leitura de slot acima (que já captura os nomes
+            // em `slotNames` primeiro, por ordem do switch) e ANTES do
+            // `case` genérico de CallExpr abaixo, para que os dois nunca
+            // colidam: um nome não pode simultaneamente ser slot do
+            // componente atual e nome de outro componente conhecido.
+            //
+            // DESVIO DO BRIEF: o brief refere um campo `callResolver` já
+            // existente no `JteEmitter` para resolução cross-file do nome
+            // do template. Não existe tal campo — confirmado por pesquisa
+            // no código-fonte (`grep -rn callResolver src/` não encontra
+            // nada) — e a forma equivalente já usada pelo emissor para
+            // chamadas de componente em posição de statement
+            // (`emitComponentCall`, statement form) também não o usa:
+            // emite `@template.` + `call.componentName()` diretamente. Por
+            // consistência com esse precedente já estabelecido no próprio
+            // ficheiro, usa-se aqui `p.text()` diretamente, sem indireção
+            // por resolver. Se uma futura tarefa cross-file precisar de tal
+            // resolução, deve introduzir o campo nesse ponto, atualizando
+            // ambos os locais.
+            case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p && componentsByName.containsKey(p.text()) ->
+                "@`@template." + p.text() + "(" + emitArgs(call.args(), slotNames) + ")`";
             case Expr.CallExpr call -> emitExpr(call.callee(), slotNames) + "(" + emitArgs(call.args(), slotNames) + ")";
             case Expr.NotExpr not -> "!" + emitExpr(not.operand(), slotNames);
             case Expr.UnaryMinusExpr unaryMinus -> "-" + emitExpr(unaryMinus.operand(), slotNames);

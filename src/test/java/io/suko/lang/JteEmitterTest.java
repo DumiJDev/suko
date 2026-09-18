@@ -556,4 +556,23 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("corpo solto"));
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Título"));
     }
+
+    @Test
+    void componentCallAsExpressionValue() throws Exception {
+        String html = JteRenderSupport.renderWithDependencies(
+            """
+            component CardA() {
+              <p>A</p>
+            }
+            component CardB() {
+              <p>B</p>
+            }
+            component Host(boolean useA) {
+              var c = useA ? CardA() : CardB();
+              <div>{c}</div>
+            }
+            """, "Host", java.util.Map.of("useA", true));
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("<p>A</p>"));
+    }
 }
