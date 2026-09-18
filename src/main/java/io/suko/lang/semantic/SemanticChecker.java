@@ -73,7 +73,10 @@ public class SemanticChecker {
     private void checkStatement(Statement statement, Map<String, Param.SlotParam> currentScopeSlots) {
         switch (statement) {
             case Statement.ComponentCallStmt call -> checkComponentCall(call, currentScopeSlots);
+            case Statement.VarDecl varDecl -> checkExprForComponentCalls(varDecl.value());
+            case Statement.Interpolation interpolation -> checkExprForComponentCalls(interpolation.expr());
             case Statement.IfStmt ifStmt -> {
+                checkExprForComponentCalls(ifStmt.condition());
                 checkStatementList(ifStmt.thenBranch(), currentScopeSlots);
                 checkStatementList(ifStmt.elseBranch(), currentScopeSlots);
             }
@@ -86,6 +89,41 @@ public class SemanticChecker {
             }
             default -> {}
         }
+    }
+
+    /** Só desce o suficiente para achar CallExpr(callee=PrimaryExpr) top-level
+     * dentro de ternários/parênteses — mesma regra estrutural do JteEmitter
+     * (tarefa 5): não é uma resolução de tipos completa. */
+    private void checkExprForComponentCalls(Expr expr) {
+        switch (expr) {
+            case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p -> {
+                ComponentDecl target = symbolTable.lookup(p.text());
+                if (target == null && looksLikeComponentName(p.text())) {
+                    diagnostics.add(new SukoDiagnostic(
+                            SukoDiagnostic.Severity.ERROR,
+                            "Componente '" + p.text() + "' não encontrado",
+                            "COMPONENT_NOT_FOUND",
+                            sourceFile,
+                            call.span()
+                    ));
+                }
+            }
+            case Expr.TernaryExpr ternary -> {
+                checkExprForComponentCalls(ternary.condition());
+                checkExprForComponentCalls(ternary.whenTrue());
+                checkExprForComponentCalls(ternary.whenFalse());
+            }
+            case Expr.ParenExpr paren -> checkExprForComponentCalls(paren.inner());
+            default -> {}
+        }
+    }
+
+    /** Distingue "provável chamada de componente" de uma chamada de método/
+     * função Java qualquer: convenção do projeto (ver ComponentDecl) é nome de
+     * componente começar por maiúscula — mesma convenção já usada em todos os
+     * exemplos e specs. Evita falso positivo em `toUpperCase()` etc. */
+    private boolean looksLikeComponentName(String name) {
+        return !name.isEmpty() && Character.isUpperCase(name.charAt(0));
     }
 
     private void checkStatementList(List<Statement> statements, Map<String, Param.SlotParam> currentScopeSlots) {
