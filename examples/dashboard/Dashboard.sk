@@ -1,0 +1,63 @@
+package com.example.dashboard;
+
+import com.example.ui.layout.Layout as Layout;
+import com.example.model.Item;
+
+component NavLink(String label, String href = "#") {
+  <a href={href}>{label}</a>
+}
+
+component Dashboard(User user, List<Item> items) {
+  Layout(title = "Admin Dashboard") {
+    header {
+      <h1>Admin Dashboard</h1>
+    }
+    sidebar {
+      NavLink(label = "Início", href = "/")
+      NavLink(label = "Usuários", href = "/users")
+      NavLink(label = "Configurações", href = "/settings")
+    }
+    body {
+      switch (user.role) {
+        case "admin" -> { AdminPanel(user = user) }
+        case "manager" -> { ManagerPanel(user = user) }
+        default -> { <p>Bem-vindo, {user.name}</p> }
+      }
+      if (items.size() > 0) {
+        <h2>Itens recentes</h2>
+        <ul>
+          for (Item item : items) {
+            <li>{item.name}</li>
+          }
+        </ul>
+      } else {
+        <p>Nenhum item cadastrado</p>
+      }
+    }
+    footer {
+      <p>&copy; 2026</p>
+    }
+  }
+}
+
+component AdminPanel(User user) {
+  <div class="admin-panel">
+    <h2>Painel Administrativo</h2>
+    <p>Olá, {user.name} ({user.role})</p>
+    <ul>
+      <li>Usuários: {user.userCount}</li>
+      <li>Relatórios: {user.reportCount}</li>
+    </ul>
+  </div>
+}
+
+component ManagerPanel(User user) {
+  <div class="manager-panel">
+    <h2>Painel de Gerência</h2>
+    <p>Olá, {user.name} ({user.role})</p>
+    <ul>
+      <li>Sua equipe: {user.teamSize}</li>
+      <li>Metas: {user.goals}</li>
+    </ul>
+  </div>
+}

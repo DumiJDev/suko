@@ -61,7 +61,7 @@ class SukoParserSmokeTest {
         System.out.println(tree.toStringTree(parser));
 
         assertTrue(errors.isEmpty(), "Erros de parsing encontrados: " + errors);
-        assertEquals(3, tree.componentDecl().size(),
-            "esperado 3 componentDecl no Card.sk (Card, NavLink, Page)");
+        assertEquals(4, tree.componentDecl().size(),
+            "esperado 4 componentDecl no Card.sk (Card, NavLink, Page, AdminPanel)");
     }
 }

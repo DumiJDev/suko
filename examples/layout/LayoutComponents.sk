@@ -1,0 +1,79 @@
+package com.example.ui.layout;
+
+import com.example.ui.Button as Button;
+
+component Layout(String title, slot<Content> header, slot<Content> sidebar, slot<Content> footer, slot<Content> body) {
+  <html>
+    <head>
+      <title>{title}</title>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+    </head>
+    <body class="layout">
+      <header class="layout-header">
+        {header}
+      </header>
+      <div class="layout-container">
+        <aside class="layout-sidebar">
+          {sidebar}
+        </aside>
+        <main class="layout-main">
+          {body}
+        </main>
+      </div>
+      <footer class="layout-footer">
+        {footer}
+      </footer>
+    </body>
+  </html>
+}
+
+component Card(String title, Content header, Content footer, Content body) {
+  <div class="card">
+    <div class="card-header">
+      <h3>{title}</h3>
+      {header}
+    </div>
+    <div class="card-body">
+      {body}
+    </div>
+    <div class="card-footer">
+      {footer}
+    </div>
+  </div>
+}
+
+component Modal(String title, boolean open, Content header, Content body, Content footer) {
+  if (open) {
+    <div class="modal-overlay">
+      <div class="modal">
+        <div class="modal-header">
+          <h2>{title}</h2>
+          {header}
+        </div>
+        <div class="modal-body">
+          {body}
+        </div>
+        <div class="modal-footer">
+          {footer}
+        </div>
+      </div>
+    </div>
+  }
+}
+
+component Button(String href = "#", String label, String variant = "primary", boolean disabled = false) {
+  <a href={href} class="btn btn-{variant}" disabled={disabled}>
+    {label}
+  </a>
+}
+
+component Input(String id, String name, String type = "text", boolean required = false, String placeholder = "", int minlength = 0) {
+  <input id={id} name={name} type={type} required={required} placeholder={placeholder} minlength={minlength} />
+}
+
+component Select(String id, String name, boolean required = false, Content options) {
+  <select id={id} name={name} required={required}>
+    {options}
+  </select>
+}

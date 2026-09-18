@@ -133,6 +133,29 @@ component Page() {
 }
 ```
 
+### Examples
+
+The `examples/` directory contains runnable Suko programs that demonstrate real usage patterns:
+
+- **`Card.sk`** - reference surface of the language: a concrete `Card` component, `NavLink`, a `Page` using the `Layout` component with named slots (`header`, `sidebar`, `body`, `footer`), and a conditional `AdminPanel`.
+- **`dashboard/Dashboard.sk`** - a dashboard layout with role-based panels (`AdminPanel`/`ManagerPanel`), sidebar navigation, and a conditional items list.
+- **`forms/Forms.sk`** - login and registration forms using imported `Button`, `Input`, and `Select` components, with `Map<String, String>` validation errors.
+- **`layout/LayoutComponents.sk`** - reusable layout components (`Layout`, `Card`, `Modal`, `Button`, `Input`, `Select`) with slot parameters.
+- **`invalid/Card.sk`** - the rejected generic `Card<T>` case, kept as a fixture documenting the current generics limitation.
+
+```
+examples/
+├── Card.sk
+├── dashboard/
+│   └── Dashboard.sk
+├── forms/
+│   └── Forms.sk
+├── invalid/
+│   └── Card.sk
+└── layout/
+    └── LayoutComponents.sk
+```
+
 ## Project Structure
 
 ```
