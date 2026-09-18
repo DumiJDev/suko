@@ -193,6 +193,16 @@ public class SukoAstBuilder {
                 List<Statement> body = buildStatements(slotCtx.templateStatement());
                 slotFills.add(new Statement.SlotFill(paramName, lambdaParamName, body));
             }
+
+            // Children implícitos (subprojeto 6): templateStatement soltos direto
+            // dentro do slotBlock (fora de qualquer namedSlot) sintetizam um
+            // SlotFill("children", ...) — o autor da chamada nunca escreve
+            // "children { ... }" explicitamente. Ordem preservada (ANTLR devolve
+            // ctx.slotBlock().templateStatement() na ordem de aparição no fonte).
+            List<SukoParser.TemplateStatementContext> looseStatements = ctx.slotBlock().templateStatement();
+            if (!looseStatements.isEmpty()) {
+                slotFills.add(new Statement.SlotFill("children", Optional.empty(), buildStatements(looseStatements)));
+            }
         }
 
         return new Statement.ComponentCallStmt(ctx.qualifiedName().getText(), args, slotFills, spanOf(ctx));

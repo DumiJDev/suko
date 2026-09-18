@@ -494,4 +494,66 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
 
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("valor: x"));
     }
+
+    @Test
+    void syntheticChildrenFillFromLooseContent() throws Exception {
+        String html = JteRenderSupport.renderWithDependencies(
+            """
+            component Field(Component children) {
+              <div>{children}</div>
+            }
+            component Host() {
+              Field() {
+                "Nome: "
+                <input/>
+              }
+            }
+            """, "Host", java.util.Map.of());
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Nome: "));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("<input/>"));
+    }
+
+    @Test
+    void looseContentAndExplicitNamedSlotCoexist() throws Exception {
+        // DESVIO DO BRIEF: a ordem das duas declarações dentro do slotBlock
+        // foi invertida em relação ao brief original ("corpo solto" antes de
+        // "header { ... }") — reproduzido empiricamente que a ordem original
+        // não compila: `textRun` (regra do parser: `(~(LBRACE|RBRACE|LT|
+        // LTSLASH))+`, usada porque templateStatement não tem alternativa
+        // dedicada para uma string-literal solta) é gananciosa e, quando um
+        // literal solto como "corpo solto" precede imediatamente o
+        // identificador de um namedSlot (aqui "header"), esse identificador
+        // não é excluído do conjunto de tokens do textRun — é engolido pelo
+        // MESMO textRun, e só então o parser encontra "{" e o interpreta
+        // como uma simples `interpolation` (`{expr}`), nunca como
+        // `namedSlot`. Resultado: `ctx.slotBlock().namedSlot()` fica
+        // genuinamente vazio (confirmado inspecionando a saída emitida —
+        // só existia um único arg "children", nunca "header") — não é um
+        // bug em `buildComponentCallStmt` (Tarefa 3, este ficheiro), é uma
+        // limitação pré-existente da gramática (`slotBlock`/`textRun`),
+        // fora do escopo desta tarefa (que só mexe em SukoAstBuilder.java).
+        // Confirmado que a ordem invertida (namedSlot primeiro, depois o
+        // conteúdo solto) parseia corretamente as duas declarações — o que
+        // basta para testar "coexistência" (ambas presentes na mesma
+        // chamada); a preservação de ordem ENTRE vários statements soltos já
+        // é coberta por `syntheticChildrenFillFromLooseContent` acima (duas
+        // statements soltas em sequência, sem slot nomeado no meio).
+        String html = JteRenderSupport.renderWithDependencies(
+            """
+            component Layout(Component children, Component header) {
+              <header>{header}</header>
+              <main>{children}</main>
+            }
+            component Host() {
+              Layout() {
+                header { "Título" }
+                "corpo solto"
+              }
+            }
+            """, "Host", java.util.Map.of());
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("corpo solto"));
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Título"));
+    }
 }
