@@ -427,7 +427,7 @@ public class JteEmitter {
     String emitExpr(Expr expr, java.util.Set<String> slotNames) {
         return switch (expr) {
             case Expr.PrimaryExpr primary -> primary.text();
-            case Expr.StringLiteralExpr stringLiteral -> emitStringLiteral(stringLiteral);
+            case Expr.StringLiteralExpr stringLiteral -> emitStringLiteral(stringLiteral, slotNames);
             case Expr.AccessExpr access -> emitExpr(access.target(), slotNames) + "." + access.memberName();
             // DESVIO DO BRIEF: quando o callee de uma chamada é ele próprio um
             // SafeAccessExpr (ex.: `label?.length()`), a gramática produz
@@ -516,14 +516,26 @@ public class JteEmitter {
         return sb.toString();
     }
 
-    private String emitStringLiteral(Expr.StringLiteralExpr stringLiteral) {
-        StringBuilder sb = new StringBuilder("\"");
-        for (Expr.StringPart part : stringLiteral.parts()) {
-            if (part instanceof Expr.StringPart.Literal literal) {
-                sb.append(literal.javaEscapedText());
+    private String emitStringLiteral(Expr.StringLiteralExpr stringLiteral, java.util.Set<String> slotNames) {
+        List<Expr.StringPart> parts = stringLiteral.parts();
+        boolean hasInterpolation = parts.stream().anyMatch(p -> !(p instanceof Expr.StringPart.Literal));
+        if (!hasInterpolation) {
+            StringBuilder sb = new StringBuilder("\"");
+            for (Expr.StringPart part : parts) {
+                sb.append(((Expr.StringPart.Literal) part).javaEscapedText());
+            }
+            return sb.append('"').toString();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) sb.append(" + ");
+            switch (parts.get(i)) {
+                case Expr.StringPart.Literal literal -> sb.append('"').append(literal.javaEscapedText()).append('"');
+                case Expr.StringPart.Interp interp -> sb.append('(').append(emitExpr(interp.expr(), slotNames)).append(')');
+                case Expr.StringPart.SimpleInterp simple -> sb.append(simple.identifier());
             }
         }
-        sb.append('"');
         return sb.toString();
     }
 }

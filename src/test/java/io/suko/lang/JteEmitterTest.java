@@ -575,4 +575,16 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
 
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("<p>A</p>"));
     }
+
+    @Test
+    void rendersAttributeWithRealInterpolation() throws Exception {
+        String html = JteRenderSupport.render(
+            """
+            component Button(String variant) {
+              <a class="btn btn-${variant}">Click</a>
+            }
+            """, "Button", java.util.Map.of("variant", "primary"));
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("class=\"btn btn-primary\""));
+    }
 }

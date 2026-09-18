@@ -61,6 +61,64 @@ public class SemanticChecker {
         for (Statement statement : component.body()) {
             checkStatement(statement, declaredSlots);
         }
+        checkBareBraceInStrings(component);
+    }
+
+    private static final java.util.regex.Pattern BARE_BRACE_IDENT =
+            java.util.regex.Pattern.compile("\\{([a-zA-Z_][a-zA-Z0-9_]*)\\}");
+
+    /** Deteção de `{ident}` mal-escrito dentro de uma string literal, onde
+     * `ident` coincide com um parâmetro real do componente atual — quase
+     * certamente o autor queria `${ident}` (interpolação), mas `{...}`
+     * dentro de uma string é, por design, texto literal (ver ARCHITECTURE.md:
+     * Alpine.js `x-data="{ open: false }"`, custom properties CSS, JS
+     * inline). */
+    private void checkBareBraceInStrings(ComponentDecl component) {
+        java.util.Set<String> paramNames = component.params().stream()
+                .map(Param::name).collect(java.util.stream.Collectors.toSet());
+        for (Statement statement : component.body()) {
+            checkBareBraceInStatement(statement, paramNames);
+        }
+    }
+
+    private void checkBareBraceInStatement(Statement statement, java.util.Set<String> paramNames) {
+        switch (statement) {
+            case Statement.HtmlElement element -> {
+                for (Statement.Attribute attribute : element.attributes()) {
+                    checkBareBraceInExpr(attribute.value(), paramNames, attribute.span());
+                }
+                for (Statement child : element.children()) {
+                    checkBareBraceInStatement(child, paramNames);
+                }
+            }
+            case Statement.Interpolation interpolation ->
+                checkBareBraceInExpr(interpolation.expr(), paramNames, interpolation.span());
+            default -> {}
+        }
+    }
+
+    private void checkBareBraceInExpr(Expr expr, java.util.Set<String> paramNames, SourceSpan span) {
+        if (!(expr instanceof Expr.StringLiteralExpr stringLiteral)) {
+            return;
+        }
+        for (Expr.StringPart part : stringLiteral.parts()) {
+            if (!(part instanceof Expr.StringPart.Literal literal)) {
+                continue;
+            }
+            var matcher = BARE_BRACE_IDENT.matcher(literal.javaEscapedText());
+            while (matcher.find()) {
+                String ident = matcher.group(1);
+                if (paramNames.contains(ident)) {
+                    diagnostics.add(new SukoDiagnostic(
+                            SukoDiagnostic.Severity.ERROR,
+                            "'{" + ident + "}' dentro de uma string é texto literal — use '${" + ident + "}' para interpolar",
+                            "BARE_BRACE_IN_STRING",
+                            sourceFile,
+                            span
+                    ));
+                }
+            }
+        }
     }
 
     private SourceSpan paramSpan(Param param) {
