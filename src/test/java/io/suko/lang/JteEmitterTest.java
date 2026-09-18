@@ -221,11 +221,14 @@ class JteEmitterTest {
 
     @Test
     void rendersRequiredSingleSlot() throws Exception {
-        // Slot simples (nunca invocado como função no corpo de Card) é
+        // Slot simples (tipo `Component`, não `Function<T, Component>`) é
         // Content nu — ler é {header}, sem `.apply(null)`. Ver
         // docs/superpowers/specs/2026-09-14-suko-nucleo-ajustes.md, Ajuste 1.
+        // MIGRADO (tarefa 2, subprojeto 6): `slot<String>` -> `Component`
+        // — ver docs/superpowers/specs/2026-09-18-suko-modelo-componente.md,
+        // "Decisão central: Component substitui slot<T>".
         String source = """
-            component Card(slot<String> header) {
+            component Card(Component header) {
               <div class="card">{header}</div>
             }
 
@@ -246,10 +249,13 @@ class JteEmitterTest {
         // "Content"/"List" desqualificados exigem o hardcode de
         // JteEmitter.javaType (tarefa 17, inalterado nesta tarefa) — ver
         // ARCHITECTURE.md, "Não há imports automáticos". `title`/`actions`
-        // nunca são invocados como função no corpo de Toolbar, por isso
-        // ambos são Content/List<Content> nus (não Function).
+        // são declarados `Component`/`List<Component>` (não
+        // `Function<T, Component>`), por isso ambos são Content/List<Content>
+        // nus (não Function) — decisão estrutural, já não heurística.
+        // MIGRADO (tarefa 2, subprojeto 6): `slot<String>` -> `Component`,
+        // `List<slot<String>>` -> `List<Component>`.
         String source = """
-            component Toolbar(slot<String> title = null, List<slot<String>> actions = null) {
+            component Toolbar(Component title = null, List<Component> actions = null) {
               if (title == null) {
                 <div>sem-titulo</div>
               } else {
@@ -314,13 +320,18 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
         // está em `slotNames`), não o contorno manual usado para a
         // variável de `for` do outro teste.
         //
-        // NOTA: este é o caso render-prop (slot invocado como função no
-        // corpo do componente declarante). Contrastar com os testes
-        // `rendersRequiredSingleSlot` e `rendersOptionalAndMultipleSlots`,
-        // onde os slots NÃO são invocados como função e portanto são
-        // `Content`/`List<Content>` nu (não `Function`).
+        // NOTA: este é o caso render-prop — hoje reconhecido pela FORMA da
+        // declaração (`Function<String, Component> row`), não mais por scan
+        // do corpo à procura de uma chamada `row(...)`. Contrastar com os
+        // testes `rendersRequiredSingleSlot` e `rendersOptionalAndMultipleSlots`,
+        // onde os slots são `Component`/`List<Component>` (não
+        // `Function<T, Component>`) e portanto são `Content`/`List<Content>`
+        // nu.
+        // MIGRADO (tarefa 2, subprojeto 6): `slot<String> row` (render-prop
+        // reconhecido antes por scan do corpo) -> `Function<String, Component>
+        // row` (render-prop agora reconhecido pela assinatura).
         String source = """
-            component ItemList(List<String> items, slot<String> row) {
+            component ItemList(List<String> items, Function<String, Component> row) {
               <ul>
               for (String item : items) {
                 <li>{row(item)}</li>
@@ -360,5 +371,91 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
 
     private static String stripJteControlLines(String html) {
         return html.lines().filter(line -> !line.isBlank()).reduce("", (a, b) -> a + b + "\n");
+    }
+
+    @Test
+    void rendersComponentSlotAsPlainContent() throws Exception {
+        // DESVIO DO BRIEF (documentado, tarefa 2): o brief usa a forma de
+        // fill "solto" (`Card() { "Título" }`, sem `header { ... }`).
+        // Reproduzido (RED genuíno, com o resto da tarefa já implementado):
+        // isto depende da síntese implícita de "children" a partir de
+        // conteúdo solto num slotBlock — `SukoAstBuilder.buildComponentCallStmt`
+        // hoje só lê `ctx.slotBlock().namedSlot()`, ignorando
+        // `templateStatement` soltos, exatamente como documentado na spec
+        // (secção "Children implícitos") e implementado só na Tarefa 3
+        // deste plano, não nesta. Sem essa síntese, a chamada `Card() {
+        // "Título" }` não passa nenhum argumento para o parâmetro `header`
+        // (obrigatório, sem valor por omissão), e a compilação do .jte
+        // gerado falha com "method render(...) required ...,Content found
+        // ...,​" (verificado contra o compilador real do gg.jte, não uma
+        // suposição). O objetivo desta tarefa é validar que `Component`
+        // sem forma render-prop é reconhecido como Content nu — trocado
+        // para a forma de slot nomeado (`header { ... }`), já suportada
+        // hoje, que exercita exatamente essa asserção sem depender de uma
+        // funcionalidade de uma tarefa futura.
+        String html = JteRenderSupport.renderWithDependencies(
+            """
+            component Card(Component header) {
+              <div>{header}</div>
+            }
+            component Host() {
+              Card() {
+                header { "Título" }
+              }
+            }
+            """, "Host", java.util.Map.of());
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Título"));
+    }
+
+    @Test
+    void rendersRenderPropSlotViaExplicitFunctionType() throws Exception {
+        // DESVIO DO BRIEF (documentado, tarefa 2): mesma causa-raiz do
+        // desvio em `rendersComponentSlotAsPlainContent` acima — o brief usa
+        // a forma de fill solto (`Row() { it -> ... }`, sem `label { ... }`),
+        // que depende da síntese implícita de "children" (Tarefa 3, ainda
+        // não implementada nesta tarefa). Reproduzido (RED genuíno):
+        // `it -> "valor: {it}"` sem um `Identifier LBRACE` envolvente não
+        // corresponde a `namedSlot` (que exige `Identifier LBRACE (Identifier
+        // ARROW)? ...`) nem é um `templateStatement` válido isolado — o
+        // parser aceita porque `slotBlock` já tolera `templateStatement*`
+        // solto, mas nada liga esse conteúdo ao parâmetro `label`, e a
+        // chamada resultante fica sem argumento para um parâmetro
+        // obrigatório, falhando a compilar o .jte gerado (verificado contra
+        // o compilador real do gg.jte). Trocado para a forma de slot nomeado
+        // `label { it -> ... }`, já suportada hoje (mesmo padrão do teste
+        // pré-existente `rendersRenderPropSlot`), que exercita exatamente a
+        // asserção desta tarefa — `Function<T, Component>` é render-prop por
+        // assinatura, mesmo sem nenhuma chamada `label(...)` no corpo de
+        // Row — sem depender de uma funcionalidade de tarefa futura.
+        //
+        // DESVIO ADICIONAL DO BRIEF: o corpo do fill usa `<span>valor: {it}
+        // </span>` (interpolação HTML, `{expr}` dentro de templateStatement
+        // — já suportada e usada no teste pré-existente
+        // `rendersRenderPropSlot`), não `"valor: {it}"` (string Suko com
+        // `{it}` dentro de aspas). Confirmado lendo a gramática/lexer
+        // (SukoLexer.g4/SukoParser.g4) e `SukoAstBuilder.buildStringLiteral`:
+        // interpolação DENTRO de uma string literal só é reconhecida via
+        // `${expr}`/`$ident` (`EXPR_INTERP_START`/`SIMPLE_INTERP_START`), e
+        // mesmo essa sintaxe ainda não é interpretada pelo AST builder hoje
+        // — `buildStringLiteral` concatena o texto cru de toda `stringPart`
+        // num único `Literal`, independentemente do seu tipo; "interpolação
+        // real em strings" é trabalho de design ainda não implementado (ver
+        // spec, secção "Interpolação real em strings e atributos"). `{it}`
+        // bare dentro de uma string Suko já é hoje, de propósito, texto
+        // literal (mesma spec) — não corresponderia a "x" de qualquer forma.
+        String html = JteRenderSupport.renderWithDependencies(
+            """
+            component Row(Function<String, Component> label) {
+              <li>{label("x")}</li>
+            }
+            component Host() {
+              Row() {
+                label { it -> <span>valor: {it}</span> }
+              }
+            }
+            """, "Host", java.util.Map.of());
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("valor: x"));
     }
 }

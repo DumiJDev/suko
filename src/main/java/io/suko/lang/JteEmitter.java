@@ -51,11 +51,10 @@ public class JteEmitter {
 
     public String emit(ComponentDecl component) {
         java.util.Set<String> slotNames = slotNamesOf(component);
-        java.util.Set<String> renderPropSlotNames = renderPropSlotNames(component, slotNames);
 
         StringBuilder out = new StringBuilder();
         for (Param param : component.params()) {
-            out.append("@param ").append(jteParamDeclaration(param, slotNames, renderPropSlotNames)).append('\n');
+            out.append("@param ").append(jteParamDeclaration(param, slotNames)).append('\n');
         }
         out.append('\n');
         for (Statement statement : component.body()) {
@@ -79,10 +78,9 @@ public class JteEmitter {
         // era calculado depois do probe) porque jteParamDeclaration agora
         // também passa por emitExpr para o valor por omissão de ValueParam.
         java.util.Set<String> slotNames = slotNamesOf(component);
-        java.util.Set<String> renderPropSlotNames = renderPropSlotNames(component, slotNames);
         StringBuilder probe = new StringBuilder();
         for (Param param : component.params()) {
-            probe.append("@param ").append(jteParamDeclaration(param, slotNames, renderPropSlotNames)).append('\n');
+            probe.append("@param ").append(jteParamDeclaration(param, slotNames)).append('\n');
         }
         probe.append('\n');
         int lineSoFar = countLines(probe.toString());
@@ -115,110 +113,7 @@ public class JteEmitter {
         return slotNames;
     }
 
-    private java.util.Set<String> renderPropSlotNames(ComponentDecl component, java.util.Set<String> slotNames) {
-        java.util.Set<String> renderProp = new java.util.HashSet<>();
-        for (Statement statement : component.body()) {
-            collectRenderPropSlots(statement, slotNames, renderProp);
-        }
-        return renderProp;
-    }
-
-    private void collectRenderPropSlots(Statement statement, java.util.Set<String> slotNames,
-            java.util.Set<String> renderProp) {
-        switch (statement) {
-            case Statement.HtmlElement element -> {
-                for (Statement.Attribute attribute : element.attributes()) {
-                    collectRenderPropSlots(attribute.value(), slotNames, renderProp);
-                }
-                for (Statement child : element.children()) {
-                    collectRenderPropSlots(child, slotNames, renderProp);
-                }
-            }
-            case Statement.TextRun ignored -> {
-            }
-            case Statement.VarDecl varDecl -> {
-            }
-            case Statement.Interpolation interpolation ->
-                collectRenderPropSlots(interpolation.expr(), slotNames, renderProp);
-            case Statement.IfStmt ifStmt -> {
-                collectRenderPropSlots(ifStmt.condition(), slotNames, renderProp);
-                for (Statement s : ifStmt.thenBranch()) {
-                    collectRenderPropSlots(s, slotNames, renderProp);
-                }
-                for (Statement s : ifStmt.elseBranch()) {
-                    collectRenderPropSlots(s, slotNames, renderProp);
-                }
-            }
-            case Statement.ForStmt forStmt -> {
-                collectRenderPropSlots(forStmt.iterable(), slotNames, renderProp);
-                for (Statement s : forStmt.body()) {
-                    collectRenderPropSlots(s, slotNames, renderProp);
-                }
-            }
-            case Statement.SwitchStmt switchStmt -> {
-                collectRenderPropSlots(switchStmt.subject(), slotNames, renderProp);
-                for (Statement.SwitchCase switchCase : switchStmt.cases()) {
-                    collectRenderPropSlots(switchCase.matchValue(), slotNames, renderProp);
-                    for (Statement s : switchCase.body()) {
-                        collectRenderPropSlots(s, slotNames, renderProp);
-                    }
-                }
-                for (Statement s : switchStmt.defaultCase()) {
-                    collectRenderPropSlots(s, slotNames, renderProp);
-                }
-            }
-            case Statement.ComponentCallStmt call -> {
-                for (Statement.Arg arg : call.args()) {
-                    collectRenderPropSlots(arg.value(), slotNames, renderProp);
-                }
-                for (Statement.SlotFill fill : call.slotFills()) {
-                    for (Statement s : fill.body()) {
-                        collectRenderPropSlots(s, slotNames, renderProp);
-                    }
-                }
-            }
-        }
-    }
-
-    private void collectRenderPropSlots(Expr expr, java.util.Set<String> slotNames,
-            java.util.Set<String> renderProp) {
-        switch (expr) {
-            case Expr.CallExpr call -> {
-                if (call.callee() instanceof Expr.PrimaryExpr p && slotNames.contains(p.text())) {
-                    renderProp.add(p.text());
-                }
-                collectRenderPropSlots(call.callee(), slotNames, renderProp);
-                for (Expr arg : call.args()) {
-                    collectRenderPropSlots(arg, slotNames, renderProp);
-                }
-            }
-            case Expr.PrimaryExpr ignored -> {
-            }
-            case Expr.StringLiteralExpr ignored -> {
-            }
-            case Expr.AccessExpr access -> collectRenderPropSlots(access.target(), slotNames, renderProp);
-            case Expr.NotExpr not -> collectRenderPropSlots(not.operand(), slotNames, renderProp);
-            case Expr.UnaryMinusExpr unaryMinus -> collectRenderPropSlots(unaryMinus.operand(), slotNames, renderProp);
-            case Expr.BinaryExpr binary -> {
-                collectRenderPropSlots(binary.left(), slotNames, renderProp);
-                collectRenderPropSlots(binary.right(), slotNames, renderProp);
-            }
-            case Expr.TernaryExpr ternary -> {
-                collectRenderPropSlots(ternary.condition(), slotNames, renderProp);
-                collectRenderPropSlots(ternary.whenTrue(), slotNames, renderProp);
-                collectRenderPropSlots(ternary.whenFalse(), slotNames, renderProp);
-            }
-            case Expr.ParenExpr paren -> collectRenderPropSlots(paren.inner(), slotNames, renderProp);
-            case Expr.SafeAccessExpr safeAccess -> collectRenderPropSlots(safeAccess.target(), slotNames, renderProp);
-            case Expr.ElvisExpr elvis -> {
-                collectRenderPropSlots(elvis.left(), slotNames, renderProp);
-                collectRenderPropSlots(elvis.right(), slotNames, renderProp);
-            }
-        }
-    }
-
-    private String jteParamDeclaration(Param param, java.util.Set<String> slotNames,
-            java.util.Set<String> renderPropSlotNames) {
+    private String jteParamDeclaration(Param param, java.util.Set<String> slotNames) {
         // DESVIO DO BRIEF (documentado, tarefa 17): o valor por omissão de um
         // SlotParam vindo do .sk é ignorado aqui de propósito. A gramática
         // `param: type Identifier (EQ expression)?` só aceita `expression`
@@ -272,13 +167,13 @@ public class JteEmitter {
             // tipo funcional fixado pelo cast interno, e o cast externo
             // gerado pelo gg.jte passa a ser sobre um valor já bem tipado
             // (Function<T,Content> -> Function<T,Content>, sem-op).
-            case Param.SlotParam p when p.cardinality() == Cardinality.ONE && renderPropSlotNames.contains(p.name()) ->
+            case Param.SlotParam p when p.cardinality() == Cardinality.ONE && p.renderProp() ->
                 "java.util.function.Function<" + javaType(p.elementType()) + ", gg.jte.Content> " + p.name()
                     + (p.defaultValue().isPresent() ? " = (java.util.function.Function<" + javaType(p.elementType())
                         + ", gg.jte.Content>) (" + javaType(p.elementType()) + " it) -> null" : "");
             case Param.SlotParam p when p.cardinality() == Cardinality.ONE ->
                 "gg.jte.Content " + p.name() + (p.defaultValue().isPresent() ? " = null" : "");
-            case Param.SlotParam p when renderPropSlotNames.contains(p.name()) ->
+            case Param.SlotParam p when p.renderProp() ->
                 "java.util.List<java.util.function.Function<" + javaType(p.elementType()) + ", gg.jte.Content>> " + p.name()
                     + (p.defaultValue().isPresent() ? " = java.util.List.of()" : "");
             case Param.SlotParam p ->
@@ -425,14 +320,26 @@ public class JteEmitter {
     }
 
     /** Mesma limitação documentada em resolveSlotCardinality: devolve null
-     * quando o componente-alvo não é conhecido nesta emissão. */
+     * quando o componente-alvo não é conhecido nesta emissão.
+     *
+     * TAREFA 2 (subprojeto 6): já não faz scan do corpo do componente-alvo à
+     * procura de uma chamada que coincida com o nome do slot — "é
+     * render-prop" passou a ser um facto estrutural gravado diretamente em
+     * `Param.SlotParam.renderProp()` no momento em que o AST é construído
+     * (`SukoAstBuilder.tryBuildSlotParam`), a partir da forma da própria
+     * declaração (`Function<T, Component>` vs. `Component`). Basta ler o
+     * campo. */
     private Boolean resolveSlotIsRenderProp(String componentName, String paramName) {
         ComponentDecl target = componentsByName.get(componentName);
         if (target == null) {
             return null;
         }
-        java.util.Set<String> targetSlotNames = slotNamesOf(target);
-        return renderPropSlotNames(target, targetSlotNames).contains(paramName);
+        for (Param param : target.params()) {
+            if (param.name().equals(paramName) && param instanceof Param.SlotParam slotParam) {
+                return slotParam.renderProp();
+            }
+        }
+        return null;
     }
 
     /** Quando isRenderProp é null (componente-alvo desconhecido nesta

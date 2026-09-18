@@ -29,7 +29,7 @@ class SemanticCheckerTest {
 
         // Create a simple valid component with all slots filled
         Param slotOne = new Param.SlotParam(
-                new Type("String", List.of(), 0), "header", Cardinality.ONE,
+                new Type("String", List.of(), 0), "header", Cardinality.ONE, false,
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
         Param valueOne = new Param.ValueParam(
                 new Type("String", List.of(), 0), "title",
@@ -40,7 +40,7 @@ class SemanticCheckerTest {
 
         // Register a component that Card calls
         Param slotInNav = new Param.SlotParam(
-                new Type("Content", List.of(), 0), "content", Cardinality.ONE,
+                new Type("Content", List.of(), 0), "content", Cardinality.ONE, false,
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
         ComponentDecl layout = new ComponentDecl("Layout", List.of(), List.of(slotInNav),
                 List.of(), new SourceSpan(1, 1, 0, 10));
@@ -92,7 +92,7 @@ class SemanticCheckerTest {
         SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
 
         Param requiredSlot = new Param.SlotParam(
-                new Type("Content", List.of(), 0), "header", Cardinality.ONE,
+                new Type("Content", List.of(), 0), "header", Cardinality.ONE, false,
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
         ComponentDecl card = new ComponentDecl("Card", List.of(), List.of(requiredSlot),
                 List.of(), new SourceSpan(1, 1, 0, 10));
@@ -120,7 +120,7 @@ class SemanticCheckerTest {
         SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
 
         Param requiredSlot = new Param.SlotParam(
-                new Type("Content", List.of(), 0), "header", Cardinality.ONE,
+                new Type("Content", List.of(), 0), "header", Cardinality.ONE, false,
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
         ComponentDecl card = new ComponentDecl("Card", List.of(), List.of(requiredSlot),
                 List.of(), new SourceSpan(1, 1, 0, 10));
