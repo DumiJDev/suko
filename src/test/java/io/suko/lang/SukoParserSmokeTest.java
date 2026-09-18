@@ -77,7 +77,7 @@ class SukoParserSmokeTest {
 
     @Test
     void parsesLayoutExampleWithoutErrors() throws IOException {
-        parseFile("examples/layout/LayoutComponents.sk", 6, "Layout, Card, Modal, Button, Input, Select");
+        parseFile("examples/layout/LayoutComponents.sk", 7, "Layout, Card, Modal, Button, Input, Select, ItemList");
     }
 
     @Test

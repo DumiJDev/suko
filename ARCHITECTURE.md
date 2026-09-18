@@ -63,24 +63,35 @@ Análise semântica [subprojeto 2 — CONCLUÍDO]
   viram parâmetros de conteúdo do próprio JTE (o JTE já suporta
   parâmetros de conteúdo/`@Content` nativamente), então a tradução é
   direta — não é preciso inventar um mecanismo de runtime novo, só
-  desaçucarar a sintaxe. **Forma concreta escolhida (revisada pela tarefa
-  18 do subprojeto 1, corrigida nesta ronda):** *um `slot<T>` passa a ser
-  emitido como `Function<T, Content>` **se e só se** o corpo do componente
-  onde ele é declarado o invoca como função — ou seja, existe pelo menos um
-  `Expr.CallExpr` cujo `callee` é um `Expr.PrimaryExpr` com o mesmo nome do
-  slot, em qualquer lugar do corpo do componente (dentro de `if`/`for`/`switch`
-  incluso). Se não houver nenhuma invocação assim, o slot é "simples" e o
-  Java gerado usa `gg.jte.Content`/`List<gg.jte.Content>` nu, legível como
-  `{header}` sem necessidade de `.apply(null)`. Essa deteção é sintática
-  (scan do corpo por `CallExpr` sobre o próprio nome do slot), não uma
-  declaração explícita do autor do `.sk`.
+  desaçucarar a sintaxe. **Forma concreta escolhida (subprojeto 6,
+  substitui a heurística de scan usada até então):** `slot<T>` foi
+  removido de toda a superfície da linguagem — substituído por
+  `Component`, um nome reconhecido pelo `SukoAstBuilder` do mesmo jeito
+  que `Content`/`List`/`Function` já eram (mapeia para `gg.jte.Content`
+  no Java gerado; não é interface nova nem runtime Suko). Cardinalidade
+  e forma são decididas **pela assinatura declarada**, não por scan do
+  corpo:
 
-  Consequências visíveis ao autor de `.sk`: um slot simples pode agora ser
-  lido como `{header}` (sem `.apply(null)`); um slot render-prop ainda
-  precisa de `{header(item)}` ou `{row(item)}` para passar o parâmetro.
-  O teste `{slot ?: "fallback"}` continua sem suporte para AMBOS os casos
-  — `Content` vs `String` continuam sem supertipo comum aceite pelo
-  `?:` dessaçucarado, permanecendo como limitação para o subprojeto 2.
+  | Assinatura `.sk` | Java gerado | Cardinalidade |
+  |---|---|---|
+  | `Component x` | `gg.jte.Content x` | ONE |
+  | `List<Component> x` | `List<gg.jte.Content> x` | MANY |
+  | `Function<T, Component> x` | `Function<T, gg.jte.Content> x` | render-prop |
+
+  Opcionalidade reusa o mecanismo de valor por omissão que `ValueParam`/
+  `SlotParam` já tinham (`Component x = null`), sem gramática nova. A
+  heurística antiga (procurar no corpo um `Expr.CallExpr` cujo `callee`
+  tivesse o mesmo nome do slot) foi removida por completo — a forma
+  render-prop passa a ser sempre explícita na assinatura
+  (`Function<T, Component>`), nunca inferida do uso.
+
+  Consequências visíveis ao autor de `.sk`: um slot `Component` simples
+  lê-se como `{header}` (sem `.apply(null)`); um slot render-prop
+  (`Function<T, Component>`) precisa de `{header(item)}` ou `{row(item)}`
+  para passar o parâmetro — agora porque o tipo declarado o diz, não por
+  inferência. O teste `{slot ?: "fallback"}` continua sem suporte para
+  AMBOS os casos — `Content` vs `String` continuam sem supertipo comum
+  aceite pelo `?:` dessaçucarado, permanecendo como limitação conhecida.
 - **Texto dentro de tags resolvido no parser, não no lexer.** A
   primeira tentativa usava um modo léxico `TEXT` (entrado via ação
   do parser logo após o `>` de uma tag de abertura) para lexar
@@ -143,20 +154,19 @@ arquitetura):
 - **Renderização ponta-a-ponta.** Os exemplos são testados com
   `JteEmitterGoldenFileTest` e `SukoParserSmokeTest`, garantindo que
   a pipeline de compilação funciona corretamente.
-- **Ler um slot exige chamá-lo (apenas para slots render-prop).**
-  Como um slot só é emitido como `Function<T, Content>` quando invocado
-  como função no corpo do componente (ver "Decisões de design"), um slot
-  simples pode agora ser lido como `{header}` (sem `.apply(null)`).
-  Para slots render-prop, o `.sk` tem de escrever `{header(item)}` para
-  passar o parâmetro (o emitter traduz um identificador conhecido como slot
-  para `.apply(...)`). Pelo mesmo motivo: (a) testar "slot não preenchido"
-  é `header.apply(null) == null` para render-prop, não `header == null` — o
-  valor por omissão de um slot é uma função que devolve `null`, nunca a
-  referência `null`; (b) iterar um `List<slot<T>>` render-prop obriga o `.sk`
-  a escrever o tipo do item como `Function<T, Content>`; (c) `{slot ?:
-  "fallback"}` não compila (ramos de tipos incompatíveis). Nada disto é
-  verificado hoje: o erro aparece como erro de compilação Java no `.jte`
-  gerado.
+- **Ler um slot render-prop exige chamá-lo.** Um slot declarado
+  `Function<T, Component>` é sempre render-prop (decisão explícita na
+  assinatura, subprojeto 6 — já não é heurística de scan do corpo); o
+  `.sk` tem de escrever `{header(item)}` ou `{row(item)}` para passar o
+  parâmetro (o emitter traduz um identificador conhecido como slot para
+  `.apply(...)`). Consequências: (a) testar "slot não preenchido" é
+  `header.apply(null) == null` para render-prop, não `header == null` —
+  o valor por omissão de um slot é uma função que devolve `null`, nunca
+  a referência `null`; (b) iterar um `List<Function<T, Component>>`
+  render-prop obriga o `.sk` a escrever o tipo do item como
+  `Function<T, Content>`; (c) `{slot ?: "fallback"}` não compila (ramos
+  de tipos incompatíveis). Nada disto é verificado hoje: o erro aparece
+  como erro de compilação Java no `.jte` gerado.
 - **Tipos qualificados não fazem parse.** `java.util.List<T>` é
   rejeitado (`type: Identifier typeArguments? arrayMarker*`).
 - **Não há imports automáticos.** O `.jte` gerado não importa nada; o
@@ -173,19 +183,39 @@ arquitetura):
   `@template.ui.NavLink(...)`; o `gg.jte` lê o ponto como separador de
   caminho (`ui/NavLink.jte`) e falha com `TemplateNotFoundException` em
   tempo de render, não em tempo de build.
-- **Conteúdo anónimo num bloco de chamada é descartado em silêncio.**
-  A gramática aceita `Layout() { <p>x</p> side { ... } }`
-  (`slotBlock: LBRACE (namedSlot | templateStatement)* RBRACE`), mas o
-  AST builder só lê os `namedSlot` — o `<p>x</p>` desaparece sem erro.
-  Não existe conceito de "children por omissão" na linguagem.
+- **Children implícitos (subprojeto 6) resolveram o caso principal, mas
+  há uma ordem que ainda engole um slot nomeado em silêncio.** Um
+  componente que declara um parâmetro `Component children` (ou
+  `List<Component> children`) recebe automaticamente todo o conteúdo
+  solto de um bloco de chamada (`Layout() { <p>x</p> }` já não é
+  descartado — vira o fill `children`). A gramática continua a mesma
+  (`slotBlock: LBRACE (namedSlot | templateStatement)* RBRACE`); o que
+  mudou foi o `SukoAstBuilder` passar a ler também os `templateStatement`
+  soltos, não só os `namedSlot`. **Ressalva de ordem, confirmada
+  empiricamente na tarefa 3 do subprojeto 6:** quando conteúdo solto
+  aparece **antes** de um slot nomeado no mesmo bloco de chamada
+  (`Layout() { "corpo solto" header { "Título" } }`), o slot nomeado
+  `header` desaparece — não por causa da síntese de `children`, mas por
+  uma limitação de gramática independente: `textRun`
+  (`(~(LBRACE|RBRACE|LT|LTSLASH))+`) é um único closure guloso sem
+  lookahead intermédio, por isso engole o `Identifier` de `header` como
+  se fosse mais texto solto, e o `{ "Título" }` que sobra é lido como
+  `interpolation` comum, nunca como `namedSlot`. Conteúdo solto **depois**
+  de um slot nomeado (`header { "Título" } "corpo solto"`) funciona
+  corretamente, e conteúdo solto sozinho (sem nenhum slot nomeado no
+  mesmo bloco) também funciona corretamente — só a ordem
+  "solto-antes-de-nomeado" tem este problema. Correção real exigiria
+  mudar `textRun` na gramática (fora do escopo do subprojeto 6); fica
+  registada aqui como convenção de autoria a evitar (escrever slots
+  nomeados antes de conteúdo solto num mesmo bloco de chamada) até haver
+  correção de gramática dedicada.
+  `List<Component> children` continua a exigir fills nomeados explícitos
+  (`children { ... } children { ... }`) — conteúdo solto não se reparte
+  automaticamente em vários elementos de lista.
 - **`var` faz parse mas rebenta o compilador.** `var x = 1;` está em
   `templateStatement` na gramática e na spec do subprojeto 1, mas
   `Statement` não tem variante `VarDecl` e o `SukoAstBuilder` lança
   `IllegalStateException("templateStatement ainda não suportado")`.
-- **Interpolação dentro de literal de string não funciona.**
-  `{"Olá ${name}!"}` é erro de parse, embora o lexer tenha os tokens
-  (`SIMPLE_INTERP_START`, `EXPR_INTERP_START`) e `stringPart` os aceite;
-  `Expr.StringPart` só tem a variante `Literal`.
 - **Erros de parse não param a compilação.** Não há `ErrorListener` em
   `src/main`: o ANTLR imprime o erro no stderr e o `SukoAstBuilder`
   continua a percorrer uma árvore com nós de erro, produzindo `.jte`
@@ -244,6 +274,24 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    Validadores de componentes e slots implementados.
 3. **Verificação Java** — CONCLUÍDO. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` compila stubs Java e mapeia erros para `.sk`.
 4. **Integração no build** — CONCLUÍDO. Plugin Gradle (`sukoCompile`, `sukoWatch`), plugin Maven (`suko:compile`), modo watch com `WatchService`, E2E tests.
+5. **Projeto multi-ficheiro (resolução de nomes)** — spec própria,
+   ainda por escrever. Cobre `TemplateResolver`/`SukoProjectCompiler`
+   feito de raiz (reusando `JteCompiler`, não um fork).
+6. **Modelo de Componente** — CONCLUÍDO
+   (`docs/superpowers/specs/2026-09-18-suko-modelo-componente.md`).
+   `slot<T>` removido por completo, substituído por `Component`/
+   `List<Component>`/`Function<T, Component>` reconhecidos pela
+   assinatura declarada (sem heurística de scan do corpo); children
+   implícitos via parâmetro reservado `children`; chamada de componente
+   como valor de expressão (reusa a gramática `CallExpr` já existente,
+   sem nó de AST novo); interpolação real `${expr}`/`$ident` em strings
+   e atributos; auto-`toString` null-safe para identificadores simples
+   de tipo Java arbitrário não coberto pelos overloads do
+   `gg.jte.TemplateOutput`. `examples/layout/LayoutComponents.sk`
+   migrado como prova end-to-end.
 
-Fora destes quatro, como subprojeto dedicado e sem data: renderização
-real de componentes genéricos (erasure para tipo-limite).
+Fora destes seis, como subprojeto dedicado e sem data: renderização
+real de componentes genéricos (erasure para tipo-limite); subprojetos
+7-9 do roadmap revisto (registry/biblioteca de componentes, CLI de
+distribuição, site de documentação — ver a spec do subprojeto 6 para o
+roadmap completo), que dependem do 5 e do 6.
