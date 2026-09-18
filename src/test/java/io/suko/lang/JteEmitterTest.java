@@ -353,6 +353,42 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
     }
 
     @Test
+    void rendersListOfFunctionSlotAsListOfRenderProps() throws Exception {
+        // Achado "Important" da revisão da tarefa 2: `List<Function<T,
+        // Component>>` (MANY + renderProp) — o ramo `isRenderProp(inner)`
+        // dentro do caso "List" de `SukoAstBuilder.tryBuildSlotParam` — não
+        // tinha nenhuma cobertura de render, apesar de estruturalmente
+        // simétrico com os casos ONE+renderProp (`rendersRenderPropSlot`
+        // acima) e MANY+não-renderProp (`rendersOptionalAndMultipleSlots`).
+        // Múltiplos fills nomeados iguais (`rows { ... } rows { ... }`)
+        // exercitam o mesmo agrupamento em `java.util.List.of(...)` já
+        // usado para `actions` em `rendersOptionalAndMultipleSlots`, desta
+        // vez com cada elemento sendo um `Function<String, Content>` (lido
+        // no corpo via `row.apply(...)`, não `{row}` nu).
+        String source = """
+            component RowList(List<Function<String, Component>> rows) {
+              <ul>
+              for (Function<String, Content> row : rows) {
+                <li>{row.apply("x")}</li>
+              }
+              </ul>
+            }
+
+            component Page() {
+              RowList() {
+                rows { it -> <b>primeira:{it}</b> }
+                rows { it -> <b>segunda:{it}</b> }
+              }
+            }
+            """;
+
+        String html = JteRenderSupport.renderWithDependencies(source, "Page", Map.of());
+
+        assertTrue(html.contains("<b>primeira:x</b>"));
+        assertTrue(html.contains("<b>segunda:x</b>"));
+    }
+
+    @Test
     void rendersValueParamDefaultWhenOmittedAtCallSite() throws Exception {
         String source = """
             component Greeting(String name, String punctuation = "!") {
