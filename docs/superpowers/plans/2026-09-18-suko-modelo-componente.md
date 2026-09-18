@@ -87,7 +87,7 @@ class ComponentValueProbeTest {
 
 - [ ] **Step 2: Correr a sonda**
 
-Run: `./gradlew test --tests "io.suko.lang.ComponentValueProbeTest" --console=plain`
+Run: `gradle test --tests "io.suko.lang.ComponentValueProbeTest" --console=plain`
 
 Se **PASSAR**: documentar no topo da classe o resultado confirmado — a Tarefa 5 usa exatamente esta forma (`@`@template.X(args)``) para emitir `CallExpr` de componente em posição de valor.
 
@@ -168,7 +168,7 @@ void rendersRenderPropSlotViaExplicitFunctionType() throws Exception {
 
 - [ ] **Step 2: Correr os testes e confirmar que falham**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest" --console=plain`
 Expected: FAIL — `Component`/`Function<T, Component>` ainda não é reconhecido por `buildParam` (hoje só `slot<T>`/`List<slot<T>>` são).
 
 - [ ] **Step 3: `Param.SlotParam` ganha `renderProp` estrutural**
@@ -324,7 +324,7 @@ private Boolean resolveSlotIsRenderProp(String componentName, String paramName) 
 
 - [ ] **Step 7: Correr os testes e confirmar GREEN**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest" --console=plain`
 Expected: PASS
 
 - [ ] **Step 8: Migrar os testes existentes que ainda usam `slot<T>`**
@@ -333,7 +333,7 @@ Run: `grep -rln "slot<" src/test/java` — para cada ocorrência, substituir pel
 
 - [ ] **Step 9: Correr a suite completa**
 
-Run: `./gradlew test --console=plain`
+Run: `gradle test --console=plain`
 Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 10: Commit**
@@ -357,7 +357,7 @@ git commit -m "feat(lang): Component substitui slot<T>; render-prop explícito v
 
 - [ ] **Step 1: Confirmar a forma exata do acessor ANTLR antes de escrever código (lição do projeto: nunca assumir, verificar contra o parser gerado)**
 
-Run: `./gradlew generateSukoParser --console=plain && grep -A5 "class SlotBlockContext" build/generated-src/antlr/main/io/suko/lang/SukoParser.java`
+Run: `gradle generateSukoParser --console=plain && grep -A5 "class SlotBlockContext" build/generated-src/antlr/main/io/suko/lang/SukoParser.java`
 
 Confirmar que `SlotBlockContext` expõe `List<TemplateStatementContext> templateStatement()` e `List<NamedSlotContext> namedSlot()` como dois acessores independentes (padrão já confirmado noutras regras do projeto, ex. `templateBlock().templateStatement()`).
 
@@ -408,7 +408,7 @@ void looseContentAndExplicitNamedSlotCoexist() throws Exception {
 
 - [ ] **Step 3: Correr os testes, confirmar FAIL**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest" --console=plain`
 Expected: FAIL — hoje o conteúdo solto é descartado em silêncio (`buildComponentCallStmt` só lê `ctx.slotBlock().namedSlot()`).
 
 - [ ] **Step 4: Implementar em `buildComponentCallStmt`**
@@ -452,7 +452,7 @@ private Statement.ComponentCallStmt buildComponentCallStmt(SukoParser.ComponentC
 
 - [ ] **Step 5: Correr os testes, confirmar GREEN**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest" --console=plain`
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -504,7 +504,7 @@ void childrenParamThatIsNotComponentIsReservedNameError() {
 
 - [ ] **Step 2: Correr os 3 testes**
 
-Run: `./gradlew test --tests "io.suko.lang.semantic.*" --console=plain`
+Run: `gradle test --tests "io.suko.lang.semantic.*" --console=plain`
 Expected: os 2 primeiros PASSAM já (confirmam a reutilização); o 3º FALHA (RED genuíno).
 
 - [ ] **Step 3: Implementar a validação de nome reservado em `checkComponent`**
@@ -541,7 +541,7 @@ private SourceSpan paramSpan(Param param) {
 
 - [ ] **Step 4: Correr os testes, confirmar GREEN**
 
-Run: `./gradlew test --tests "io.suko.lang.semantic.*" --console=plain`
+Run: `gradle test --tests "io.suko.lang.semantic.*" --console=plain`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
@@ -592,7 +592,7 @@ void componentCallAsExpressionValue() throws Exception {
 
 - [ ] **Step 2: Correr o teste, confirmar FAIL**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest#componentCallAsExpressionValue" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest#componentCallAsExpressionValue" --console=plain`
 Expected: FAIL — `emitExpr` hoje trata `CardA()` como chamada Java genérica (`CardA()`), que não compila (não existe método `CardA`).
 
 - [ ] **Step 3: Implementar em `emitExpr` — novo `case` ANTES do `case Expr.CallExpr call -> ...` genérico**
@@ -610,12 +610,12 @@ case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p && comp
 
 - [ ] **Step 4: Correr o teste, confirmar GREEN**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest#componentCallAsExpressionValue" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest#componentCallAsExpressionValue" --console=plain`
 Expected: PASS
 
 - [ ] **Step 5: Correr a suite completa (confirmar que o novo `case` não capturou chamadas Java legítimas por engano — ex. `name.toUpperCase()` não tem `componentsByName` a colidir, mas testar explicitamente)**
 
-Run: `./gradlew test --console=plain`
+Run: `gradle test --console=plain`
 Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 6: Commit**
@@ -649,7 +649,7 @@ void componentCallAsValueValidatesExistence() {
 
 - [ ] **Step 2: Correr o teste, confirmar FAIL**
 
-Run: `./gradlew test --tests "io.suko.lang.semantic.*" --console=plain`
+Run: `gradle test --tests "io.suko.lang.semantic.*" --console=plain`
 Expected: FAIL — `checkStatement` hoje só desce a `Statement.ComponentCallStmt`/`IfStmt`/`ForStmt`/`SwitchStmt` (default `{}`), nunca inspeciona expressões dentro de `VarDecl`/`Interpolation` à procura de chamadas de componente.
 
 - [ ] **Step 3: Implementar — nova checagem de expressão, reusando a mesma regra de reconhecimento da Tarefa 5 (nome simples presente na `SymbolTable`)**
@@ -716,12 +716,12 @@ private boolean looksLikeComponentName(String name) {
 
 - [ ] **Step 4: Correr o teste, confirmar GREEN**
 
-Run: `./gradlew test --tests "io.suko.lang.semantic.*" --console=plain`
+Run: `gradle test --tests "io.suko.lang.semantic.*" --console=plain`
 Expected: PASS
 
 - [ ] **Step 5: Correr a suite completa**
 
-Run: `./gradlew test --console=plain`
+Run: `gradle test --console=plain`
 Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 6: Commit**
@@ -768,7 +768,7 @@ void parsesInterpolatedStringWithTrailingText() {
 
 - [ ] **Step 2: Correr o teste, confirmar FAIL**
 
-Run: `./gradlew test --tests "*parsesInterpolatedStringWithTrailingText*" --console=plain`
+Run: `gradle test --tests "*parsesInterpolatedStringWithTrailingText*" --console=plain`
 Expected: FAIL (erro de parse ou `BailErrorStrategy` a abortar) — confirma o bug documentado na spec.
 
 - [ ] **Step 3: Corrigir `RBRACE` no lexer — `popMode` condicional (não pode ser `-> popMode` incondicional: `}` fecha `templateBlock`/`slotBlock`/`if`/`for` etc. na pilha de modos vazia, e `popMode()` numa pilha vazia lança exceção)**
@@ -800,17 +800,17 @@ RBRACE
 
 - [ ] **Step 4: Regenerar o lexer/parser e confirmar ausência de `warning`**
 
-Run: `./gradlew generateSukoLexer generateSukoParser --console=plain`
+Run: `gradle generateSukoLexer generateSukoParser --console=plain`
 Expected: sem a palavra `warning` na saída.
 
 - [ ] **Step 5: Correr o teste, confirmar GREEN**
 
-Run: `./gradlew test --tests "*parsesInterpolatedStringWithTrailingText*" --console=plain`
+Run: `gradle test --tests "*parsesInterpolatedStringWithTrailingText*" --console=plain`
 Expected: PASS
 
 - [ ] **Step 6: Correr a suite completa (confirmar que nenhum `}` normal quebrou)**
 
-Run: `./gradlew test --console=plain`
+Run: `gradle test --console=plain`
 Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 7: Commit**
@@ -863,7 +863,7 @@ void buildsMixedStringLiteralParts() {
 
 - [ ] **Step 2: Correr o teste, confirmar FAIL**
 
-Run: `./gradlew test --console=plain` (o teste indicado)
+Run: `gradle test --console=plain` (o teste indicado)
 Expected: FAIL — `buildStringLiteral` hoje concatena tudo numa única `Literal`.
 
 - [ ] **Step 3: `Expr.StringPart` ganha as variantes novas**
@@ -928,7 +928,7 @@ private void flushLiteral(List<Expr.StringPart> parts, StringBuilder literalRun)
 
 - [ ] **Step 5: Correr o teste, confirmar GREEN**
 
-Run: `./gradlew test --console=plain` (o teste indicado)
+Run: `gradle test --console=plain` (o teste indicado)
 Expected: PASS
 
 - [ ] **Step 6: Commit**
@@ -972,7 +972,7 @@ void rendersAttributeWithRealInterpolation() throws Exception {
 
 - [ ] **Step 2: Correr o teste, confirmar FAIL**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest#rendersAttributeWithRealInterpolation" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest#rendersAttributeWithRealInterpolation" --console=plain`
 Expected: FAIL — `emitStringLiteral` hoje ignora partes que não são `Literal`.
 
 - [ ] **Step 3: Reescrever `emitStringLiteral` — concatenação Java quando há partes não-literais**
@@ -1006,7 +1006,7 @@ private String emitStringLiteral(Expr.StringLiteralExpr stringLiteral, java.util
 
 - [ ] **Step 4: Correr o teste, confirmar GREEN**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest#rendersAttributeWithRealInterpolation" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest#rendersAttributeWithRealInterpolation" --console=plain`
 Expected: PASS
 
 - [ ] **Step 5: Diagnóstico — `{ident}` mal-escrito dentro de uma string onde `ident` é um parâmetro conhecido do componente**
@@ -1084,7 +1084,7 @@ Chamar `checkBareBraceInStrings(component)` a partir de `checkComponent`, depois
 
 - [ ] **Step 7: Correr a suite completa**
 
-Run: `./gradlew test --console=plain`
+Run: `gradle test --console=plain`
 Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 8: Commit**
@@ -1128,7 +1128,7 @@ void interpolatesArbitraryJavaObjectViaToString() throws Exception {
 
 - [ ] **Step 2: Correr o teste, confirmar FAIL**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest#interpolatesArbitraryJavaObjectViaToString" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest#interpolatesArbitraryJavaObjectViaToString" --console=plain`
 Expected: FAIL — `${id}` hoje gera Java que não compila para um tipo sem overload em `writeUserContent` (confirmado por sonda na spec, "V1").
 
 - [ ] **Step 3: Implementar a forma ternária null-safe, com exceção para slots/`Component`**
@@ -1158,7 +1158,7 @@ private boolean isContentTyped(Expr expr, java.util.Set<String> slotNames) {
 
 - [ ] **Step 4: Correr o teste, confirmar GREEN**
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest#interpolatesArbitraryJavaObjectViaToString" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest#interpolatesArbitraryJavaObjectViaToString" --console=plain`
 Expected: PASS
 
 - [ ] **Step 5: Regressão — confirmar que ler um slot simples continua sem `.toString()`**
@@ -1180,12 +1180,12 @@ void slotInterpolationIsNeverWrappedInToString() throws Exception {
 }
 ```
 
-Run: `./gradlew test --tests "io.suko.lang.JteEmitterTest#slotInterpolationIsNeverWrappedInToString" --console=plain`
+Run: `gradle test --tests "io.suko.lang.JteEmitterTest#slotInterpolationIsNeverWrappedInToString" --console=plain`
 Expected: PASS
 
 - [ ] **Step 6: Correr a suite completa**
 
-Run: `./gradlew test --console=plain`
+Run: `gradle test --console=plain`
 Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 7: Commit**
@@ -1222,7 +1222,7 @@ Confirmar que `SukoParserSmokeTest` (ou equivalente) continua a fazer parse+rend
 
 - [ ] **Step 4: Correr o smoke test, confirmar GREEN**
 
-Run: `./gradlew test --console=plain`
+Run: `gradle test --console=plain`
 Expected: BUILD SUCCESSFUL
 
 - [ ] **Step 5: Atualizar `ARCHITECTURE.md`**
