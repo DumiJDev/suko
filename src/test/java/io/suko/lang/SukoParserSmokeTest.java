@@ -79,4 +79,22 @@ class SukoParserSmokeTest {
     void parsesLayoutExampleWithoutErrors() throws IOException {
         parseFile("examples/layout/LayoutComponents.sk", 6, "Layout, Card, Modal, Button, Input, Select");
     }
+
+    @Test
+    void parsesInterpolatedStringWithTrailingText() {
+        String source = """
+            component Greeting(String name) {
+              <p>{"Olá ${name}!"}</p>
+            }
+            """;
+        // Só precisa de não lançar exceção de parse — a tradução para AST/Java
+        // é a Tarefa 8/9. Confirma que o lexer volta a STRING_MODE depois do
+        // '}' de fecho e lexa "!" + STRING_END corretamente.
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> {
+            var lexer = new io.suko.lang.SukoLexer(org.antlr.v4.runtime.CharStreams.fromString(source));
+            var parser = new io.suko.lang.SukoParser(new org.antlr.v4.runtime.CommonTokenStream(lexer));
+            parser.setErrorHandler(new org.antlr.v4.runtime.BailErrorStrategy());
+            parser.compilationUnit();
+        });
+    }
 }
