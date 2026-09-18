@@ -45,6 +45,15 @@ public class SemanticChecker {
     private void checkComponent(ComponentDecl component) {
         Map<String, Param.SlotParam> declaredSlots = new HashMap<>();
         for (Param param : component.params()) {
+            if ("children".equals(param.name()) && !(param instanceof Param.SlotParam)) {
+                diagnostics.add(new SukoDiagnostic(
+                        SukoDiagnostic.Severity.ERROR,
+                        "'children' é um nome reservado: o parâmetro tem de ser Component ou List<Component>",
+                        "RESERVED_CHILDREN_NAME",
+                        sourceFile,
+                        paramSpan(param)
+                ));
+            }
             if (param instanceof Param.SlotParam slotParam) {
                 declaredSlots.put(slotParam.name(), slotParam);
             }
@@ -52,6 +61,13 @@ public class SemanticChecker {
         for (Statement statement : component.body()) {
             checkStatement(statement, declaredSlots);
         }
+    }
+
+    private SourceSpan paramSpan(Param param) {
+        return switch (param) {
+            case Param.ValueParam p -> p.span();
+            case Param.SlotParam p -> p.span();
+        };
     }
 
     private void checkStatement(Statement statement, Map<String, Param.SlotParam> currentScopeSlots) {

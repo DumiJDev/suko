@@ -140,4 +140,81 @@ class SemanticCheckerTest {
         assertTrue(diagnostics.getErrors().stream().anyMatch(d -> d.code().equals("SLOT_NOT_FOUND")));
         assertTrue(diagnostics.getErrors().stream().anyMatch(d -> d.code().equals("REQUIRED_SLOT_MISSING")));
     }
+
+    @Test
+    void looseContentWithoutChildrenParamReusesSlotNotFound() {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SymbolTable symbolTable = new SymbolTable();
+        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
+
+        // Field não declara nenhum param "children"
+        ComponentDecl field = new ComponentDecl("Field", List.of(), List.of(),
+                List.of(), new SourceSpan(1, 1, 0, 10));
+        symbolTable.register(field);
+
+        ComponentDecl host = new ComponentDecl("Host", List.of(), List.of(),
+                List.of(
+                    new Statement.ComponentCallStmt("Field", List.of(),
+                        List.of(new Statement.SlotFill("children", Optional.empty(), List.of())),
+                        new SourceSpan(1, 1, 0, 10))
+                ), new SourceSpan(1, 1, 0, 10));
+
+        checker.check(new SukoFile(Optional.empty(), List.of(), List.of(field, host)));
+
+        assertTrue(diagnostics.hasErrors());
+        assertTrue(diagnostics.getErrors().stream().anyMatch(d -> d.code().equals("SLOT_NOT_FOUND")));
+    }
+
+    @Test
+    void looseContentPlusExplicitChildrenFillReusesCardinalityViolation() {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SymbolTable symbolTable = new SymbolTable();
+        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
+
+        // Field(Component children)
+        Param childrenSlot = new Param.SlotParam(
+                new Type("Component", List.of(), 0), "children", Cardinality.ONE, true,
+                Optional.empty(), new SourceSpan(1, 1, 0, 5));
+        ComponentDecl field = new ComponentDecl("Field", List.of(), List.of(childrenSlot),
+                List.of(), new SourceSpan(1, 1, 0, 10));
+        symbolTable.register(field);
+
+        // Field() { "solto" children { "explícito" } } => 2 fills para "children" (cardinality ONE)
+        ComponentDecl host = new ComponentDecl("Host", List.of(), List.of(),
+                List.of(
+                    new Statement.ComponentCallStmt("Field", List.of(),
+                        List.of(
+                            new Statement.SlotFill("children", Optional.empty(), List.of()),
+                            new Statement.SlotFill("children", Optional.empty(), List.of())
+                        ),
+                        new SourceSpan(1, 1, 0, 10))
+                ), new SourceSpan(1, 1, 0, 10));
+
+        checker.check(new SukoFile(Optional.empty(), List.of(), List.of(field, host)));
+
+        assertTrue(diagnostics.hasErrors());
+        assertTrue(diagnostics.getErrors().stream().anyMatch(d -> d.code().equals("CARDINALITY_VIOLATION")));
+    }
+
+    @Test
+    void childrenParamThatIsNotComponentIsReservedNameError() {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SymbolTable symbolTable = new SymbolTable();
+        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
+
+        // component Field(String children) { }
+        Param badChildren = new Param.ValueParam(
+                new Type("String", List.of(), 0), "children",
+                Optional.empty(), new SourceSpan(1, 1, 0, 5));
+        ComponentDecl field = new ComponentDecl("Field", List.of(), List.of(badChildren),
+                List.of(), new SourceSpan(1, 1, 0, 10));
+
+        checker.check(new SukoFile(Optional.empty(), List.of(), List.of(field)));
+
+        assertTrue(diagnostics.hasErrors());
+        assertEquals(1, diagnostics.getErrors().size());
+        SukoDiagnostic diag = diagnostics.getErrors().get(0);
+        assertEquals("RESERVED_CHILDREN_NAME", diag.code());
+        assertTrue(diag.message().contains("children"));
+    }
 }
