@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plugin>
+    <name>Suko Maven Plugin</name>
+    <description>Maven plugin for compiling Suko (.sk) files to JTE (.jte) templates</description>
+    <groupId>io.suko</groupId>
+    <artifactId>suko-maven-plugin</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <goalPrefix>suko</goalPrefix>
+    <isolatedRealm>false</isolatedRealm>
+    <mojos>
+        <mojo>
+            <goal>compile</goal>
+            <description>Compiles .sk files to .jte templates</description>
+            <mojoClass>io.suko.lang.maven.SukoCompileMojo</mojoClass>
+            <phase>generate-sources</phase>
+            <executor/>
+            <language>java</language>
+            <instantiationStrategy>per-lookup</instantiationStrategy>
+            <executionStrategy>once-per-lookup</executionStrategy>
+        </mojo>
+    </mojos>
+</plugin>
