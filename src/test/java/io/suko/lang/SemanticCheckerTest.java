@@ -217,4 +217,28 @@ class SemanticCheckerTest {
         assertEquals("RESERVED_CHILDREN_NAME", diag.code());
         assertTrue(diag.message().contains("children"));
     }
+
+    @Test
+    void componentCallAsValueValidatesExistence() {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SymbolTable symbolTable = new SymbolTable();
+        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
+
+        // component Host() { var c = NaoExiste(); }
+        Expr.CallExpr naoExisteCall = new Expr.CallExpr(
+                new Expr.PrimaryExpr("NaoExiste", new SourceSpan(1, 1, 0, 9)),
+                List.of(), new SourceSpan(1, 1, 0, 11));
+        ComponentDecl host = new ComponentDecl("Host", List.of(), List.of(),
+                List.of(
+                    new Statement.VarDecl("c", naoExisteCall, new SourceSpan(1, 1, 0, 15))
+                ), new SourceSpan(1, 1, 0, 20));
+
+        checker.check(new SukoFile(Optional.empty(), List.of(), List.of(host)));
+
+        assertTrue(diagnostics.hasErrors());
+        assertEquals(1, diagnostics.getErrors().size());
+        SukoDiagnostic diag = diagnostics.getErrors().get(0);
+        assertEquals("COMPONENT_NOT_FOUND", diag.code());
+        assertTrue(diag.message().contains("NaoExiste"));
+    }
 }
