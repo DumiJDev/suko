@@ -229,7 +229,7 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    `SukoErrorListener`, `SymbolTable`, `SemanticChecker`.
    Validadores de componentes e slots implementados.
 3. **Verificação Java** — CONCLUÍDO. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` compila stubs Java e mapeia erros para `.sk`.
-4. **Integração no build** — stub plugin Gradle/Maven, modo watch, erros formatados no terminal.
+4. **Integração no build** — CONCLUÍDO. Plugin Gradle (`sukoCompile`, `sukoWatch`), plugin Maven (`suko:compile`), modo watch com `WatchService`, E2E tests.
 
 Fora destes quatro, como subprojeto dedicado e sem data: renderização
 real de componentes genéricos (erasure para tipo-limite).
