@@ -26,7 +26,7 @@ A spec (`docs/superpowers/specs/2026-09-18-suko-modelo-componente.md`, secção 
 
 ---
 
-### Tarefa 1: Sonda — bloco de conteúdo JTE dentro de expressão condicional Java
+### Task 1: Sonda — bloco de conteúdo JTE dentro de expressão condicional Java
 
 **Files:**
 - Create: `src/test/java/io/suko/lang/ComponentValueProbeTest.java`
@@ -102,7 +102,7 @@ git commit -m "test: sonda — bloco de conteúdo JTE em expressão condicional 
 
 ---
 
-### Tarefa 2: `Component` substitui `slot<T>` — reconhecimento no AST builder, render-prop estrutural
+### Task 2: `Component` substitui `slot<T>` — reconhecimento no AST builder, render-prop estrutural
 
 **Files:**
 - Modify: `src/main/java/io/suko/lang/ast/Param.java`
@@ -345,7 +345,7 @@ git commit -m "feat(lang): Component substitui slot<T>; render-prop explícito v
 
 ---
 
-### Tarefa 3: Children implícitos — síntese de `SlotFill("children", ...)` a partir de conteúdo solto
+### Task 3: Children implícitos — síntese de `SlotFill("children", ...)` a partir de conteúdo solto
 
 **Files:**
 - Modify: `src/main/java/io/suko/lang/SukoAstBuilder.java:155-183` (`buildComponentCallStmt`)
@@ -464,7 +464,7 @@ git commit -m "feat(ast): children implícitos — conteúdo solto sintetiza Slo
 
 ---
 
-### Tarefa 4: Diagnósticos — `children` como nome reservado
+### Task 4: Diagnósticos — `children` como nome reservado
 
 **Files:**
 - Modify: `src/main/java/io/suko/lang/semantic/SemanticChecker.java:57-67` (`checkComponent`)
@@ -553,7 +553,7 @@ git commit -m "feat(semantic): 'children' como nome reservado (deve ser Componen
 
 ---
 
-### Tarefa 5: Componente como valor — `emitExpr` reconhece `CallExpr` de componente conhecido
+### Task 5: Componente como valor — `emitExpr` reconhece `CallExpr` de componente conhecido
 
 **Files:**
 - Modify: `src/main/java/io/suko/lang/JteEmitter.java:541-594` (`emitExpr`)
@@ -627,7 +627,7 @@ git commit -m "feat(emitter): chamada de componente como valor de expressão (no
 
 ---
 
-### Tarefa 6: Verificador para chamada-como-valor
+### Task 6: Verificador para chamada-como-valor
 
 **Files:**
 - Modify: `src/main/java/io/suko/lang/semantic/SemanticChecker.java`
@@ -733,7 +733,7 @@ git commit -m "feat(semantic): valida existência de componente chamado como val
 
 ---
 
-### Tarefa 7: Lexer — `RBRACE` sai de `${...}` de volta a `STRING_MODE`
+### Task 7: Lexer — `RBRACE` sai de `${...}` de volta a `STRING_MODE`
 
 **Files:**
 - Modify: `src/main/antlr/io/suko/lang/SukoLexer.g4:56`
@@ -822,7 +822,7 @@ git commit -m "fix(lexer): RBRACE sai de \${...} de volta a STRING_MODE (popMode
 
 ---
 
-### Tarefa 8: AST — `Expr.StringPart.Interp`/`SimpleInterp`
+### Task 8: AST — `Expr.StringPart.Interp`/`SimpleInterp`
 
 **Files:**
 - Modify: `src/main/java/io/suko/lang/ast/Expr.java:19-22` (`StringPart`)
@@ -940,7 +940,7 @@ git commit -m "feat(ast): StringPart.Interp/SimpleInterp — literais de string 
 
 ---
 
-### Tarefa 9: Emitter — concatenação Java para strings interpoladas + diagnóstico de `{ident}` mal-escrito
+### Task 9: Emitter — concatenação Java para strings interpoladas + diagnóstico de `{ident}` mal-escrito
 
 **Files:**
 - Modify: `src/main/java/io/suko/lang/JteEmitter.java:605-614` (`emitStringLiteral`)
@@ -1096,7 +1096,7 @@ git commit -m "feat(emitter): interpolação real em strings/atributos; diagnós
 
 ---
 
-### Tarefa 10: Auto-`toString` de valores Java arbitrários
+### Task 10: Auto-`toString` de valores Java arbitrários
 
 **Files:**
 - Modify: `src/main/java/io/suko/lang/JteEmitter.java:378-382` (`emitStatement`, caso `Interpolation`)
@@ -1197,7 +1197,7 @@ git commit -m "feat(emitter): auto-toString null-safe para valores Java arbitrá
 
 ---
 
-### Tarefa 11: Migração de `examples/` + atualização de `ARCHITECTURE.md` e da spec
+### Task 11: Migração de `examples/` + atualização de `ARCHITECTURE.md` e da spec
 
 **Files:**
 - Modify: pelo menos 1-2 ficheiros em `examples/` que usem `slot<T>` hoje (confirmar com `grep -rl "slot<" examples/`)
