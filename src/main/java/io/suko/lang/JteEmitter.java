@@ -635,7 +635,6 @@ public class JteEmitter {
             return sb.append('"').toString();
         }
 
-        StringBuilder sb = new StringBuilder();
         // CORREÇÃO (revisão final do subprojeto 6, achado 3): a concatenação
         // tem de estar ANCORADA num valor de tipo String à esquerda. Sem
         // âncora, `"${a}${b}"` emitia `(a) + (b)` — para `a`/`b` numéricos
@@ -652,30 +651,37 @@ public class JteEmitter {
         // `gg.jte.Content.toString()`, que imprime a identidade do objeto
         // Java em vez de renderizar o conteúdo (mesmo raciocínio de
         // `isContentTyped` em `shouldWrapInToString`).
-        if (!(parts.get(0) instanceof Expr.StringPart.Literal) && !firstPartIsContentTyped(parts.get(0), slotNames)) {
+        boolean needsAnchor = !(parts.get(0) instanceof Expr.StringPart.Literal) && !firstPartIsContentTyped(parts.get(0), slotNames);
+
+        // CORREÇÃO (fix pós-revisão-final: regressão do achado 3): quando a
+        // string é uma ÚNICA parte interpolada, a âncora incondicional
+        // `"" + X` transforma um `X` null (tipo referência, ex. `String`) no
+        // TEXTO LITERAL "null" (semântica de concatenação Java, `"" + null`
+        // == "null") — regressão real face ao comportamento correto que já
+        // existia para esse caso antes da âncora ser introduzida (um `String`
+        // simples interpolado sozinho já compilava e renderizava null como
+        // vazio via o próprio gg.jte). Só é seguro comparar a `null` quando
+        // sabemos que o identificador resolve a um `ValueParam` de tipo
+        // referência conhecido (nunca primitivo — `int == null` nem compila).
+        // Para qualquer outra forma (expressão composta, identificador não
+        // resolvível, ex. variável de for-loop) mantém-se a âncora
+        // incondicional de sempre, sem arriscar "X == null" sobre um valor
+        // que pode ser primitivo.
+        if (parts.size() == 1 && needsAnchor) {
+            String identifier = singlePartBareIdentifier(parts.get(0));
+            if (isKnownNullableIdentifier(identifier)) {
+                String emitted = emitStringPart(parts.get(0), slotNames);
+                return "(" + emitted + " == null ? \"\" : \"\" + " + emitted + ")";
+            }
+        }
+
+        StringBuilder sb = new StringBuilder();
+        if (needsAnchor) {
             sb.append("\"\" + ");
         }
         for (int i = 0; i < parts.size(); i++) {
             if (i > 0) sb.append(" + ");
-            switch (parts.get(i)) {
-                case Expr.StringPart.Literal literal -> sb.append('"').append(literal.javaEscapedText()).append('"');
-                // CORREÇÃO (revisão final do subprojeto 6, achado 4): a decisão
-                // de auto-toString da tarefa 10 (antes só aplicada a
-                // `Statement.Interpolation`) aplica-se agora também à
-                // interpolação DENTRO de uma string literal — sem isto,
-                // `<a href="${id}">` não compilava para o mesmo `Object id`
-                // que `{id}` (statement) já compilava.
-                case Expr.StringPart.Interp interp -> {
-                    String emitted = emitExpr(interp.expr(), slotNames);
-                    sb.append(shouldWrapInToString(interp.expr(), slotNames)
-                        ? toStringWrapped(emitted)
-                        : "(" + emitted + ")");
-                }
-                case Expr.StringPart.SimpleInterp simple ->
-                    sb.append(shouldWrapIdentifierInToString(simple.identifier(), slotNames)
-                        ? toStringWrapped(simple.identifier())
-                        : simple.identifier());
-            }
+            sb.append(emitStringPart(parts.get(i), slotNames));
         }
         return sb.toString();
     }
@@ -686,6 +692,59 @@ public class JteEmitter {
             case Expr.StringPart.Interp interp -> isContentTyped(interp.expr(), slotNames);
             case Expr.StringPart.SimpleInterp simple -> slotNames.contains(simple.identifier());
         };
+    }
+
+    /** Java gerado para uma parte de string literal — partilhado entre o
+     * caminho normal de concatenação e o caminho null-safe de parte única
+     * (ver `emitStringLiteral`). */
+    private String emitStringPart(Expr.StringPart part, java.util.Set<String> slotNames) {
+        return switch (part) {
+            case Expr.StringPart.Literal literal -> "\"" + literal.javaEscapedText() + "\"";
+            // CORREÇÃO (revisão final do subprojeto 6, achado 4): a decisão
+            // de auto-toString da tarefa 10 (antes só aplicada a
+            // `Statement.Interpolation`) aplica-se agora também à
+            // interpolação DENTRO de uma string literal — sem isto,
+            // `<a href="${id}">` não compilava para o mesmo `Object id`
+            // que `{id}` (statement) já compilava.
+            case Expr.StringPart.Interp interp -> {
+                String emitted = emitExpr(interp.expr(), slotNames);
+                yield shouldWrapInToString(interp.expr(), slotNames)
+                    ? toStringWrapped(emitted)
+                    : "(" + emitted + ")";
+            }
+            case Expr.StringPart.SimpleInterp simple ->
+                shouldWrapIdentifierInToString(simple.identifier(), slotNames)
+                    ? toStringWrapped(simple.identifier())
+                    : simple.identifier();
+        };
+    }
+
+    /** Identificador de um `StringPart.SimpleInterp`, ou de um
+     * `StringPart.Interp` cuja expressão é um identificador simples — `null`
+     * para qualquer outra forma (expressão composta, literal), usado pelo
+     * caminho null-safe de parte única em `emitStringLiteral`. */
+    private String singlePartBareIdentifier(Expr.StringPart part) {
+        return switch (part) {
+            case Expr.StringPart.SimpleInterp simple -> simple.identifier();
+            case Expr.StringPart.Interp interp when interp.expr() instanceof Expr.PrimaryExpr p -> p.text();
+            default -> null;
+        };
+    }
+
+    private static final java.util.Set<String> PRIMITIVE_TYPE_NAMES = java.util.Set.of(
+        "int", "long", "short", "byte", "double", "float", "boolean", "char"
+    );
+
+    /** Verdadeiro só quando o identificador resolve a um `ValueParam` do
+     * componente atual com tipo declarado conhecido e NÃO primitivo — só aí
+     * é seguro comparar o valor Java emitido a `null` sem arriscar um erro
+     * de compilação (`int == null` não compila). */
+    private boolean isKnownNullableIdentifier(String identifier) {
+        if (identifier == null) return false;
+        Type declaredType = currentValueParamTypes.get(identifier);
+        return declaredType != null && declaredType.arrayDimensions() == 0
+            && declaredType.typeArguments().isEmpty()
+            && !PRIMITIVE_TYPE_NAMES.contains(declaredType.name());
     }
 
     /** Forma parentetizada do auto-toString null-safe (tarefa 10), segura para
