@@ -101,4 +101,28 @@ class SukoAstBuilderTest {
         assertTrue(slot.renderProp());
         assertEquals("String", slot.elementType().name());
     }
+
+    @Test
+    void buildsMixedStringLiteralParts() {
+        String source = """
+            component Greeting(String name) {
+              <p>{"Olá ${name}!"}</p>
+            }
+            """;
+        var lexer = new io.suko.lang.SukoLexer(org.antlr.v4.runtime.CharStreams.fromString(source));
+        var parser = new io.suko.lang.SukoParser(new org.antlr.v4.runtime.CommonTokenStream(lexer));
+        var file = new io.suko.lang.SukoAstBuilder(source).build(parser.compilationUnit());
+
+        // Greeting.body() == [HtmlElement("p", children=[Interpolation(StringLiteralExpr)])]
+        var p = (io.suko.lang.ast.Statement.HtmlElement) file.components().get(0).body().get(0);
+        var interpolation = (io.suko.lang.ast.Statement.Interpolation) p.children().get(0);
+        var stringLiteral = (io.suko.lang.ast.Expr.StringLiteralExpr) interpolation.expr();
+
+        assertEquals(3, stringLiteral.parts().size());
+        var part0 = (io.suko.lang.ast.Expr.StringPart.Literal) stringLiteral.parts().get(0);
+        assertEquals("Olá ", part0.javaEscapedText());
+        assertInstanceOf(io.suko.lang.ast.Expr.StringPart.Interp.class, stringLiteral.parts().get(1));
+        var part2 = (io.suko.lang.ast.Expr.StringPart.Literal) stringLiteral.parts().get(2);
+        assertEquals("!", part2.javaEscapedText());
+    }
 }

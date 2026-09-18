@@ -352,12 +352,29 @@ public class SukoAstBuilder {
     }
 
     private Expr.StringLiteralExpr buildStringLiteral(SukoParser.StringLiteralContext ctx) {
-        StringBuilder javaEscaped = new StringBuilder();
+        List<Expr.StringPart> parts = new ArrayList<>();
+        StringBuilder literalRun = new StringBuilder();
         for (SukoParser.StringPartContext partCtx : ctx.stringPart()) {
-            javaEscaped.append(partCtx.getText());
+            if (partCtx.EXPR_INTERP_START() != null) {
+                flushLiteral(parts, literalRun);
+                parts.add(new Expr.StringPart.Interp(buildExpr(partCtx.expression())));
+            } else if (partCtx.SIMPLE_INTERP_START() != null) {
+                flushLiteral(parts, literalRun);
+                // "$nome" — remove o "$" inicial do texto do token.
+                parts.add(new Expr.StringPart.SimpleInterp(partCtx.getText().substring(1)));
+            } else {
+                literalRun.append(partCtx.getText());
+            }
         }
-        List<Expr.StringPart> parts = List.of(new Expr.StringPart.Literal(javaEscaped.toString()));
+        flushLiteral(parts, literalRun);
         return new Expr.StringLiteralExpr(parts, spanOf(ctx));
+    }
+
+    private void flushLiteral(List<Expr.StringPart> parts, StringBuilder literalRun) {
+        if (literalRun.length() > 0) {
+            parts.add(new Expr.StringPart.Literal(literalRun.toString()));
+            literalRun.setLength(0);
+        }
     }
 
     /** Recupera o texto literal de um textRun pela posição de carácter no fonte

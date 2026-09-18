@@ -16,8 +16,16 @@ public sealed interface Expr permits
     record StringLiteralExpr(List<StringPart> parts, SourceSpan span) implements Expr {
     }
 
-    sealed interface StringPart permits StringPart.Literal {
+    sealed interface StringPart permits StringPart.Literal, StringPart.Interp, StringPart.SimpleInterp {
         record Literal(String javaEscapedText) implements StringPart {
+        }
+
+        /** "${expr}" */
+        record Interp(Expr expr) implements StringPart {
+        }
+
+        /** "$identificador" */
+        record SimpleInterp(String identifier) implements StringPart {
         }
     }
 
