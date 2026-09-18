@@ -189,4 +189,31 @@ class FinalReviewFixesTest {
 
         assertTrue(diagnostics.getDiagnostics().isEmpty(), diagnostics.getDiagnostics().toString());
     }
+
+    // --- Regressão pós-revisão-final: âncora "" + X do achado 3 quebra
+    // null para uma única interpolação de um ValueParam de tipo referência
+    // conhecido (ex. String) — "" + null é o TEXTO "null" em Java, não vazio.
+
+    @Test
+    void singleNullableParamInterpolatedAloneRendersEmptyNotNullText() throws Exception {
+        String html = JteRenderSupport.render("""
+            component Show(String label = null) {
+              <a title="$label">x</a>
+            }
+            """, "Show", Map.of());
+
+        assertTrue(html.contains("title=\"\""), "esperava atributo vazio, obtido: " + html);
+        assertFalse(html.contains("null"), "regressão: texto literal 'null' na saída: " + html);
+    }
+
+    @Test
+    void singleNullableParamInterpolatedAloneRendersValueWhenPresent() throws Exception {
+        String html = JteRenderSupport.render("""
+            component Show(String label = null) {
+              <a title="$label">x</a>
+            }
+            """, "Show", Map.of("label", "ok"));
+
+        assertTrue(html.contains("title=\"ok\""), html);
+    }
 }
