@@ -241,4 +241,30 @@ class SemanticCheckerTest {
         assertEquals("COMPONENT_NOT_FOUND", diag.code());
         assertTrue(diag.message().contains("NaoExiste"));
     }
+
+    @Test
+    void bareBraceInStringSuggestsDollarSyntax() {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SymbolTable symbolTable = new SymbolTable();
+        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
+
+        String sukoSource = """
+            component Button(String variant) {
+              <a class="btn btn-{variant}">Click</a>
+            }
+            """;
+        org.antlr.v4.runtime.CharStream charStream = org.antlr.v4.runtime.CharStreams.fromString(sukoSource);
+        io.suko.lang.SukoLexer lexer = new io.suko.lang.SukoLexer(charStream);
+        io.suko.lang.SukoParser parser = new io.suko.lang.SukoParser(new org.antlr.v4.runtime.CommonTokenStream(lexer));
+        SukoFile file = new io.suko.lang.SukoAstBuilder(sukoSource).build(parser.compilationUnit());
+
+        checker.check(file);
+
+        assertTrue(diagnostics.hasErrors());
+        SukoDiagnostic diag = diagnostics.getErrors().stream()
+                .filter(d -> "BARE_BRACE_IN_STRING".equals(d.code()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("no BARE_BRACE_IN_STRING diagnostic found"));
+        assertTrue(diag.message().contains("${variant}"));
+    }
 }
