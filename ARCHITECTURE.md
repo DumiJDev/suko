@@ -129,6 +129,20 @@ arquitetura):
   **Decisão de roadmap:** o verificador (subprojeto 2) rejeita ambas as
   formas com um erro explícito de "ainda não suportado"; a renderização
   real de generics é um subprojeto dedicado, fora dos subprojetos 2-4.
+
+- **Layouts e componentes reutilizáveis.** Os exemplos `examples/layout/` mostram
+  como criar componentes reutilizáveis (`Layout`, `Card`, `Modal`, `Button`,
+  `Input`, `Select`) com slots nomeados. O `examples/forms/` demonstra
+  formulários completos com validação de erros. O `examples/dashboard/`
+  mostra um painel de controle com navegação e listas dinâmicas.
+
+- **Slots nomeados.** Todos os componentes usam slots nomeados (`header`,
+  `sidebar`, `footer`, `body`, `content`, `header`, `sidebar`, `footer`),
+  permitindo renderização condicional e lógica de negócios clara.
+
+- **Renderização ponta-a-ponta.** Os exemplos são testados com
+  `JteEmitterGoldenFileTest` e `SukoParserSmokeTest`, garantindo que
+  a pipeline de compilação funciona corretamente.
 - **Ler um slot exige chamá-lo (apenas para slots render-prop).**
   Como um slot só é emitido como `Function<T, Content>` quando invocado
   como função no corpo do componente (ver "Decisões de design"), um slot

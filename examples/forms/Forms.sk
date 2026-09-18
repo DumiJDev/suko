@@ -1,0 +1,63 @@
+package com.example.forms;
+
+import com.example.ui.Button as Button;
+import com.example.ui.Input as Input;
+import com.example.ui.Select as Select;
+
+component LoginForm(String error) {
+  <form class="login-form" method="post" action="/login">
+    <h2>Login</h2>
+    if (error != null) {
+      <div class="error">{error}</div>
+    }
+    <div class="field">
+      <label for="email">E-mail</label>
+      <Input id="email" name="email" type="email" required />
+    </div>
+    <div class="field">
+      <label for="password">Senha</label>
+      <Input id="password" name="password" type="password" required />
+    </div>
+    <Button type="submit">Entrar</Button>
+  </form>
+}
+
+component RegistrationForm(Map<String, String> errors) {
+  <form class="registration-form" method="post" action="/register">
+    <h2>Cadastro</h2>
+    <div class="field">
+      <label for="name">Nome</label>
+      <Input id="name" name="name" type="text" required />
+      if (errors.get("name") != null) {
+        <span class="error">{errors.get("name")}</span>
+      }
+    </div>
+    <div class="field">
+      <label for="email">E-mail</label>
+      <Input id="email" name="email" type="email" required />
+      if (errors.get("email") != null) {
+        <span class="error">{errors.get("email")}</span>
+      }
+    </div>
+    <div class="field">
+      <label for="password">Senha</label>
+      <Input id="password" name="password" type="password" required minlength="8" />
+      if (errors.get("password") != null) {
+        <span class="error">{errors.get("password")}</span>
+      }
+    </div>
+    <div class="field">
+      <label for="role">Perfil</label>
+      <Select id="role" name="role" required>
+        <option value="">Selecione...</option>
+        <option value="admin">Administrador</option>
+        <option value="manager">Gerente</option>
+        <option value="user">Usuário</option>
+      </Select>
+      if (errors.get("role") != null) {
+        <span class="error">{errors.get("role")}</span>
+      }
+    </div>
+    <Button type="submit">Cadastrar</Button>
+  </form>
+}

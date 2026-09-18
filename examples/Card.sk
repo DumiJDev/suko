@@ -22,18 +22,38 @@ component NavLink(String label, String href = "#") {
   <a href={href}>{label}</a>
 }
 
-component Page(User user) {
+component Page(User user, List<Item> items) {
   Layout(title = "Dashboard") {
-    Sidebar {
+    header {
+      <h1>Dashboard</h1>
+    }
+    sidebar {
       NavLink(label = "Home", href = "/")
       NavLink(label = "Perfil")
     }
-    Content {
+    body {
       switch (user.role) {
         case "admin" -> { AdminPanel() }
         case "guest" -> { <p>Bem-vindo, visitante</p> }
         default -> { <p>Bem-vindo, {user.name}</p> }
       }
+      if (items.size() > 0) {
+        <ul>
+          for (Item item : items) {
+            <li>{item.name} — R{item.price}</li>
+          }
+        </ul>
+      }
+    }
+    footer {
+      <p>Rodapé</p>
     }
   }
+}
+
+component AdminPanel() {
+  <div class="admin-panel">
+    <h2>Painel Administrativo</h2>
+    <p>Aqui ficam os controles administrativos.</p>
+  </div>
 }
