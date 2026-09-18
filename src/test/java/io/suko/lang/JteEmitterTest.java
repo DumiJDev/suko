@@ -587,4 +587,51 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
 
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("class=\"btn btn-primary\""));
     }
+
+    @Test
+    void interpolatesArbitraryJavaObjectViaToString() throws Exception {
+        // "Object" é um tipo desqualificado que já faz parse hoje (java.lang,
+        // resolve sem import) e não tem overload dedicado em
+        // gg.jte.TemplateOutput.writeUserContent — exatamente o caso confirmado
+        // por sonda na spec ("V1"): hoje isto não compila.
+        String html = JteRenderSupport.render(
+            """
+            component Show(Object id) {
+              <p>{id}</p>
+            }
+            """, "Show", java.util.Map.of("id", java.util.UUID.fromString("11111111-1111-1111-1111-111111111111")));
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("11111111-1111-1111-1111-111111111111"));
+    }
+
+    @Test
+    void slotInterpolationIsNeverWrappedInToString() throws Exception {
+        // DESVIO DO BRIEF (documentado, tarefa 10): o brief usa
+        // `component Card(Component header)` com fill "solto"
+        // (`Card() { "Título" }`, sem `header { ... }`). Reproduzido (RED
+        // genuíno): a síntese implícita de children (Tarefa 3 deste plano,
+        // `SukoAstBuilder.buildComponentCallStmt`) SEMPRE nomeia o
+        // SlotFill sintetizado "children" (literal, não o nome do primeiro
+        // slot do componente-alvo) — ver comentário em
+        // `SukoAstBuilder.java:199-204`. Um param chamado `header` nunca
+        // recebe esse fill; a compilação do .jte gerado falha com "No
+        // parameter with name children is defined in Card.jte" (verificado
+        // contra o compilador real do gg.jte). Renomeado o param para
+        // `children`, a mesma convenção já usada no teste
+        // `rendersChildrenAndNamedSlotTogether` desta classe, para
+        // exercitar a asserção desta tarefa (slot lido por identificador
+        // simples nunca é embrulhado em .toString()) sem depender de uma
+        // reconciliação nome-do-fill/nome-do-param fora de âmbito aqui.
+        String html = JteRenderSupport.renderWithDependencies(
+            """
+            component Card(Component children) {
+              <div>{children}</div>
+            }
+            component Host() {
+              Card() { "Título" }
+            }
+            """, "Host", java.util.Map.of());
+
+        org.junit.jupiter.api.Assertions.assertTrue(html.contains("Título"));
+    }
 }

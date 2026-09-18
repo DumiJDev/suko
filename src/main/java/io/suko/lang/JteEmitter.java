@@ -40,6 +40,17 @@ public class JteEmitter {
     // sempre `renderWithDependencies`).
     private final Map<String, ComponentDecl> componentsByName;
 
+    // DESVIO DO BRIEF (documentado, tarefa 10): ver `shouldWrapInToString`
+    // mais abaixo para a razão de existir este campo — não faz parte do
+    // brief original, que só previa `isContentTyped`. Reatribuído no início
+    // de `emit(component)` a cada chamada (não é constante por instância,
+    // ao contrário de `componentsByName`); seguro porque `JteEmitter` é
+    // usado sempre de forma sequencial, uma `emit`/`emitWithSourceMap` de
+    // cada vez, nunca concorrente (ver `JteRenderSupport.renderWithDependencies`,
+    // que itera os componentes de um ficheiro num `for` simples reutilizando
+    // a mesma instância).
+    private Map<String, Type> currentValueParamTypes = Map.of();
+
     public JteEmitter() {
         this(List.of());
     }
@@ -51,6 +62,10 @@ public class JteEmitter {
 
     public String emit(ComponentDecl component) {
         java.util.Set<String> slotNames = slotNamesOf(component);
+        this.currentValueParamTypes = component.params().stream()
+            .filter(p -> p instanceof Param.ValueParam)
+            .map(p -> (Param.ValueParam) p)
+            .collect(Collectors.toMap(Param.ValueParam::name, Param.ValueParam::type));
 
         StringBuilder out = new StringBuilder();
         for (Param param : component.params()) {
@@ -253,8 +268,15 @@ public class JteEmitter {
     private void emitStatement(Statement statement, StringBuilder out, java.util.Set<String> slotNames) {
         switch (statement) {
             case Statement.TextRun textRun -> out.append(textRun.text());
-            case Statement.Interpolation interpolation ->
-                out.append("${").append(emitExpr(interpolation.expr(), slotNames)).append('}');
+            case Statement.Interpolation interpolation -> {
+                Expr expr = interpolation.expr();
+                if (shouldWrapInToString(expr, slotNames)) {
+                    String emitted = emitExpr(expr, slotNames);
+                    out.append("${").append(emitted).append(" == null ? null : (").append(emitted).append(").toString()}");
+                } else {
+                    out.append("${").append(emitExpr(expr, slotNames)).append('}');
+                }
+            }
             case Statement.HtmlElement element -> emitHtmlElement(element, out, slotNames);
             case Statement.VarDecl varDecl ->
                 out.append("!{var ").append(varDecl.name()).append(" = ")
@@ -264,6 +286,82 @@ public class JteEmitter {
             case Statement.SwitchStmt switchStmt -> emitSwitchStmt(switchStmt, out, slotNames);
             case Statement.ComponentCallStmt call -> emitComponentCall(call, out, slotNames);
         }
+    }
+
+    /** Não embrulhar em .toString() quando a expressão já é um slot (identificador
+     * cujo nome está em slotNames) — .toString() num slot imprimiria a
+     * identidade do objeto Java, não o conteúdo (ver spec, secção auto-toString). */
+    private boolean isContentTyped(Expr expr, java.util.Set<String> slotNames) {
+        return expr instanceof Expr.PrimaryExpr p && slotNames.contains(p.text());
+    }
+
+    // DESVIO DO BRIEF (documentado, tarefa 10): o brief propõe embrulhar
+    // TODA interpolação (exceto slots) num ternário `expr == null ? null :
+    // (expr).toString()`. Reproduzido (RED genuíno, com o resto da tarefa
+    // já implementado): isto quebra 8 testes já verdes antes desta tarefa,
+    // por duas razões distintas, ambas confirmadas contra o compilador real
+    // do gg.jte:
+    //
+    // 1) Expressões cujo tipo Java resultante é primitivo (`int`, `boolean`,
+    //    etc. — ex.: `{a + b}`, `{a > b}` em rendersArithmeticAndComparisonExpressions,
+    //    `{label?.length() ?: -1}` em rendersNullSafeAccessAndElvis) não
+    //    compilam quando comparadas a `null` ("bad operand types for binary
+    //    operator '=='... first type: int, second type: <null>"). Não há
+    //    forma de saber, sem inferência de tipo real (que o projeto já
+    //    decidiu não fazer — ver ARCHITECTURE.md), que tipo Java uma
+    //    expressão composta (aritmética, elvis, ternário, chamada) produz.
+    //
+    // 2) Expressões que produzem Content por um caminho que não é a leitura
+    //    direta de um slot (`{header}`) — ex.: chamada de render-prop
+    //    (`{row(item)}`), `.apply(...)` explícito sobre uma variável Function
+    //    de loop (`{row.apply("x")}`), ou uma variável local atribuída a
+    //    partir de uma chamada de componente como valor (`var c = useA ?
+    //    CardA() : CardB(); {c}`, tarefa 5) — ficam incorretamente
+    //    embrulhadas em `.toString()`, que imprime a identidade do objeto
+    //    Java em vez de renderizar o conteúdo.
+    //
+    // Sem inferência de tipo real, a única forma segura de saber que uma
+    // expressão passa por `writeUserContent` sem overload dedicado (e por
+    // isso precisa do `.toString()` auto) é quando ela é um identificador
+    // simples (`Expr.PrimaryExpr`) que referencia diretamente um
+    // `Param.ValueParam` do próprio componente, cujo tipo Suko declarado
+    // (lido do AST, não inferido) não está na lista fechada de tipos já
+    // servidos por overloads de `TemplateOutput.writeUserContent` (mesma
+    // lista fechada confirmada pela sonda da spec, "V1"). Qualquer outra
+    // forma de expressão (composta, ou identificador sem tipo declarado
+    // conhecido — variável local `var`, variável de `for`, parâmetro de
+    // lambda de render-prop) é deixada tal como estava antes desta tarefa:
+    // não embrulhada. Isto é estritamente mais conservador que o brief —
+    // cobre o caso confirmado pela sonda da spec (`Object id` interpolado
+    // diretamente) sem reintroduzir nenhuma das 8 regressões acima.
+    //
+    // Limitação aceite (mesma natureza da já documentada no brief): uma
+    // expressão composta que produza um valor Java arbitrário sem overload
+    // dedicado (ex.: `{obj.getAlgumaCoisaArbitraria()}`) não é
+    // auto-toString'd por esta tarefa — precisaria de inferência de tipo
+    // real, fora de âmbito (ver ARCHITECTURE.md, limitações conhecidas).
+    private boolean shouldWrapInToString(Expr expr, java.util.Set<String> slotNames) {
+        if (isContentTyped(expr, slotNames)) return false;
+        if (!(expr instanceof Expr.PrimaryExpr p)) return false;
+        Type declaredType = currentValueParamTypes.get(p.text());
+        if (declaredType == null) return false;
+        return isArbitraryObjectType(declaredType);
+    }
+
+    // Lista fechada dos tipos Suko/Java que já têm overload dedicado em
+    // gg.jte.TemplateOutput.writeUserContent (confirmado por sonda na spec,
+    // "V1") — quando o tipo declarado do param não está aqui (e não é
+    // genérico nem array, casos deixados de fora por segurança, sem teste
+    // que os exercite), a interpolação é embrulhada em .toString().
+    private static final java.util.Set<String> KNOWN_TOSTRING_FREE_TYPE_NAMES = java.util.Set.of(
+        "int", "long", "short", "byte", "double", "float", "boolean", "char",
+        "Integer", "Long", "Short", "Byte", "Double", "Float", "Boolean", "Character",
+        "String", "Number", "Content"
+    );
+
+    private boolean isArbitraryObjectType(Type type) {
+        return type.arrayDimensions() == 0 && type.typeArguments().isEmpty()
+            && !KNOWN_TOSTRING_FREE_TYPE_NAMES.contains(type.name());
     }
 
     private void emitComponentCall(Statement.ComponentCallStmt call, StringBuilder out, java.util.Set<String> slotNames) {
