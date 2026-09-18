@@ -295,8 +295,39 @@ imprimiria a identidade do objeto Java, não o conteúdo. O emitter já
 sabe quais os identificadores são slots (tem a lista de nomes do
 componente atual), portanto a regra é decidível: não embrulhar se for
 slot ou se o tipo declarado for `Content`/`List<Content>`/`Function<..,
-Content>`; embrulhar em todos os outros casos, incluindo expressões de
-tipo desconhecido (`{user.nome}`), onde embrulhar é sempre seguro.
+Content>`.
+
+**Correção pós-implementação (tarefa 10 do plano, 2026-09-18):** a frase
+acima ("embrulhar em todos os outros casos... onde embrulhar é sempre
+seguro") estava **errada** e foi corrigida aqui após confirmação
+empírica (RED genuíno, não suposição). Embrulhar *toda* interpolação
+não-slot na ternária quebra 8 testes já verdes por dois motivos reais:
+(a) expressões compostas de tipo primitivo (`{a + b}`, `{a > b}`,
+`{label?.length() ?: -1}`) não podem ser comparadas a `null` — erro de
+compilação Java; (b) expressões que produzem `Content`/`Component` por
+um caminho que não é uma leitura direta de slot (`{row(item)}` de um
+render-prop, `{row.apply(...)}`, uma variável local de "componente
+como valor" da tarefa 5) ficam mal-embrulhadas, imprimindo a
+identidade do objeto Java em vez de renderizar. Isto inclui o próprio
+exemplo `{user.nome}` citado acima: se `nome` for um getter/campo que
+devolve um primitivo, embrulhar produz exatamente o mesmo erro de
+compilação — "embrulhar é sempre seguro" nunca foi verdade nem para
+este exemplo.
+
+**Âmbito real implementado:** só identificadores simples (`Expr.PrimaryExpr`)
+que resolvem a um `Param.ValueParam` do componente atual, cujo tipo
+declarado não está na lista fechada já coberta por overloads de
+`gg.jte.TemplateOutput.writeUserContent`. Cobre o caso-alvo desta
+tarefa (`Object id` interpolado diretamente, ou qualquer parâmetro de
+tipo não listado — `UUID`, `LocalDate`, um objeto de domínio passado
+diretamente). **Não cobre** `{user.nome}` nem qualquer outra expressão
+composta (acesso a propriedade, chamada de método) — isso exigiria
+inferência de tipo Java real sobre acessos/chamadas arbitrárias, que o
+projeto já decidiu não fazer (ver `ARCHITECTURE.md`). Não é uma
+escolha de âmbito por conveniência: é o âmbito máximo alcançável sem
+essa inferência — o único sítio onde "tipo referência, não primitivo"
+é decidível sem ela é o tipo declarado por extenso de um `ValueParam`
+na fonte `.sk`.
 
 ## Limitações conhecidas (fim deste subprojeto)
 
