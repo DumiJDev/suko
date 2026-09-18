@@ -17,21 +17,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Smoke test: parseia examples/Card.sk de ponta a ponta usando o
+ * Smoke test: parseia exemplos .sk de ponta a ponta usando o
  * Lexer/Parser gerados pelo ANTLR a partir de SukoLexer.g4 /
  * SukoParser.g4, e falha se houver qualquer erro de sintaxe.
  *
- * Isso valida em código o que só pôde ser checado estaticamente
- * (geração do ANTLR sem erros/avisos) no ambiente onde a gramática
+ * Isso valida em codigo o que so poderia ser checado estaticamente
+ * (geracao do ANTLR sem erros/avisos) no ambiente onde a gramatica
  * foi originalmente escrita — em especial o ponto mais arriscado:
- * texto misturado com for/if dentro de tags, e interpolação {expr}
- * dentro de conteúdo de tag.
+ * texto misturado com for/if dentro de tags, e interpolacao {expr}
+ * dentro de conteudo de tag.
  */
 class SukoParserSmokeTest {
 
-    @Test
-    void parsesCardExampleWithoutErrors() throws IOException {
-        Path file = Path.of("examples/Card.sk");
+    private void parseFile(String path, int expectedComponentCount, String expectedNames) throws IOException {
+        Path file = Path.of(path);
         String source = Files.readString(file);
 
         List<String> errors = new ArrayList<>();
@@ -54,14 +53,30 @@ class SukoParserSmokeTest {
 
         SukoParser.CompilationUnitContext tree = parser.compilationUnit();
 
-        // Imprime a árvore em formato LISP — útil pra inspecionar
-        // visualmente se algo vier estruturalmente errado mesmo
-        // sem erro de sintaxe (ex: um componentDecl "engoliu" o
-        // próximo por engano).
         System.out.println(tree.toStringTree(parser));
 
         assertTrue(errors.isEmpty(), "Erros de parsing encontrados: " + errors);
-        assertEquals(4, tree.componentDecl().size(),
-            "esperado 4 componentDecl no Card.sk (Card, NavLink, Page, AdminPanel)");
+        assertEquals(expectedComponentCount, tree.componentDecl().size(),
+            "esperado " + expectedComponentCount + " componentDecl em " + path + " (" + expectedNames + ")");
+    }
+
+    @Test
+    void parsesCardExampleWithoutErrors() throws IOException {
+        parseFile("examples/Card.sk", 4, "Card, NavLink, Page, AdminPanel");
+    }
+
+    @Test
+    void parsesDashboardExampleWithoutErrors() throws IOException {
+        parseFile("examples/dashboard/Dashboard.sk", 4, "NavLink, Dashboard, AdminPanel, ManagerPanel");
+    }
+
+    @Test
+    void parsesFormsExampleWithoutErrors() throws IOException {
+        parseFile("examples/forms/Forms.sk", 2, "LoginForm, RegistrationForm");
+    }
+
+    @Test
+    void parsesLayoutExampleWithoutErrors() throws IOException {
+        parseFile("examples/layout/LayoutComponents.sk", 6, "Layout, Card, Modal, Button, Input, Select");
     }
 }
