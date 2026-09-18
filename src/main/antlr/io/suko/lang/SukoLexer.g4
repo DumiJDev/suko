@@ -53,7 +53,20 @@ BooleanLiteral
 LPAREN    : '(';
 RPAREN    : ')';
 LBRACE    : '{';
-RBRACE    : '}';
+// DESVIO DO BRIEF (subprojeto 6, tarefa 7): "-> popMode" incondicional
+// fecharia também todo "}" que fecha templateBlock/slotBlock/if/for/switch
+// (a esmagadora maioria dos casos), cuja pilha de modos está vazia nesse
+// ponto — popMode() nessa condição lança exceção no runtime ANTLR. Só o
+// "}" que fecha um "${...}" (EXPR_INTERP_START empurrou DEFAULT_MODE de
+// dentro de STRING_MODE) tem de voltar de modo; esse é sempre o único "}"
+// com pilha não-vazia neste ponto, porque a gramática de `expression` não
+// tem chaves em si mesma (ver comentário em SukoParser.g4 junto a
+// stringPart). ANTLR não permite condição num comando "->", por isso usa-se
+// ação embutida em vez do atalho de comando — mesmo padrão de desvio já
+// usado em LINE_COMMENT.
+RBRACE
+    : '}' { if (!_modeStack.isEmpty()) popMode(); }
+    ;
 LBRACKET  : '[';
 RBRACKET  : ']';
 LE        : '<=';
