@@ -93,7 +93,41 @@ public class SemanticChecker {
             }
             case Statement.Interpolation interpolation ->
                 checkBareBraceInExpr(interpolation.expr(), paramNames, interpolation.span());
+            case Statement.TextRun textRun -> checkSwallowedVarDecl(textRun);
             default -> {}
+        }
+    }
+
+    private static final java.util.regex.Pattern SWALLOWED_VAR_DECL =
+            java.util.regex.Pattern.compile("\\bvar\\s+[a-zA-Z_][a-zA-Z0-9_]*\\s*=\\s*([A-Za-z_][a-zA-Z0-9_]*)\\s*\\(");
+
+    /** Heurística (revisão final do subprojeto 6, achado 5): uma declaração
+     * `var` bem formada NUNCA chega ao AST como texto — vira
+     * `Statement.VarDecl`. Quando o texto literal de um `textRun` contém
+     * `var x = Componente(`, é quase certo que o autor escreveu a forma
+     * inválida `var c = Card() { ... };` (chamada de componente como VALOR
+     * com um bloco de slot, que a gramática não suporta): o `textRun` guloso
+     * engole `var c = Card() ` como texto solto e o `{ ... }` vira uma
+     * interpolação comum. Sem este aviso, o resultado é HTML corrompido em
+     * silêncio (ou um erro de compilação do .jte, se a variável for lida
+     * depois). Só dispara quando o nome chamado é um componente REAL
+     * conhecido, para não marcar JavaScript inline legítimo. */
+    private void checkSwallowedVarDecl(Statement.TextRun textRun) {
+        var matcher = SWALLOWED_VAR_DECL.matcher(textRun.text());
+        while (matcher.find()) {
+            String calleeName = matcher.group(1);
+            if (symbolTable.lookup(calleeName) == null) {
+                continue;
+            }
+            diagnostics.add(new SukoDiagnostic(
+                    SukoDiagnostic.Severity.WARNING,
+                    "Declaração 'var' não reconhecida — foi lida como texto literal. Uma chamada de componente usada como VALOR "
+                            + "não pode levar um bloco de slot: escreva 'var x = " + calleeName + "(...);' sem '{ ... }' "
+                            + "(ver ARCHITECTURE.md, limitações conhecidas)",
+                    "VAR_DECL_NOT_PARSED",
+                    sourceFile,
+                    textRun.span()
+            ));
         }
     }
 

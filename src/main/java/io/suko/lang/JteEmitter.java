@@ -341,9 +341,19 @@ public class JteEmitter {
     // auto-toString'd por esta tarefa — precisaria de inferência de tipo
     // real, fora de âmbito (ver ARCHITECTURE.md, limitações conhecidas).
     private boolean shouldWrapInToString(Expr expr, java.util.Set<String> slotNames) {
-        if (isContentTyped(expr, slotNames)) return false;
         if (!(expr instanceof Expr.PrimaryExpr p)) return false;
-        Type declaredType = currentValueParamTypes.get(p.text());
+        return shouldWrapIdentifierInToString(p.text(), slotNames);
+    }
+
+    /** Núcleo da decisão de auto-toString, partilhado pelas duas posições em
+     * que uma interpolação pode aparecer: `Statement.Interpolation` (`{expr}`,
+     * tarefa 10) e `Expr.StringPart.Interp`/`SimpleInterp` (`"...${expr}..."`,
+     * tarefa 9 — inclui os valores de atributo). Antes da revisão final do
+     * subprojeto 6 esta lógica só existia no primeiro caso, o que fazia o
+     * mesmo `Object id` compilar como `{id}` e falhar como `href="${id}"`. */
+    private boolean shouldWrapIdentifierInToString(String identifier, java.util.Set<String> slotNames) {
+        if (slotNames.contains(identifier)) return false;
+        Type declaredType = currentValueParamTypes.get(identifier);
         if (declaredType == null) return false;
         return isArbitraryObjectType(declaredType);
     }
@@ -626,14 +636,61 @@ public class JteEmitter {
         }
 
         StringBuilder sb = new StringBuilder();
+        // CORREÇÃO (revisão final do subprojeto 6, achado 3): a concatenação
+        // tem de estar ANCORADA num valor de tipo String à esquerda. Sem
+        // âncora, `"${a}${b}"` emitia `(a) + (b)` — para `a`/`b` numéricos
+        // isso é SOMA em Java (`1 + 2` → `3`), não concatenação de texto; e
+        // uma string que seja puramente uma interpolação (`"$count"`) emitia
+        // a expressão nua, que não compila onde se espera um `String`
+        // (ex.: `String label = count;`). Como `+` é associativo à esquerda,
+        // basta que a PRIMEIRA parte seja String para que todas as seguintes
+        // concatenem como texto — por isso o `"" + ` só é necessário quando
+        // a primeira parte não é um literal.
+        //
+        // Exceção deliberada: quando a primeira parte é a leitura direta de
+        // um slot (`isContentTyped`), NÃO se ancora — ancorar forçaria
+        // `gg.jte.Content.toString()`, que imprime a identidade do objeto
+        // Java em vez de renderizar o conteúdo (mesmo raciocínio de
+        // `isContentTyped` em `shouldWrapInToString`).
+        if (!(parts.get(0) instanceof Expr.StringPart.Literal) && !firstPartIsContentTyped(parts.get(0), slotNames)) {
+            sb.append("\"\" + ");
+        }
         for (int i = 0; i < parts.size(); i++) {
             if (i > 0) sb.append(" + ");
             switch (parts.get(i)) {
                 case Expr.StringPart.Literal literal -> sb.append('"').append(literal.javaEscapedText()).append('"');
-                case Expr.StringPart.Interp interp -> sb.append('(').append(emitExpr(interp.expr(), slotNames)).append(')');
-                case Expr.StringPart.SimpleInterp simple -> sb.append(simple.identifier());
+                // CORREÇÃO (revisão final do subprojeto 6, achado 4): a decisão
+                // de auto-toString da tarefa 10 (antes só aplicada a
+                // `Statement.Interpolation`) aplica-se agora também à
+                // interpolação DENTRO de uma string literal — sem isto,
+                // `<a href="${id}">` não compilava para o mesmo `Object id`
+                // que `{id}` (statement) já compilava.
+                case Expr.StringPart.Interp interp -> {
+                    String emitted = emitExpr(interp.expr(), slotNames);
+                    sb.append(shouldWrapInToString(interp.expr(), slotNames)
+                        ? toStringWrapped(emitted)
+                        : "(" + emitted + ")");
+                }
+                case Expr.StringPart.SimpleInterp simple ->
+                    sb.append(shouldWrapIdentifierInToString(simple.identifier(), slotNames)
+                        ? toStringWrapped(simple.identifier())
+                        : simple.identifier());
             }
         }
         return sb.toString();
+    }
+
+    private boolean firstPartIsContentTyped(Expr.StringPart part, java.util.Set<String> slotNames) {
+        return switch (part) {
+            case Expr.StringPart.Literal ignored -> false;
+            case Expr.StringPart.Interp interp -> isContentTyped(interp.expr(), slotNames);
+            case Expr.StringPart.SimpleInterp simple -> slotNames.contains(simple.identifier());
+        };
+    }
+
+    /** Forma parentetizada do auto-toString null-safe (tarefa 10), segura para
+     * ser usada como operando de uma concatenação. */
+    private String toStringWrapped(String emitted) {
+        return "(" + emitted + " == null ? null : (" + emitted + ").toString())";
     }
 }

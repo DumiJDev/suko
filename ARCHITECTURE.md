@@ -209,13 +209,34 @@ arquitetura):
   registada aqui como convenção de autoria a evitar (escrever slots
   nomeados antes de conteúdo solto num mesmo bloco de chamada) até haver
   correção de gramática dedicada.
-  `List<Component> children` continua a exigir fills nomeados explícitos
-  (`children { ... } children { ... }`) — conteúdo solto não se reparte
-  automaticamente em vários elementos de lista.
-- **`var` faz parse mas rebenta o compilador.** `var x = 1;` está em
-  `templateStatement` na gramática e na spec do subprojeto 1, mas
-  `Statement` não tem variante `VarDecl` e o `SukoAstBuilder` lança
-  `IllegalStateException("templateStatement ainda não suportado")`.
+- **`List<Component> children` (MANY) também recebe o conteúdo solto**
+  (corrigido na revisão final do subprojeto 6: o `SukoAstBuilder`
+  sintetiza o fill `children` sem saber a cardinalidade do alvo — isso é
+  informação semântica, não sintática). O que NÃO acontece é a repartição:
+  todo o conteúdo solto de uma chamada vira **um único elemento** da lista,
+  nunca vários, porque não há separador na gramática entre "grupos" de
+  conteúdo solto. Para obter vários elementos, escrevem-se fills nomeados
+  explícitos (`children { ... } children { ... }`), que continuam a
+  funcionar e podem coexistir com conteúdo solto na mesma chamada (o
+  conteúdo solto acrescenta mais um elemento à lista). **Limitação aceite:**
+  essa mistura "solto + `children { ... }` explícito" só é erro
+  (`CARDINALITY_VIOLATION`) quando `children` é `Component` (ONE, onde os
+  dois fills são genuinamente ambíguos); em `List<Component>` é aceite em
+  silêncio, por ser um resultado bem definido (dois elementos de lista).
+- **Uma chamada de componente usada como VALOR não pode levar um bloco de
+  slot, e escrevê-lo não dá erro.** `var c = Card();` funciona (é
+  `Statement.VarDecl`), e `Card() { ... }` funciona como statement, mas a
+  combinação `var c = Card() { "x" };` não existe na gramática — e não é
+  rejeitada: `textRun` (o mesmo closure guloso da ressalva de ordem acima)
+  engole `var c = Card() ` como **texto literal**, o `{ "x" }` que sobra
+  vira uma `interpolation` comum e o `;` vira mais texto. O `.jte` gerado
+  passa a conter literalmente `var c = Card() ${"x"};` no meio do HTML, e
+  qualquer leitura posterior de `{c}` falha a compilar ("cannot find
+  symbol: c") — nunca há `Statement.VarDecl`. Correção real exigiria mudar
+  a gramática (fora do escopo do subprojeto 6). Mitigação atual: o
+  `SemanticChecker` deteta heuristicamente um `textRun` cujo texto contém
+  `var x = Componente(` (com `Componente` a resolver na tabela de símbolos)
+  e emite o aviso `VAR_DECL_NOT_PARSED`.
 - **Erros de parse não param a compilação.** Não há `ErrorListener` em
   `src/main`: o ANTLR imprime o erro no stderr e o `SukoAstBuilder`
   continua a percorrer uma árvore com nós de erro, produzindo `.jte`

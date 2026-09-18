@@ -118,14 +118,18 @@ biblioteca de componentes shadcn-style.
   chamadas de componente, misturados, na ordem em que aparecem — é
   reunido num único bloco de conteúdo, exatamente como já acontece
   hoje para qualquer `SlotFill` ONE com corpo de vários `Statement`.
-  **A síntese implícita só se aplica a `Component children` (ONE).**
-  `List<Component> children` continua a existir como parâmetro válido
-  (mesmo mecanismo `MANY` que já existe hoje), mas exige fills
-  nomeados explícitos (`children { ... } children { ... }`) — conteúdo
-  solto não se reparte automaticamente em vários elementos de lista,
-  porque essa repartição não é decidível a partir da gramática (não
-  há separador entre "grupos" de conteúdo solto). Fica registado como
-  possível extensão futura, não implementada nesta ronda.
+  **A síntese implícita aplica-se a `children` seja qual for a
+  cardinalidade declarada** (corrigido na revisão final: o
+  `SukoAstBuilder` sintetiza o fill no momento em que constrói o AST, onde
+  a cardinalidade do componente-alvo ainda não é conhecida — é informação
+  semântica). Em `List<Component> children` (MANY), todo o conteúdo solto
+  da chamada vira **um único elemento** da lista: o que não é decidível a
+  partir da gramática é a *repartição* em vários elementos (não há
+  separador entre "grupos" de conteúdo solto), e essa repartição fica
+  registada como possível extensão futura. Fills nomeados explícitos
+  (`children { ... } children { ... }`) continuam a ser a forma de obter
+  vários elementos, e podem coexistir com conteúdo solto na mesma chamada
+  (o conteúdo solto acrescenta mais um elemento).
 - `children` passa a ser **nome reservado**: um parâmetro chamado
   `children` que não seja `Component`/`List<Component>` é erro do
   verificador.
@@ -155,8 +159,11 @@ biblioteca de componentes shadcn-style.
 - Conteúdo solto num componente cujo alvo não declara `children` →
   erro explícito (hoje é descarte silencioso).
 - Conteúdo solto **e** um fill explícito nomeado `children { ... }` na
-  mesma chamada → erro (ambíguo; só uma das duas formas é aceite por
-  chamada).
+  mesma chamada, quando `children` é `Component` (ONE) → erro
+  (`CARDINALITY_VIOLATION`: dois fills para um slot ONE é genuinamente
+  ambíguo). **Quando `children` é `List<Component>` (MANY) isto é aceite
+  em silêncio** e produz dois elementos de lista — resultado bem definido,
+  registado aqui como limitação aceite (não há diagnóstico dedicado).
 - Parâmetro chamado `children` com tipo que não é `Component` nem
   `List<Component>` → erro na declaração do componente.
 
@@ -357,9 +364,10 @@ na fonte `.sk`.
 - `children` ONE: conteúdo solto misto (texto + HTML + chamada de
   componente) sintetizado num único fill; erro quando não há
   `children` declarado; erro quando há conteúdo solto E fill
-  explícito `children { }` na mesma chamada. `children` MANY
-  (`List<Component>`): confirma que continua a exigir fills nomeados
-  explícitos (não sintetiza a partir de conteúdo solto).
+  explícito `children { }` na mesma chamada (só ONE). `children` MANY
+  (`List<Component>`): confirma que o conteúdo solto também é
+  sintetizado, como **um único** elemento de lista, e que coexiste com
+  fills nomeados explícitos sem diagnóstico.
 - `Expr.ComponentCallExpr`: em `var`, em ternário, como argumento —
   precedido da sonda empírica descrita acima.
 - Interpolação: `${expr}` e `$ident` dentro de string e de atributo,

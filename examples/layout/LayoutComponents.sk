@@ -63,7 +63,7 @@ component Modal(String title, boolean open, Content header, Content body, Conten
 }
 
 component Button(String href = "#", String label, String variant = "primary", boolean disabled = false) {
-  <a href={href} class="btn btn-{variant}" disabled={disabled}>
+  <a href={href} class="btn btn-${variant}" disabled={disabled}>
     {label}
   </a>
 }
