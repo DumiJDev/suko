@@ -1,6 +1,5 @@
 package io.suko.lang.gradle;
 
-import io.suko.lang.JteCompiler;
 import io.suko.lang.diagnostic.DiagnosticCollector;
 import io.suko.lang.diagnostic.SukoDiagnostic;
 import org.gradle.api.tasks.Input;
@@ -9,7 +8,6 @@ import org.gradle.api.tasks.TaskAction;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
 /**
  * Task for compiling .sk files to .jte using JteCompiler.
@@ -37,49 +35,26 @@ public class SukoCompileTask extends SukoBaseTask {
             throw new RuntimeException("Failed to create output directory: " + outputDir, e);
         }
 
-        try {
-            List<Path> skFiles = findSkFiles(sourceDir);
-            if (skFiles.isEmpty()) {
-                getLogger().lifecycle("No .sk files found in {}", sourceDir);
-                return;
-            }
+        io.suko.lang.project.SukoProjectCompiler.ProjectCompileResult result =
+            new io.suko.lang.project.SukoProjectCompiler().compile(sourceDir);
 
-            for (Path skFile : skFiles) {
-                compileSingleFile(skFile, outputDir);
+        for (var entry : result.generatedJteSources().entrySet()) {
+            Path jteFile = outputDir.resolve(entry.getKey());
+            try {
+                Files.createDirectories(jteFile.getParent());
+                Files.writeString(jteFile, entry.getValue());
+                getLogger().lifecycle("Compiled: {}", entry.getKey());
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write " + jteFile, e);
             }
-        } catch (RuntimeException e) {
-            getLogger().error("Error processing SkFiles: {}", e.getMessage());
         }
-    }
 
-    private void compileSingleFile(Path skFile, Path outputDir) {
-        try {
-            String source = Files.readString(skFile);
-            String fileName = skFile.getFileName().toString();
-            JteCompiler compiler = new JteCompiler(fileName, source);
-            JteCompiler.CompileResult result = compiler.compile();
-
-            if (result.success()) {
-                getLogger().lifecycle("Compiled: {}", fileName);
-                for (var entry : result.generatedJteSources().entrySet()) {
-                    Path jteFile = outputDir.resolve(entry.getKey());
-                    Files.writeString(jteFile, entry.getValue());
-                }
-            } else {
-                printDiagnostics(result.diagnostics(), skFile.toString());
-            }
-        } catch (IOException e) {
-            getLogger().error("Failed to read {}: {}", skFile, e.getMessage());
+        for (var fileEntry : result.diagnosticsByFile().entrySet()) {
+            printDiagnostics(fileEntry.getValue(), fileEntry.getKey().toString());
         }
-    }
 
-    private List<Path> findSkFiles(Path sourceDir) {
-        try (var stream = Files.list(sourceDir)) {
-            return stream
-                .filter(f -> f.toFile().isFile() && f.toString().endsWith(".sk"))
-                .toList();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to list source directory: " + sourceDir, e);
+        if (!result.success()) {
+            throw new RuntimeException("Suko compilation failed — see diagnostics above");
         }
     }
 
