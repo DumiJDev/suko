@@ -1,3 +1,3 @@
 rootProject.name = "suko"
 
-include("suko-maven-plugin")
+include("suko-core", "suko-maven-plugin")

@@ -62,22 +62,22 @@ class SukoParserSmokeTest {
 
     @Test
     void parsesCardExampleWithoutErrors() throws IOException {
-        parseFile("examples/Card.sk", 4, "Card, NavLink, Page, AdminPanel");
+        parseFile("../examples/Card.sk", 4, "Card, NavLink, Page, AdminPanel");
     }
 
     @Test
     void parsesDashboardExampleWithoutErrors() throws IOException {
-        parseFile("examples/dashboard/Dashboard.sk", 4, "NavLink, Dashboard, AdminPanel, ManagerPanel");
+        parseFile("../examples/dashboard/Dashboard.sk", 4, "NavLink, Dashboard, AdminPanel, ManagerPanel");
     }
 
     @Test
     void parsesFormsExampleWithoutErrors() throws IOException {
-        parseFile("examples/forms/Forms.sk", 2, "LoginForm, RegistrationForm");
+        parseFile("../examples/forms/Forms.sk", 2, "LoginForm, RegistrationForm");
     }
 
     @Test
     void parsesLayoutExampleWithoutErrors() throws IOException {
-        parseFile("examples/layout/LayoutComponents.sk", 7, "Layout, Card, Modal, Button, Input, Select, ItemList");
+        parseFile("../examples/layout/LayoutComponents.sk", 7, "Layout, Card, Modal, Button, Input, Select, ItemList");
     }
 
     @Test

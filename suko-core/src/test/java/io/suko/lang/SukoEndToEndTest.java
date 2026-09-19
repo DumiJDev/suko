@@ -26,7 +26,7 @@ class SukoEndToEndTest {
 
     @Test
     void rendersNavLinkFromCardExample() throws Exception {
-        String source = Files.readString(Path.of("examples/Card.sk"));
+        String source = Files.readString(Path.of("../examples/Card.sk"));
 
         String html = JteRenderSupport.renderWithDependencies(source, "NavLink", Map.of(
             "label", "Perfil",

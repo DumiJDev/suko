@@ -4,15 +4,7 @@ plugins {
     `java-library`
 }
 
-group = "io.suko"
-version = "0.1.0-SNAPSHOT"
-
 description = "Maven plugin for Suko language compilation"
-
-repositories {
-    mavenCentral()
-    gradlePluginPortal()
-}
 
 dependencies {
     // NOTE: `org.apache.maven:maven-bom` não existe como artefacto publicado
@@ -27,8 +19,8 @@ dependencies {
     implementation("org.apache.maven.plugin-tools:maven-plugin-annotations:3.11.0")
     implementation("org.codehaus.plexus:plexus-utils:3.6.0")
 
-    // Suko core (root project — grammar, AST, JteCompiler, SukoProjectCompiler)
-    implementation(project(":"))
+    // Suko core (grammar, AST, JteCompiler, SukoProjectCompiler)
+    implementation(project(":suko-core"))
 
     // ANTLR and JTE (same as core)
     implementation("org.antlr:antlr4:4.13.1")
@@ -39,10 +31,11 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-// Java version: deixado ao default (mesmo JDK que o projeto raiz, do qual este
-// módulo depende via `project(":")`) — um `sourceCompatibility`/`targetCompatibility`
-// explícito a 17 aqui entra em conflito de resolução de variante com o projeto raiz,
-// que não fixa versão e por isso assume o JDK atual (ver descoberta acima).
+// Java version: deixado ao default (mesmo JDK que suko-core, do qual este
+// módulo depende via `project(":suko-core")`) — um `sourceCompatibility`/
+// `targetCompatibility` explícito a 17 aqui entra em conflito de resolução de
+// variante com suko-core, que não fixa versão e por isso assume o JDK atual
+// (ver descoberta acima).
 
 // Jar configuration for Maven plugin
 tasks.jar {
