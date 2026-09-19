@@ -36,6 +36,38 @@ Análise semântica [subprojeto 2 — CONCLUÍDO]
  Classe Java compilada, renderização em runtime
 ```
 
+## Estrutura de módulos
+
+Monorepo Gradle multi-módulo (migração documentada em
+`docs/superpowers/specs/2026-09-19-suko-monorepo-migration.md`). A raiz é
+um agregador puro — `settings.gradle.kts` + um `build.gradle.kts` que só
+define `group`/`version`/`repositories` partilhados via `subprojects {}`,
+sem source próprio.
+
+- **`suko-core/`** — o compilador: gramática ANTLR, AST, `SukoAstBuilder`,
+  `SemanticChecker`, `JteEmitter`, `JteCompiler`,
+  `io.suko.lang.project.*` (`ProjectIndex`, `SukoProjectCompiler`). Sem
+  dependência de nenhum outro módulo.
+- **`suko-gradle-plugin/`** — `io.suko.lang.gradle.*`
+  (`SukoGradlePlugin`, `SukoCompileTask`, `SukoWatchTask`) extraído do
+  antigo módulo raiz sem mudança de comportamento. Depende de
+  `suko-core`. **Lacuna conhecida:** tal como o `suko-maven-plugin` (ver
+  item 4 do roadmap abaixo), este módulo nunca foi aplicado como plugin
+  Gradle com ID descobrível (`gradlePlugin{}`/
+  `META-INF/gradle-plugins/*.properties`) — existe só como classe
+  `Plugin<Project>`, testada diretamente, não via `plugins { id(...) }`.
+  Preservado tal como estava antes desta migração; não corrigido aqui.
+- **`suko-maven-plugin/`** — plugin Maven (`SukoCompileMojo`), depende de
+  `suko-core`. Ver a ressalva já documentada no item 4 do roadmap sobre o
+  descritor de plugin Maven não estar completo.
+- **`suko-components/`** — scaffold vazio para a biblioteca de
+  componentes (subprojeto 7), depende de `suko-core`.
+- **`suko-website/`** — scaffold vazio para o site de documentação
+  (subprojeto 9), depende de `suko-core` e `suko-components`.
+
+`examples/` (ficheiros `.sk` de referência) permanece na raiz do
+repositório, fora de qualquer módulo — não é uma unidade de build.
+
 ## Decisões de design que moldam o pipeline
 
 - **Geração de JTE puro como intermediário** (não bytecode direto):
@@ -359,8 +391,11 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    plugin utilizável** (`META-INF/maven/plugin.xml`) — a geração,
    não-funcional, foi removida; ver o comentário em
    `suko-maven-plugin/build.gradle.kts`. Ou seja, `mvn suko:compile` ainda
-   não é executável end-to-end. Ver também a lacuna do `sukoWatch` nas
-   limitações do subprojeto 5, acima.
+   não é executável end-to-end. O mesmo vale para `suko-gradle-plugin`
+   (ver "Estrutura de módulos" acima): existe como classe
+   `Plugin<Project>` testada diretamente, nunca foi aplicado como plugin
+   com ID descobrível em lado nenhum. Ver também a lacuna do `sukoWatch`
+   nas limitações do subprojeto 5, acima.
 5. **Projeto multi-ficheiro (resolução de nomes)** — CONCLUÍDO
    (`docs/superpowers/specs/2026-09-19-suko-projeto-multificheiro.md`).
    `package`/`import` resolvidos de verdade via `ProjectIndex` +
