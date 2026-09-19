@@ -12,6 +12,7 @@ import io.suko.lang.SukoLexer;
 import io.suko.lang.SukoParser;
 import io.suko.lang.ast.ComponentDecl;
 import io.suko.lang.ast.SukoFile;
+import io.suko.lang.project.SukoProjectCompiler;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 
@@ -77,6 +78,30 @@ public final class JteRenderSupport {
 
         TemplateOutput output = new StringOutput();
         templateEngine.render(entryComponent + ".jte", params, output);
+        return output.toString();
+    }
+
+    /** Compila um projeto multi-ficheiro real (SukoProjectCompiler) e
+     * renderiza o template pelo caminho relativo, sem ".jte" (ex.
+     * "ui/NavLink" ou "Home"). Usado pelos testes do subprojeto 5. */
+    public static String renderProject(Path sourceRoot, String entryRelativePath, Map<String, Object> params) throws IOException {
+        SukoProjectCompiler.ProjectCompileResult result = new SukoProjectCompiler().compile(sourceRoot);
+        if (!result.success()) {
+            throw new IllegalStateException("Compilação do projeto falhou: " + result.diagnosticsByFile());
+        }
+
+        Path tempDir = Files.createTempDirectory("suko-jte-render-project");
+        for (var entry : result.generatedJteSources().entrySet()) {
+            Path jteFile = tempDir.resolve(entry.getKey().toString());
+            Files.createDirectories(jteFile.getParent());
+            Files.writeString(jteFile, entry.getValue());
+        }
+
+        CodeResolver codeResolver = new DirectoryCodeResolver(tempDir);
+        TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Html);
+
+        TemplateOutput output = new StringOutput();
+        templateEngine.render(entryRelativePath + ".jte", params, output);
         return output.toString();
     }
 }

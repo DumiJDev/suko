@@ -4,6 +4,8 @@ import io.suko.lang.ast.*;
 import io.suko.lang.diagnostic.DiagnosticCollector;
 import io.suko.lang.diagnostic.SukoDiagnostic;
 import io.suko.lang.diagnostic.SukoDiagnostic.Severity;
+import io.suko.lang.project.ProjectIndex;
+import io.suko.lang.project.ProjectIndexEntry;
 import io.suko.lang.semantic.SemanticChecker;
 import io.suko.lang.symbol.SymbolTable;
 import io.suko.lang.diagnostic.SukoErrorListener;
@@ -12,6 +14,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.LinkedHashMap;
@@ -51,31 +54,21 @@ public class JteCompiler {
      *   <li>Senão: return CompileResult.success com sources .jte gerados</li>
      * </ol>
      */
-    public CompileResult compile() {
-        DiagnosticCollector diagnostics = new DiagnosticCollector();
-
-        // 1. Parse → AST via ANTLR
+    private SukoFile parseAndBuild(DiagnosticCollector diagnostics) {
         SukoLexer lexer = new SukoLexer(CharStreams.fromString(sukoSource));
         SukoParser parser = new SukoParser(new CommonTokenStream(lexer));
 
-        // Captura erros de parse com SukoErrorListener
         SukoErrorListener parseErrorListener = new SukoErrorListener(diagnostics, fileName);
         parser.removeErrorListeners();
         parser.addErrorListener(parseErrorListener);
 
-        // Parse tree - armazena o contexto para reutilizar
         SukoParser.CompilationUnitContext compilationUnitCtx = parser.compilationUnit();
-
-        // Se houve erros de parse, já retorna falha
         if (diagnostics.hasErrors()) {
-            return CompileResult.failure(diagnostics);
+            return null;
         }
 
-        // 2. AST → SukoAstBuilder (reutiliza o mesmo contexto de parse)
-        SukoAstBuilder astBuilder = new SukoAstBuilder(sukoSource);
-        SukoFile sukoFile;
         try {
-            sukoFile = astBuilder.build(compilationUnitCtx);
+            return new SukoAstBuilder(sukoSource).build(compilationUnitCtx);
         } catch (IllegalStateException e) {
             diagnostics.add(new SukoDiagnostic(
                 Severity.ERROR,
@@ -84,28 +77,52 @@ public class JteCompiler {
                 fileName,
                 new SourceSpan(0, 0, 0, 0)
             ));
+            return null;
+        }
+    }
+
+    public CompileResult compile() {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SukoFile sukoFile = parseAndBuild(diagnostics);
+        if (sukoFile == null) {
             return CompileResult.failure(diagnostics);
         }
 
-        // 3. Tabela de símbolos + Validador semântico
         SymbolTable symbolTable = new SymbolTable();
-        SemanticChecker semanticChecker = new SemanticChecker(symbolTable, diagnostics, fileName);
-        semanticChecker.check(sukoFile);
-
-        // Se houve erros semânticos, retorna falha
+        new SemanticChecker(symbolTable, diagnostics, fileName).check(sukoFile);
         if (diagnostics.hasErrors()) {
             return CompileResult.failure(diagnostics);
         }
 
-        // 4. JTE Emit com source maps
-        Map<String, String> jteSources = new LinkedHashMap<>();
+        return emitAll(sukoFile, new JteEmitter(sukoFile.components()));
+    }
 
-        JteEmitter emitter = new JteEmitter(sukoFile.components());
+    /** Consciente de projeto (subprojeto 5): resolve import/visibilidade/
+     * nome-composto contra o ProjectIndex de todo o projeto, não só deste
+     * ficheiro. Usado por SukoProjectCompiler (Fase 2). */
+    public CompileResult compile(ProjectIndex projectIndex, Path fileRelativePath) {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SukoFile sukoFile = parseAndBuild(diagnostics);
+        if (sukoFile == null) {
+            return CompileResult.failure(diagnostics);
+        }
+
+        SymbolTable symbolTable = new SymbolTable();
+        new SemanticChecker(symbolTable, diagnostics, fileName, projectIndex, fileRelativePath).check(sukoFile);
+        if (diagnostics.hasErrors()) {
+            return CompileResult.failure(diagnostics);
+        }
+
+        Map<String, ProjectIndexEntry> importedByShortName = projectIndex.resolveImports(sukoFile.imports());
+        return emitAll(sukoFile, new JteEmitter(sukoFile.components(), importedByShortName));
+    }
+
+    private CompileResult emitAll(SukoFile sukoFile, JteEmitter emitter) {
+        Map<String, String> jteSources = new LinkedHashMap<>();
         for (ComponentDecl component : sukoFile.components()) {
             JteEmitter.EmitResult result = emitter.emitWithSourceMap(component);
             jteSources.put(component.name() + ".jte", result.jteSource());
         }
-
         return CompileResult.success(jteSources);
     }
 }
