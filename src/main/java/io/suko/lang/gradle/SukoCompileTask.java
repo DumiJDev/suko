@@ -29,6 +29,17 @@ public class SukoCompileTask extends SukoBaseTask {
         Path sourceDir = getExtension().getSourceDirAsPath();
         Path outputDir = getExtension().getOutputDirAsPath();
 
+        // Revisão final (achado J): restaurado o tratamento amigável de
+        // "sem fontes", perdido quando esta task passou a usar o
+        // SukoProjectCompiler — sem isto, um sourceDir inexistente rebentava
+        // com um UncheckedIOException de Files.walk. O lado Maven
+        // (SukoCompileMojo) sempre teve o equivalente.
+        String skipReason = noSourcesMessage(sourceDir);
+        if (skipReason != null) {
+            getLogger().lifecycle(skipReason);
+            return;
+        }
+
         try {
             Files.createDirectories(outputDir);
         } catch (IOException e) {
@@ -55,6 +66,24 @@ public class SukoCompileTask extends SukoBaseTask {
 
         if (!result.success()) {
             throw new RuntimeException("Suko compilation failed — see diagnostics above");
+        }
+    }
+
+    /**
+     * Devolve a mensagem amigável a mostrar quando não há nada para compilar,
+     * ou {@code null} quando a compilação deve prosseguir. Varre recursivamente
+     * (tal como o SukoProjectCompiler, que usa Files.walk) — package-private
+     * para ser testável sem instanciar um Project do Gradle.
+     */
+    static String noSourcesMessage(Path sourceDir) {
+        if (!Files.isDirectory(sourceDir)) {
+            return "No .sk files found in " + sourceDir + " (directory does not exist)";
+        }
+        try (java.util.stream.Stream<Path> walk = Files.walk(sourceDir)) {
+            boolean hasSkFiles = walk.anyMatch(p -> Files.isRegularFile(p) && p.toString().endsWith(".sk"));
+            return hasSkFiles ? null : "No .sk files found in " + sourceDir;
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to scan source directory: " + sourceDir, e);
         }
     }
 

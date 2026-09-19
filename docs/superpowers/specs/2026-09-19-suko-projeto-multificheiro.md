@@ -94,11 +94,32 @@ Isto implica extensão de API, não reescrita:
 dentro de `<sourceRoot>/foo/bar/`. Um ficheiro **sem** `package` fica
 no pacote raiz (default) e **não tem nenhuma restrição de pasta** —
 pode viver em qualquer subpasta de `sourceRoot`, incluída ou não numa
-declaração de `package` de outros ficheiros vizinhos. Isto é o que
-mantém `examples/` (que tem subpastas como `examples/layout/` sem
-nenhum `.sk` declarar `package`) a compilar sem qualquer alteração:
-declarar `package` é sempre opt-in, e só quem declara fica sujeito à
-regra de correspondência de pasta.
+declaração de `package` de outros ficheiros vizinhos. Declarar
+`package` é sempre opt-in, e só quem declara fica sujeito à regra de
+correspondência de pasta.
+
+**Como se resolve um ficheiro sem `package`** (correção da revisão
+final, achado B): é a **pasta** relativa ao `sourceRoot` — nunca o
+`package` (ausente) — que determina o nome qualificado do componente, o
+prefixo de `@template.*` emitido e a subpasta do `.jte` gerado. Um
+ficheiro `sub/Foo.sk` sem `package` declara componentes com o nome
+qualificado `sub.Foo`, exatamente como se tivesse escrito `package
+sub;`. Isto é o que mantém as três noções de "onde vive este
+componente" (índice, emissão, output) alinhadas; antes desta correção
+divergiam precisamente neste caso, gerando `sub/Foo.jte` mas emitindo
+`@template.Foo(...)` — `TemplateNotFoundException` em tempo de render,
+com `success=true` e zero diagnósticos. Para um ficheiro que declara o
+`package` correto o resultado é idêntico ao do `package` declarado, já
+que `PACKAGE_DIRECTORY_MISMATCH` garante que coincidem.
+
+**Nota sobre `examples/`** (correção factual da revisão final, achado
+K): `examples/` **não** foi migrado para as convenções multi-ficheiro
+neste subprojeto. Os `.sk` que lá estão declaram `package`s que não
+correspondem às suas pastas reais, por isso correr o
+`SukoProjectCompiler` sobre `examples/` hoje produz vários
+`PACKAGE_DIRECTORY_MISMATCH`/`COMPONENT_NOT_VISIBLE`/`IMPORT_NOT_FOUND`.
+Migrar `examples/` para um projeto multi-ficheiro válido está fora de
+âmbito deste subprojeto e fica adiado para um futuro.
 
 **Diagnóstico novo:** `PACKAGE_DIRECTORY_MISMATCH` quando um ficheiro
 **declara** `package foo.bar;` mas o caminho relativo real do ficheiro

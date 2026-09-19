@@ -76,6 +76,30 @@ class SemanticCheckerProjectTest {
         assertTrue(diagnostics.getDiagnostics().stream().anyMatch(d -> "COMPONENT_NOT_VISIBLE".equals(d.code())));
     }
 
+    /** Revisão final, achado G: antes disparava DUAS vezes — uma na linha do
+     * import, outra em cada chamada — para o mesmo problema. E o call site
+     * também não pode cair num COMPONENT_NOT_FOUND espúrio. */
+    @Test
+    void componentNotVisibleFiresExactlyOnceForImportedNonPublicComponent(@TempDir Path sourceRoot) throws IOException {
+        writeUiBadge(sourceRoot, false);
+        String source = """
+            import ui.Badge;
+
+            component Home() {
+              Badge(text="x")
+              Badge(text="y")
+            }
+            """;
+        DiagnosticCollector diagnostics = checkAgainstProject(sourceRoot, source, "Home.sk", Path.of("Home.sk"));
+
+        assertEquals(1, diagnostics.getDiagnostics().stream()
+                .filter(d -> "COMPONENT_NOT_VISIBLE".equals(d.code())).count(),
+            diagnostics.toString());
+        assertTrue(diagnostics.getDiagnostics().stream().noneMatch(d -> "COMPONENT_NOT_FOUND".equals(d.code())),
+            "a supressão no call site não pode trocar um diagnóstico por outro: " + diagnostics);
+        assertEquals(1, diagnostics.getDiagnostics().size(), diagnostics.toString());
+    }
+
     @Test
     void packageDirectoryMismatchIsReported(@TempDir Path sourceRoot) throws IOException {
         writeUiBadge(sourceRoot, true);
@@ -89,6 +113,31 @@ class SemanticCheckerProjectTest {
         // ficheiro fisicamente na raiz, mas declara package ui — não bate
         DiagnosticCollector diagnostics = checkAgainstProject(sourceRoot, source, "Wrong.sk", Path.of("Wrong.sk"));
         assertTrue(diagnostics.getDiagnostics().stream().anyMatch(d -> "PACKAGE_DIRECTORY_MISMATCH".equals(d.code())));
+    }
+
+    /** Revisão final, achado F: o diagnóstico reportava sempre 0:0 em vez da
+     * posição real da declaração `package`. */
+    @Test
+    void packageDirectoryMismatchPointsAtTheRealPackageDeclaration(@TempDir Path sourceRoot) throws IOException {
+        writeUiBadge(sourceRoot, true);
+        String source = """
+            // comentário antes do package
+
+            package ui;
+
+            component Wrong() {
+              <div>x</div>
+            }
+            """;
+        DiagnosticCollector diagnostics = checkAgainstProject(sourceRoot, source, "Wrong.sk", Path.of("Wrong.sk"));
+
+        var mismatch = diagnostics.getDiagnostics().stream()
+            .filter(d -> "PACKAGE_DIRECTORY_MISMATCH".equals(d.code()))
+            .findFirst().orElseThrow();
+        assertEquals(3, mismatch.span().startLine(), "linha real do `package ui;`");
+        assertEquals(0, mismatch.span().startColumn());
+        assertTrue(mismatch.span().endIndex() > mismatch.span().startIndex(),
+            "span real, não o placeholder 0:0:0:0");
     }
 
     @Test

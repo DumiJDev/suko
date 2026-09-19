@@ -186,6 +186,20 @@ arquitetura):
   antigo bug de `TemplateNotFoundException` em nomes compostos: `gg.jte`
   já lia o ponto de `@template.ui.NavLink(...)` como separador de path,
   só faltava o ficheiro existir nessa subpasta.
+- **Lacuna conhecida: `sukoWatch` não foi migrado para o modelo
+  multi-ficheiro.** `SukoCompileTask` (Gradle) passou a usar o
+  `SukoProjectCompiler` neste subprojeto, mas `SukoWatchTask` continua
+  a chamar o caminho antigo, por ficheiro (`new JteCompiler(...).compile()`
+  com um `Files.list` não recursivo). Consequências: (a) o modo watch
+  escreve output **plano**, sem espelhar pacotes, divergindo do
+  `sukoCompile` na mesma pasta de output; (b) nenhum dos 4 diagnósticos
+  novos deste subprojeto (`IMPORT_NOT_FOUND`, `COMPONENT_NOT_VISIBLE`,
+  `AMBIGUOUS_IMPORT`, `PACKAGE_DIRECTORY_MISMATCH`) é visto em watch;
+  (c) chamadas cross-ficheiro não resolvem em watch. Deliberadamente
+  **não** corrigido na revisão final do subprojeto 5: a semântica de
+  recompilação incremental em modo watch (que reindexar, quando, e o
+  que fazer quando um ficheiro que outros importam muda) precisa do seu
+  próprio desenho e testes. Fica sinalizado como tarefa futura.
 - **Limitação aceite: verificação de slot fills não atravessa
   ficheiros.** A Fase 1 do `ProjectIndex` só indexa a assinatura
   superficial de cada componente (nome, pacote, `public`, nº de
@@ -216,6 +230,18 @@ arquitetura):
   Tarefas 1-8) — descoberto durante a Tarefa 8. Correção exigiria
   adicionar um caso `Statement.HtmlElement` a `checkStatement` que
   chame `checkStatementList` sobre `children()`.
+  **Consequência prática (revisão final do subprojeto 5) — isto não é
+  cosmético.** Como a esmagadora maioria das chamadas reais em Suko é
+  escrita dentro de uma tag HTML (`<div>SomeComponent()</div>`), as
+  próprias verificações de existência e visibilidade que este
+  subprojeto introduz (`COMPONENT_NOT_VISIBLE`, `IMPORT_NOT_FOUND`,
+  `COMPONENT_NOT_FOUND`) são trivialmente contornadas no caso comum. O
+  modelo de visibilidade tal como está entregue é, na prática,
+  "verificado apenas no nível de topo do corpo de um componente", não
+  "verificado". O que faz a funcionalidade parecer correta hoje é o
+  **emitter** (que resolve as chamadas aninhadas corretamente), não o
+  **verificador** — fechar esta lacuna é pré-requisito para se poder
+  dizer que a visibilidade é realmente imposta.
 - **Children implícitos (subprojeto 6) resolveram o caso principal, mas
   há uma ordem que ainda engole um slot nomeado em silêncio.** Um
   componente que declara um parâmetro `Component children` (ou
@@ -328,6 +354,13 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    Validadores de componentes e slots implementados.
 3. **Verificação Java** — CONCLUÍDO. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` compila stubs Java e mapeia erros para `.sk`.
 4. **Integração no build** — CONCLUÍDO. Plugin Gradle (`sukoCompile`, `sukoWatch`), plugin Maven (`suko:compile`), modo watch com `WatchService`, E2E tests.
+   **Ressalva (Tarefa 7 do subprojeto 5):** o módulo `suko-maven-plugin`
+   compila e tem testes unitários, mas **ainda não produz um descritor de
+   plugin utilizável** (`META-INF/maven/plugin.xml`) — a geração,
+   não-funcional, foi removida; ver o comentário em
+   `suko-maven-plugin/build.gradle.kts`. Ou seja, `mvn suko:compile` ainda
+   não é executável end-to-end. Ver também a lacuna do `sukoWatch` nas
+   limitações do subprojeto 5, acima.
 5. **Projeto multi-ficheiro (resolução de nomes)** — CONCLUÍDO
    (`docs/superpowers/specs/2026-09-19-suko-projeto-multificheiro.md`).
    `package`/`import` resolvidos de verdade via `ProjectIndex` +

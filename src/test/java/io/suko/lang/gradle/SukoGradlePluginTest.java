@@ -47,4 +47,25 @@ class SukoGradlePluginTest {
         assertFalse(result.success(), "Compilação deve falhar para código inválido");
         assertTrue(result.diagnostics().hasErrors());
     }
+
+    /** Revisão final, achado J: o tratamento amigável de "sem fontes"
+     * perdeu-se quando a SukoCompileTask passou a usar o SukoProjectCompiler
+     * — um sourceDir inexistente rebentava com UncheckedIOException vindo de
+     * Files.walk, em vez da mensagem que o lado Maven sempre teve. */
+    @Test
+    void noSourcesMessageHandlesMissingAndEmptyDirectories() throws Exception {
+        Path missing = Files.createTempDirectory("suko-missing").resolve("does-not-exist");
+        String missingMessage = assertDoesNotThrow(() -> SukoCompileTask.noSourcesMessage(missing));
+        assertNotNull(missingMessage);
+        assertTrue(missingMessage.startsWith("No .sk files found in "), missingMessage);
+
+        Path empty = Files.createTempDirectory("suko-empty");
+        assertEquals("No .sk files found in " + empty, SukoCompileTask.noSourcesMessage(empty));
+
+        Path withSources = Files.createTempDirectory("suko-with-sources");
+        Files.createDirectories(withSources.resolve("ui"));
+        Files.writeString(withSources.resolve("ui").resolve("Card.sk"), "component Card() {\n  <p>x</p>\n}\n");
+        assertNull(SukoCompileTask.noSourcesMessage(withSources),
+            "com .sk (mesmo em subpasta) a compilação tem de prosseguir");
+    }
 }
