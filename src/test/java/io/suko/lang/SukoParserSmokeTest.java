@@ -97,4 +97,25 @@ class SukoParserSmokeTest {
             parser.compilationUnit();
         });
     }
+
+    @Test
+    void parsesPublicAndDefaultVisibilityComponentsWithoutErrors() {
+        String source = """
+            public component NavLink(String href) {
+              <a href="{href}">link</a>
+            }
+            component Helper() {
+              <span>x</span>
+            }
+            """;
+        org.junit.jupiter.api.Assertions.assertDoesNotThrow(() -> {
+            var lexer = new io.suko.lang.SukoLexer(org.antlr.v4.runtime.CharStreams.fromString(source));
+            var parser = new io.suko.lang.SukoParser(new org.antlr.v4.runtime.CommonTokenStream(lexer));
+            parser.setErrorHandler(new org.antlr.v4.runtime.BailErrorStrategy());
+            SukoParser.CompilationUnitContext tree = parser.compilationUnit();
+            assertEquals(2, tree.componentDecl().size());
+            assertTrue(tree.componentDecl(0).PUBLIC() != null, "primeiro componente devia ter modificador public");
+            assertTrue(tree.componentDecl(1).PUBLIC() == null, "segundo componente não devia ter modificador public");
+        });
+    }
 }

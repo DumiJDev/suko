@@ -33,6 +33,7 @@ lexer grammar SukoLexer;
 PACKAGE   : 'package';
 IMPORT    : 'import';
 AS        : 'as';
+PUBLIC    : 'public';
 COMPONENT : 'component';
 VAR       : 'var';
 IF        : 'if';

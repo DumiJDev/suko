@@ -39,7 +39,7 @@ qualifiedName
 // --- Declaração de componente ---
 
 componentDecl
-    : COMPONENT Identifier typeParameters? LPAREN paramList? RPAREN templateBlock
+    : PUBLIC? COMPONENT Identifier typeParameters? LPAREN paramList? RPAREN templateBlock
     ;
 
 typeParameters
