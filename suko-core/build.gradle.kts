@@ -3,10 +3,6 @@ plugins {
     id("antlr")
 }
 
-repositories {
-    mavenCentral()
-}
-
 dependencies {
     antlr("org.antlr:antlr4:4.13.1")
 

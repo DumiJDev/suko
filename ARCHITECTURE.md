@@ -353,7 +353,7 @@ arquitetura):
 O subprojeto 1 está concluído e mergeado (`76f9306`). A validação já
 não é análise estática da gramática: a suite de testes compila `.sk`
 para `.jte` e renderiza o resultado com o motor `gg.jte` 3.1.12 real
-(`JteRenderSupport`), incluindo golden-files (`src/test/resources/golden/`)
+(`JteRenderSupport`), incluindo golden-files (`suko-core/src/test/resources/golden/`)
 e um teste ponta-a-ponta. A prática de regenerar as gramáticas
 (`gradle generateSukoLexer generateSukoParser --console=plain`) e
 confirmar ausência da palavra `warning` na saída continua a valer para
@@ -370,7 +370,7 @@ mapeamento de erros para `.sk`). A compilação de `.jte` via `javac`
 valida a assinatura Java dos componentes e mapeia erros de compilação
 de volta ao `.sk` original usando source maps.
 
-Nota sobre `src/test/resources/golden/Card.jte`: é um golden de *texto*
+Nota sobre `suko-core/src/test/resources/golden/Card.jte`: é um golden de *texto*
 emitido, não um `.jte` que compile — contém `@param java.util.List<T>`
 com um `T` nunca declarado, exatamente a limitação de generics acima.
 

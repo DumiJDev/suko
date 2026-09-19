@@ -160,20 +160,21 @@ examples/
 
 ```
 suko/
-├── build.gradle.kts              # Main build configuration
-├── src/
-│   ├── main/
-│   │   ├── antlr/io/suko/lang/   # ANTLR grammar files
-│   │   ├── java/io/suko/lang/    # Core compiler
-│   │   │   ├── JteCompiler.java  # Main compilation pipeline
-│   │   │   ├── JavacTask.java    # Java type checking
-│   │   │   ├── diagnostic/       # Error handling
-│   │   │   ├── semantic/         # Semantic analysis
-│   │   │   ├── symbol/           # Symbol table
-│   │   │   └── gradle/           # Gradle plugin
-│   │   └── resources/            # Resources
-│   └── test/                     # Unit and integration tests
+├── build.gradle.kts              # Root aggregator — no source of its own
+├── settings.gradle.kts           # Declares the 5 modules below
+├── suko-core/                    # The compiler
+│   ├── src/main/antlr/io/suko/lang/   # ANTLR grammar files
+│   ├── src/main/java/io/suko/lang/    # Core compiler
+│   │   ├── JteCompiler.java      # Main compilation pipeline
+│   │   ├── JavacTask.java        # Java type checking
+│   │   ├── diagnostic/           # Error handling
+│   │   ├── semantic/             # Semantic analysis
+│   │   └── symbol/               # Symbol table
+│   └── src/test/                 # Unit and integration tests
+├── suko-gradle-plugin/           # Gradle plugin (io.suko.lang.gradle.*)
 ├── suko-maven-plugin/            # Maven plugin module
+├── suko-components/              # Future component library (empty scaffold)
+├── suko-website/                 # Future docs site built in Suko (empty scaffold)
 ├── examples/                     # Example .sk files
 └── docs/superpowers/             # Specs and plans
 ```
