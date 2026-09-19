@@ -169,20 +169,53 @@ arquitetura):
   como erro de compilação Java no `.jte` gerado.
 - **Tipos qualificados não fazem parse.** `java.util.List<T>` é
   rejeitado (`type: Identifier typeArguments? arrayMarker*`).
-- **Não há imports automáticos.** O `.jte` gerado não importa nada; o
-  tipo tem de ser resolúvel tal como escrito. Na prática o emitter
-  compensa com uma lista fechada de nomes sintetizados em
-  `JteEmitter.javaType` (`Content` → `gg.jte.Content`, `List` →
-  `java.util.List`, `Function` → `java.util.function.Function`) — o que
-  torna esses três nomes efetivamente reservados: um tipo do utilizador
-  com um desses nomes é reescrito em silêncio. `SukoFile.imports()`
-  nunca é lido, e o `as` de `import ... as X;` é descartado pelo AST
-  builder, apesar de o diagrama acima prometer "resolve imports/alias".
-- **Chamada de componente com nome composto falha em runtime.**
-  `ui.NavLink(...)` faz parse e é emitido literalmente como
-  `@template.ui.NavLink(...)`; o `gg.jte` lê o ponto como separador de
-  caminho (`ui/NavLink.jte`) e falha com `TemplateNotFoundException` em
-  tempo de render, não em tempo de build.
+- **Projeto multi-ficheiro (subprojeto 5).** `package foo.bar;`/`import
+  foo.bar.Card as C;` (gramática já existente desde o subprojeto 1,
+  nunca usados antes) passam a ser resolvidos de verdade por
+  `io.suko.lang.project.ProjectIndex` (Fase 1: scan recursivo,
+  indexação de assinatura — nome, pacote, `public`, nº de params) e
+  `SukoProjectCompiler` (Fase 2: `JteCompiler.compile(ProjectIndex,
+  Path)` por ficheiro, com o índice injetado). `package foo.bar;` só é
+  válido dentro de `<sourceRoot>/foo/bar/` (`PACKAGE_DIRECTORY_MISMATCH`
+  caso contrário); ficheiros sem `package` não têm restrição de pasta.
+  Visibilidade: `public component X` é chamável de qualquer ficheiro do
+  projeto (via import ou nome totalmente qualificado); sem modificador,
+  só do próprio ficheiro (`COMPONENT_NOT_VISIBLE` caso contrário) — não
+  há nível "mesmo pacote". Cada `.jte` gerado é escrito numa subpasta
+  que espelha o pacote de origem (`ui/NavLink.jte`), o que já fecha o
+  antigo bug de `TemplateNotFoundException` em nomes compostos: `gg.jte`
+  já lia o ponto de `@template.ui.NavLink(...)` como separador de path,
+  só faltava o ficheiro existir nessa subpasta.
+- **Limitação aceite: verificação de slot fills não atravessa
+  ficheiros.** A Fase 1 do `ProjectIndex` só indexa a assinatura
+  superficial de cada componente (nome, pacote, `public`, nº de
+  params), não os slots — uma chamada a um componente definido noutro
+  ficheiro só é verificada quanto a existência e visibilidade, nunca
+  quanto a `SLOT_NOT_FOUND`/`CARDINALITY_VIOLATION`. Extensão futura
+  exigiria a Fase 1 indexar os `Param.SlotParam` inteiros.
+- **Limitação aceite: componente-como-valor com nome composto/importado
+  não resolve.** `var c = ui.NavLink();` ou `var c = ImportedAlias();`
+  em posição de **expressão** só reconhece um callee `Expr.PrimaryExpr`
+  simples já conhecido no ficheiro atual — a resolução cross-ficheiro
+  do subprojeto 5 só cobre a forma **statement**
+  (`Statement.ComponentCallStmt`, que já carrega o nome composto
+  completo desde o subprojeto 1) e nomes curtos pós-import em posição
+  de valor. Um nome composto (`ui.NavLink()`) como valor de expressão
+  continua fora de âmbito — precisaria de reconhecer `Expr.AccessExpr`
+  como callee, não implementado.
+- **Limitação aceite: `SemanticChecker` não desce a HTML aninhado.**
+  `checkStatement` trata `ComponentCallStmt`, `VarDecl`,
+  `Interpolation`, `IfStmt`, `ForStmt` e `SwitchStmt`, mas não tem caso
+  para `Statement.HtmlElement` — os `children()` de uma tag nunca são
+  percorridos. Uma chamada de componente aninhada dentro de uma tag
+  (`<div>SomeComponent()</div>`) escapa por completo à validação
+  semântica: `COMPONENT_NOT_FOUND`, `COMPONENT_NOT_VISIBLE`,
+  `SLOT_NOT_FOUND`, `CARDINALITY_VIOLATION`, etc. nunca disparam para
+  ela, mesmo que o componente não exista ou não seja `public`. Pré-
+  existente a este subprojeto (não introduzido nem corrigido pelas
+  Tarefas 1-8) — descoberto durante a Tarefa 8. Correção exigiria
+  adicionar um caso `Statement.HtmlElement` a `checkStatement` que
+  chame `checkStatementList` sobre `children()`.
 - **Children implícitos (subprojeto 6) resolveram o caso principal, mas
   há uma ordem que ainda engole um slot nomeado em silêncio.** Um
   componente que declara um parâmetro `Component children` (ou
@@ -295,9 +328,11 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    Validadores de componentes e slots implementados.
 3. **Verificação Java** — CONCLUÍDO. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` compila stubs Java e mapeia erros para `.sk`.
 4. **Integração no build** — CONCLUÍDO. Plugin Gradle (`sukoCompile`, `sukoWatch`), plugin Maven (`suko:compile`), modo watch com `WatchService`, E2E tests.
-5. **Projeto multi-ficheiro (resolução de nomes)** — spec própria,
-   ainda por escrever. Cobre `TemplateResolver`/`SukoProjectCompiler`
-   feito de raiz (reusando `JteCompiler`, não um fork).
+5. **Projeto multi-ficheiro (resolução de nomes)** — CONCLUÍDO
+   (`docs/superpowers/specs/2026-09-19-suko-projeto-multificheiro.md`).
+   `package`/`import` resolvidos de verdade via `ProjectIndex` +
+   `SukoProjectCompiler`; visibilidade `public`/file-private; output
+   espelha pacotes.
 6. **Modelo de Componente** — CONCLUÍDO
    (`docs/superpowers/specs/2026-09-18-suko-modelo-componente.md`).
    `slot<T>` removido por completo, substituído por `Component`/
