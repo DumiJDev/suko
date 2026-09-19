@@ -211,8 +211,9 @@ composto.
 | `COMPONENT_NOT_VISIBLE` | chamada a componente existente mas não `public`, de outro ficheiro |
 | `PACKAGE_DIRECTORY_MISMATCH` | `package` declarado não bate com a pasta real do ficheiro |
 | `AMBIGUOUS_IMPORT` | dois imports sem alias trazem o mesmo nome curto |
+| `DUPLICATE_COMPONENT` | dois ficheiros declaram o mesmo nome qualificado (colisão detetada na Fase 1, reportada pela Fase 2 nos dois ficheiros) |
 
-Todos os quatro só são detetáveis a nível de projeto — nenhum deles
+Todos os cinco só são detetáveis a nível de projeto — nenhum deles
 pode ser adicionado ao `SemanticChecker` de ficheiro único sem o
 `ProjectIndex` da Fase 1.
 
