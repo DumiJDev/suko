@@ -465,10 +465,18 @@ public class JteEmitter {
 
     /** Tarefa 5 (subprojeto 5): resolve um nome de chamada para o caminho
      * de template real a usar em @template.<...>(...). Um nome já
-     * conhecido localmente (componentsByName) ou já totalmente
      * qualificado (contém '.') passa literal — gg.jte já lê o ponto como
      * separador de path (confirmado empiricamente, ver ARCHITECTURE.md).
-     * Só um nome curto pós-import é reescrito para o qualifiedName real. */
+     * Um nome curto pós-import é reescrito para o qualifiedName real do
+     * ficheiro ALVO (via importedByShortName — já inclui o pacote desse
+     * ficheiro). Um nome já conhecido localmente (componentsByName, ex.
+     * um componente file-private chamado dentro do seu próprio ficheiro)
+     * NÃO passa literal sem mais: é prefixado com currentPackagePrefix
+     * (Tarefa 8, achado de aceitação — ver o comentário desse campo) —
+     * vazio ("") nos construtores/casos sem projeto, mas o pacote do
+     * PRÓPRIO ficheiro sendo emitido sempre que a compilação é
+     * project-aware, já que SukoProjectCompiler escreve o .jte gerado
+     * numa subpasta que espelha esse pacote. */
     private String resolveTemplatePath(String componentName) {
         if (componentsByName.containsKey(componentName)) {
             return currentPackagePrefix + componentName;
