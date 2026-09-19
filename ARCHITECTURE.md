@@ -40,9 +40,10 @@ Análise semântica [subprojeto 2 — CONCLUÍDO]
 
 Monorepo Gradle multi-módulo (migração documentada em
 `docs/superpowers/specs/2026-09-19-suko-monorepo-migration.md`). A raiz é
-um agregador puro — `settings.gradle.kts` + um `build.gradle.kts` que só
+um agregador puro — `settings.gradle.kts` + um `build.gradle.kts` que
 define `group`/`version`/`repositories` partilhados via `subprojects {}`,
-sem source próprio.
+mais o plugin `base` (só para dar um `:clean` a nível de raiz, que também
+apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
 
 - **`suko-core/`** — o compilador: gramática ANTLR, AST, `SukoAstBuilder`,
   `SemanticChecker`, `JteEmitter`, `JteCompiler`,
