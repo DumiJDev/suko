@@ -27,7 +27,8 @@ class JavacTaskTest {
                         new Param.ValueParam(new Type("List", List.of(new Type("String", List.of(), 0)), 0), "items", Optional.empty(), new SourceSpan(1, 1, 0, 5))
                     ),
                     List.of(),
-                    new SourceSpan(1, 1, 0, 10)
+                    new SourceSpan(1, 1, 0, 10),
+                    false
                 )
             )
         );
@@ -50,7 +51,8 @@ class JavacTaskTest {
                 new Param.ValueParam(new Type("String", List.of(), 0), "title", Optional.empty(), new SourceSpan(1, 1, 0, 5))
             ),
             List.of(),
-            new SourceSpan(1, 1, 0, 10)
+            new SourceSpan(1, 1, 0, 10),
+            false
         );
 
         ComponentDecl page = new ComponentDecl(
@@ -59,7 +61,8 @@ class JavacTaskTest {
                 new Param.ValueParam(new Type("String", List.of(), 0), "label", Optional.empty(), new SourceSpan(1, 1, 0, 5))
             ),
             List.of(),
-            new SourceSpan(1, 1, 0, 10)
+            new SourceSpan(1, 1, 0, 10),
+            false
         );
 
         SukoFile sukoFile = new SukoFile(
@@ -101,7 +104,8 @@ class JavacTaskTest {
                 new Param.SlotParam(new Type("String", List.of(), 0), "title", Cardinality.ONE, false, Optional.empty(), new SourceSpan(1, 1, 0, 5))
             ),
             List.of(),
-            new SourceSpan(1, 1, 0, 10)
+            new SourceSpan(1, 1, 0, 10),
+            false
         );
 
         SukoFile sukoFile = new SukoFile(

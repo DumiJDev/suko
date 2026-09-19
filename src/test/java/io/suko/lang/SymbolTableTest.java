@@ -17,7 +17,7 @@ class SymbolTableTest {
     void registersAndLooksUpComponent() {
         SymbolTable table = new SymbolTable();
         ComponentDecl decl = new ComponentDecl("Card", List.of(), List.of(), List.of(),
-                new SourceSpan(1, 1, 0, 10));
+                new SourceSpan(1, 1, 0, 10), false);
         table.register(decl);
         assertEquals(decl, table.lookup("Card"));
     }
@@ -32,9 +32,9 @@ class SymbolTableTest {
     void getAllComponentsReturnsRegisteredComponents() {
         SymbolTable table = new SymbolTable();
         table.register(new ComponentDecl("A", List.of(), List.of(), List.of(),
-                new SourceSpan(1, 1, 0, 5)));
+                new SourceSpan(1, 1, 0, 5), false));
         table.register(new ComponentDecl("B", List.of(), List.of(), List.of(),
-                new SourceSpan(1, 1, 0, 5)));
+                new SourceSpan(1, 1, 0, 5), false));
         assertEquals(2, table.getAllComponents().size());
         assertTrue(table.getAllComponents().stream().anyMatch(c -> c.name().equals("A")));
         assertTrue(table.getAllComponents().stream().anyMatch(c -> c.name().equals("B")));

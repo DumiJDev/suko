@@ -26,9 +26,12 @@ public class SukoAstBuilder {
             ? Optional.empty()
             : Optional.of(ctx.packageDecl().qualifiedName().getText());
 
-        List<String> imports = new ArrayList<>();
+        List<ImportDecl> imports = new ArrayList<>();
         for (SukoParser.ImportDeclContext importCtx : ctx.importDecl()) {
-            imports.add(importCtx.qualifiedName().getText());
+            Optional<String> alias = importCtx.Identifier() == null
+                ? Optional.empty()
+                : Optional.of(importCtx.Identifier().getText());
+            imports.add(new ImportDecl(importCtx.qualifiedName().getText(), alias, spanOf(importCtx)));
         }
 
         List<ComponentDecl> components = new ArrayList<>();
@@ -56,7 +59,8 @@ public class SukoAstBuilder {
 
         List<Statement> body = buildStatements(ctx.templateBlock().templateStatement());
 
-        return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, spanOf(ctx));
+        return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, spanOf(ctx),
+            ctx.PUBLIC() != null);
     }
 
     private static final Type CONTENT_ELEMENT_TYPE = new Type("Object", List.of(), 0);
