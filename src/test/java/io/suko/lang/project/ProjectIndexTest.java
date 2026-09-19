@@ -62,6 +62,17 @@ class ProjectIndexTest {
 
         assertEquals("ui.Badge", resolved.get("Pill").qualifiedName());
         assertNull(resolved.get("Badge"), "sem alias explícito, a chave é sempre o alias — não o nome curto também");
+
+        // Revisão final, achado H: o caminho SEM alias
+        // (imp.alias().orElse(entry.simpleName())) não estava coberto.
+        io.suko.lang.ast.ImportDecl unaliased = new io.suko.lang.ast.ImportDecl(
+            "ui.Badge", java.util.Optional.empty(), new io.suko.lang.ast.SourceSpan(0, 0, 0, 0));
+
+        Map<String, ProjectIndexEntry> resolvedUnaliased = index.resolveImports(java.util.List.of(unaliased));
+
+        assertEquals("ui.Badge", resolvedUnaliased.get("Badge").qualifiedName(),
+            "sem alias, a chave é o nome simples do componente");
+        assertNull(resolvedUnaliased.get("Pill"));
     }
 
     @Test

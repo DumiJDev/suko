@@ -114,14 +114,18 @@ public class JteCompiler {
         }
 
         Map<String, ProjectIndexEntry> importedByShortName = projectIndex.resolveImports(sukoFile.imports());
-        // TAREFA 8 (subprojeto 5, achado de aceitação — ver comentário do
-        // campo currentPackagePrefix em JteEmitter): o prefixo tem de vir do
-        // `package` DECLARADO no próprio ficheiro (mesma fonte que
-        // ProjectIndex.build usa para construir qualifiedName), não do
-        // fileRelativePath diretamente — ambos coincidem em projetos
-        // válidos (é exatamente o que PACKAGE_DIRECTORY_MISMATCH garante),
-        // mas packageName() é a fonte de verdade semântica.
-        String currentPackagePrefix = sukoFile.packageName().map(p -> p + ".").orElse("");
+        // REVISÃO FINAL (subprojeto 5, achado B): o prefixo vem da PASTA
+        // relativa do ficheiro — a mesma fonte que ProjectIndex.build usa
+        // para construir o qualifiedName e a mesma que o SukoProjectCompiler
+        // usa para escolher a subpasta do .jte gerado. Usar o `package`
+        // DECLARADO (como na Tarefa 8) divergia da pasta real exatamente no
+        // caso de um ficheiro SEM `package` dentro de uma subpasta: o .jte
+        // ia para sub/X.jte mas a chamada emitida era @template.X(...),
+        // resolvida pelo gg.jte na raiz -> TemplateNotFoundException com
+        // success=true e zero diagnósticos. Para um ficheiro com `package`
+        // correto o valor é idêntico (PACKAGE_DIRECTORY_MISMATCH garante-o).
+        String currentPackagePrefix = ProjectIndex.relativeDirToPackagePrefix(
+            fileRelativePath.getParent() == null ? Path.of("") : fileRelativePath.getParent());
         return emitAll(sukoFile, new JteEmitter(sukoFile.components(), importedByShortName, currentPackagePrefix));
     }
 

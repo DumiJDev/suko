@@ -2,11 +2,13 @@ package io.suko.lang.project;
 
 import io.suko.lang.JteCompiler;
 import io.suko.lang.diagnostic.DiagnosticCollector;
+import io.suko.lang.diagnostic.SukoDiagnostic;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,26 @@ public class SukoProjectCompiler {
         Map<Path, String> generatedJteSources = new LinkedHashMap<>();
         boolean success = true;
 
+        // REVISÃO FINAL (achado C): colisões de nome qualificado detetadas na
+        // Fase 1 são reportadas nos DOIS ficheiros envolvidos, antes de
+        // qualquer emissão. Sem isto, o segundo componente sobrescrevia o
+        // primeiro em silêncio (índice E mapa de .jte gerados) com
+        // success=true e zero diagnósticos — perda de código silenciosa.
+        Map<Path, List<SukoDiagnostic>> duplicateDiagnostics = new LinkedHashMap<>();
+        for (ProjectIndex.DuplicateComponent duplicate : index.duplicates()) {
+            success = false;
+            Path first = sourceRoot.relativize(duplicate.firstFile());
+            Path second = sourceRoot.relativize(duplicate.secondFile());
+            String message = "Componente duplicado: '" + duplicate.qualifiedName()
+                + "' está declarado em '" + first + "' e em '" + second + "'";
+            duplicateDiagnostics.computeIfAbsent(first, k -> new ArrayList<>()).add(new SukoDiagnostic(
+                SukoDiagnostic.Severity.ERROR, message, "DUPLICATE_COMPONENT",
+                first.toString(), duplicate.firstSpan()));
+            duplicateDiagnostics.computeIfAbsent(second, k -> new ArrayList<>()).add(new SukoDiagnostic(
+                SukoDiagnostic.Severity.ERROR, message, "DUPLICATE_COMPONENT",
+                second.toString(), duplicate.secondSpan()));
+        }
+
         for (Path skFile : skFiles) {
             Path relative = sourceRoot.relativize(skFile);
             String source;
@@ -57,9 +79,13 @@ public class SukoProjectCompiler {
 
             JteCompiler compiler = new JteCompiler(relative.toString(), source);
             JteCompiler.CompileResult result = compiler.compile(index, relative);
-            diagnosticsByFile.put(relative, result.diagnostics());
+            DiagnosticCollector fileDiagnostics = result.diagnostics();
+            for (SukoDiagnostic duplicate : duplicateDiagnostics.getOrDefault(relative, List.of())) {
+                fileDiagnostics.add(duplicate);
+            }
+            diagnosticsByFile.put(relative, fileDiagnostics);
 
-            if (!result.success()) {
+            if (!result.success() || fileDiagnostics.hasErrors()) {
                 success = false;
                 continue;
             }

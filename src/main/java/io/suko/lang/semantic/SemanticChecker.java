@@ -27,6 +27,10 @@ public class SemanticChecker {
     private final ProjectIndex projectIndex;
     private final Path fileRelativePath;
     private Map<String, ProjectIndexEntry> currentImportedByShortName = Map.of();
+    /** Nomes curtos cujo import resolveu para um componente NÃO public: o
+     * COMPONENT_NOT_VISIBLE já foi reportado na linha do import, por isso as
+     * chamadas a estes nomes não reportam nada (revisão final, achado G). */
+    private final Set<String> nonVisibleImportedNames = new HashSet<>();
 
     public SemanticChecker(SymbolTable symbolTable, DiagnosticCollector diagnostics, String sourceFile) {
         this(symbolTable, diagnostics, sourceFile, null, null);
@@ -44,6 +48,7 @@ public class SemanticChecker {
     /** Executa a verificação semântica completa em um SukoFile. */
     public void check(SukoFile sukoFile) {
         registerComponents(sukoFile);
+        nonVisibleImportedNames.clear();
         currentImportedByShortName = projectIndex == null ? Map.of() : checkImportsAndBuildAliasMap(sukoFile);
         if (projectIndex != null) {
             checkPackageDirectoryMismatch(sukoFile);
@@ -76,6 +81,15 @@ public class SemanticChecker {
                         sourceFile,
                         imp.span()
                 ));
+                // REVISÃO FINAL (achado G): não inserir a entrada não-public no
+                // mapa de aliases. Já reportámos COMPONENT_NOT_VISIBLE aqui, na
+                // linha do import — deixá-la no mapa fazia o mesmo problema
+                // disparar OUTRA VEZ em cada chamada. O nome curto fica
+                // registado em `nonVisibleImportedNames` para que a chamada
+                // também não caia num COMPONENT_NOT_FOUND espúrio: exatamente
+                // um diagnóstico por problema real.
+                nonVisibleImportedNames.add(imp.alias().orElse(entry.simpleName()));
+                continue;
             }
             String key = imp.alias().orElse(entry.simpleName());
             if (imp.alias().isEmpty() && byShortName.containsKey(key)) {
@@ -105,7 +119,10 @@ public class SemanticChecker {
                     "package " + sukoFile.packageName().get() + " não corresponde à pasta do ficheiro ('" + actualDir + "')",
                     "PACKAGE_DIRECTORY_MISMATCH",
                     sourceFile,
-                    new SourceSpan(0, 0, 0, 0)
+                    // Revisão final, achado F: posição real da declaração
+                    // `package` (antes era sempre 0:0). O fallback só existe
+                    // para SukoFiles construídos à mão (testes de unidade).
+                    sukoFile.packageSpan().orElseGet(() -> new SourceSpan(0, 0, 0, 0))
             ));
         }
     }
@@ -266,7 +283,11 @@ public class SemanticChecker {
                 ComponentDecl target = symbolTable.lookup(p.text());
                 if (target == null) {
                     ProjectIndexEntry resolved = resolveViaProject(p.text());
-                    if (resolved == null && looksLikeComponentName(p.text())) {
+                    // `nonVisibleImportedNames`: COMPONENT_NOT_VISIBLE já foi
+                    // reportado na linha do import (achado G) — não repetir,
+                    // nem trocar por um COMPONENT_NOT_FOUND espúrio.
+                    if (resolved == null && !nonVisibleImportedNames.contains(p.text())
+                            && looksLikeComponentName(p.text())) {
                         diagnostics.add(new SukoDiagnostic(
                                 SukoDiagnostic.Severity.ERROR,
                                 "Componente '" + p.text() + "' não encontrado",
@@ -323,6 +344,10 @@ public class SemanticChecker {
         ComponentDecl calledComponent = symbolTable.lookup(call.componentName());
         if (calledComponent == null) {
             ProjectIndexEntry resolved = resolveViaProject(call.componentName());
+            if (resolved == null && nonVisibleImportedNames.contains(call.componentName())) {
+                // COMPONENT_NOT_VISIBLE já reportado na linha do import (achado G)
+                return;
+            }
             if (resolved == null) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,

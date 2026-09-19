@@ -5,6 +5,7 @@ import io.suko.lang.SukoLexer;
 import io.suko.lang.SukoParser;
 import io.suko.lang.ast.ComponentDecl;
 import io.suko.lang.ast.ImportDecl;
+import io.suko.lang.ast.SourceSpan;
 import io.suko.lang.ast.SukoFile;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -36,7 +37,27 @@ import java.util.stream.Stream;
  */
 public class ProjectIndex {
 
+    /**
+     * Colisão de nome qualificado detetada na Fase 1 (revisão final do
+     * subprojeto 5, achado C): dois componentes que resolvem para o mesmo
+     * qualifiedName sobrescreviam-se em silêncio, tanto no índice como no
+     * mapa de .jte gerados. A Fase 1 é o único sítio que vê as DUAS
+     * declarações antes de uma delas desaparecer — regista-as aqui para
+     * que o SukoProjectCompiler possa reportar DUPLICATE_COMPONENT nos
+     * dois ficheiros envolvidos.
+     */
+    public record DuplicateComponent(
+        String qualifiedName,
+        Path firstFile,
+        SourceSpan firstSpan,
+        Path secondFile,
+        SourceSpan secondSpan
+    ) {
+    }
+
     private final Map<String, ProjectIndexEntry> byQualifiedName = new LinkedHashMap<>();
+    private final Map<String, SourceSpan> spanByQualifiedName = new LinkedHashMap<>();
+    private final List<DuplicateComponent> duplicates = new ArrayList<>();
 
     private ProjectIndex() {
     }
@@ -54,13 +75,6 @@ public class ProjectIndex {
         }
 
         for (Path skFile : skFiles) {
-            // NOTA (descoberta ao escrever este plano): esta fase usa o parser
-            // ANTLR por omissão (sem BailErrorStrategy nem SukoErrorListener) —
-            // recupera de erros de sintaxe "best effort" e pode produzir um AST
-            // parcial para um .sk malformado. Aceite: a Fase 1 só existe para
-            // descobrir nomes; o erro de sintaxe real é reportado pela Fase 2
-            // (JteCompiler, que já tem SukoErrorListener) quando esse ficheiro
-            // for efetivamente compilado.
             String source;
             try {
                 source = Files.readString(skFile);
@@ -68,19 +82,69 @@ public class ProjectIndex {
                 throw new UncheckedIOException(e);
             }
 
-            SukoLexer lexer = new SukoLexer(CharStreams.fromString(source));
-            SukoParser parser = new SukoParser(new CommonTokenStream(lexer));
-            SukoFile file = new SukoAstBuilder(source).build(parser.compilationUnit());
+            SukoFile file = parseQuietly(source);
+            if (file == null) {
+                // REVISÃO FINAL (achado A): um único .sk malformado NÃO pode
+                // abortar a indexação do projeto inteiro. Esta fase usa o
+                // parser ANTLR por omissão (sem SukoErrorListener) e recupera
+                // de erros de sintaxe "best effort", o que pode produzir uma
+                // árvore parcial onde o SukoAstBuilder rebenta (NPE/ISE). O
+                // erro de sintaxe real desse ficheiro é reportado pela Fase 2
+                // (JteCompiler.parseAndBuild, que já tem SukoErrorListener)
+                // quando esse ficheiro for efetivamente compilado — aqui basta
+                // não indexar os seus componentes.
+                continue;
+            }
 
-            String packagePrefix = file.packageName().map(p -> p + ".").orElse("");
+            // REVISÃO FINAL (achado B): a PASTA relativa do ficheiro é a única
+            // fonte de verdade do nome qualificado — não o `package` declarado.
+            // Um ficheiro SEM `package` numa subpasta tinha qualifiedName de
+            // raiz mas .jte escrito na subpasta, produzindo
+            // TemplateNotFoundException em tempo de render com success=true.
+            // Para um ficheiro que declara o package correto isto é idêntico
+            // ao comportamento anterior (é exatamente o que
+            // PACKAGE_DIRECTORY_MISMATCH garante).
+            String packagePrefix = relativeDirToPackagePrefix(relativeDirOf(sourceRoot, skFile));
             for (ComponentDecl component : file.components()) {
                 String qualifiedName = packagePrefix + component.name();
+                ProjectIndexEntry previous = index.byQualifiedName.get(qualifiedName);
+                if (previous != null) {
+                    index.duplicates.add(new DuplicateComponent(
+                        qualifiedName,
+                        previous.sourceFile(),
+                        index.spanByQualifiedName.get(qualifiedName),
+                        skFile,
+                        component.span()));
+                    continue;
+                }
                 index.byQualifiedName.put(qualifiedName, new ProjectIndexEntry(
                     qualifiedName, component.name(), skFile, component.isPublic(), component.params().size()));
+                index.spanByQualifiedName.put(qualifiedName, component.span());
             }
         }
 
         return index;
+    }
+
+    /** Parse "silencioso" da Fase 1: sem listeners de erro (a Fase 2 é que
+     * reporta diagnósticos deste ficheiro) e tolerante a qualquer falha —
+     * devolve {@code null} quando o ficheiro não produz um AST utilizável. */
+    private static SukoFile parseQuietly(String source) {
+        try {
+            SukoLexer lexer = new SukoLexer(CharStreams.fromString(source));
+            lexer.removeErrorListeners();
+            SukoParser parser = new SukoParser(new CommonTokenStream(lexer));
+            parser.removeErrorListeners();
+            return new SukoAstBuilder(source).build(parser.compilationUnit());
+        } catch (RuntimeException e) {
+            return null;
+        }
+    }
+
+    /** Colisões de nome qualificado detetadas durante {@link #build} — ver
+     * {@link DuplicateComponent}. */
+    public List<DuplicateComponent> duplicates() {
+        return List.copyOf(duplicates);
     }
 
     public Optional<ProjectIndexEntry> resolveQualified(String qualifiedName) {
@@ -110,5 +174,27 @@ public class ProjectIndex {
             dir = dir.resolve(segment);
         }
         return dir;
+    }
+
+    /** Inverso de {@link #packageToRelativeDir}: "foo/bar" -> "foo.bar."
+     * (prefixo pronto a concatenar; "" para a raiz). Revisão final, achado
+     * B: é esta a fonte de verdade da resolução multi-ficheiro, tanto para
+     * o qualifiedName do índice como para o prefixo de @template.* emitido
+     * pelo JteEmitter. */
+    public static String relativeDirToPackagePrefix(Path relativeDir) {
+        if (relativeDir == null || relativeDir.toString().isEmpty()) {
+            return "";
+        }
+        StringBuilder prefix = new StringBuilder();
+        for (Path segment : relativeDir) {
+            prefix.append(segment).append('.');
+        }
+        return prefix.toString();
+    }
+
+    /** Pasta do ficheiro relativa ao sourceRoot ({@code Path.of("")} na raiz). */
+    public static Path relativeDirOf(Path sourceRoot, Path skFile) {
+        Path parent = sourceRoot.relativize(skFile).getParent();
+        return parent == null ? Path.of("") : parent;
     }
 }

@@ -75,6 +75,11 @@ public class JteEmitter {
     // `JteRenderSupport.renderWithDependencies`, que escrevem sempre um
     // único diretório plano) — mantém o comportamento anterior a esta
     // tarefa nesses casos, exatamente como antes.
+    //
+    // REVISÃO FINAL (achado B): o valor injetado aqui deriva da PASTA
+    // relativa do .sk (ver `JteCompiler.compile(ProjectIndex, Path)`), não
+    // do `package` declarado — é a pasta que determina onde o .jte é
+    // escrito, por isso é a pasta que tem de determinar o prefixo emitido.
     private final String currentPackagePrefix;
 
     // DESVIO DO BRIEF (documentado, tarefa 10): ver `shouldWrapInToString`

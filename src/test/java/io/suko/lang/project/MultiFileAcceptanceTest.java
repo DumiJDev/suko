@@ -118,9 +118,13 @@ class MultiFileAcceptanceTest {
         SukoProjectCompiler.ProjectCompileResult result = new SukoProjectCompiler().compile(sourceRoot);
 
         assertFalse(result.success());
-        assertTrue(result.diagnosticsByFile().get(Path.of("Home.sk")).getErrors().stream()
-            .anyMatch(d -> "IMPORT_NOT_FOUND".equals(d.code()) || "COMPONENT_NOT_VISIBLE".equals(d.code())),
-            result.diagnosticsByFile().get(Path.of("Home.sk")).toString());
+        // Revisão final, achado I: asserção estreitada — a disjunção com
+        // IMPORT_NOT_FOUND passaria mesmo que a verificação de visibilidade
+        // regredisse para um simples "não encontrado". Este cenário emite
+        // COMPONENT_NOT_VISIBLE, exatamente uma vez (achado G).
+        var homeErrors = result.diagnosticsByFile().get(Path.of("Home.sk")).getErrors();
+        assertEquals(1, homeErrors.stream().filter(d -> "COMPONENT_NOT_VISIBLE".equals(d.code())).count(),
+            homeErrors.toString());
     }
 
     @Test
