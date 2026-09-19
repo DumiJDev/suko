@@ -1515,7 +1515,7 @@ class SukoCompileMojoProjectTest {
             package ui;
 
             public component NavLink(String href) {
-              <a href="{href}">link</a>
+              <a href="${href}">link</a>
             }
             """);
 
@@ -1689,7 +1689,7 @@ class MultiFileAcceptanceTest {
             package ui;
 
             public component NavLink(String href, String label) {
-              <a href="{href}">{label}</a>
+              <a href="${href}">{label}</a>
             }
             """);
 
