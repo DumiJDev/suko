@@ -40,7 +40,7 @@ class FinalReviewFixesTest {
 
     @Test
     void layoutComponentsExampleIsSemanticallyClean() throws Exception {
-        String path = "examples/layout/LayoutComponents.sk";
+        String path = "../examples/layout/LayoutComponents.sk";
         String source = Files.readString(Path.of(path));
 
         DiagnosticCollector diagnostics = checkSource(source, path);
@@ -52,7 +52,7 @@ class FinalReviewFixesTest {
 
     @Test
     void layoutComponentsButtonRendersInterpolatedClass() throws Exception {
-        String source = Files.readString(Path.of("examples/layout/LayoutComponents.sk"));
+        String source = Files.readString(Path.of("../examples/layout/LayoutComponents.sk"));
 
         String html = JteRenderSupport.renderWithDependencies(source, "Button", Map.of(
                 "href", "/go",

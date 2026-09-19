@@ -3,9 +3,6 @@ plugins {
     id("antlr")
 }
 
-group = "io.suko"
-version = "0.1.0-SNAPSHOT"
-
 repositories {
     mavenCentral()
 }

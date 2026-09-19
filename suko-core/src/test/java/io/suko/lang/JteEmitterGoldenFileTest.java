@@ -22,7 +22,7 @@ class JteEmitterGoldenFileTest {
 
     @Test
     void cardMatchesGoldenFile() throws Exception {
-        String sukoSource = Files.readString(Path.of("examples/Card.sk"));
+        String sukoSource = Files.readString(Path.of("../examples/Card.sk"));
         String actual = JteRenderSupport.compileToJte(sukoSource, "Card");
         String expected = Files.readString(Path.of("src/test/resources/golden/Card.jte"));
         assertEquals(expected, actual);
@@ -30,7 +30,7 @@ class JteEmitterGoldenFileTest {
 
     @Test
     void navLinkMatchesGoldenFile() throws Exception {
-        String sukoSource = Files.readString(Path.of("examples/Card.sk"));
+        String sukoSource = Files.readString(Path.of("../examples/Card.sk"));
         String actual = JteRenderSupport.compileToJte(sukoSource, "NavLink");
         String expected = Files.readString(Path.of("src/test/resources/golden/NavLink.jte"));
         assertEquals(expected, actual);
