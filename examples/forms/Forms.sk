@@ -1,8 +1,8 @@
-package com.example.forms;
+package forms;
 
-import com.example.ui.Button as Button;
-import com.example.ui.Input as Input;
-import com.example.ui.Select as Select;
+import layout.Button as Button;
+import layout.Input as Input;
+import layout.Select as Select;
 
 component LoginForm(String error) {
   <div class="form-login">

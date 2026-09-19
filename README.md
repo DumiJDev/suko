@@ -13,8 +13,8 @@ Suko is a template language designed for building UI components in Java/Kotlin w
 ## Features
 
 - **Component-based syntax** - Define reusable UI components with parameters and slots
-- **Type-safe** - Full Java type checking via JavacTask (Subprojeto 3)
-- **Slot support** - Named slots with cardinality validation (ONE/MANY)
+- **Type-safe** - Full Java type checking via JavacTask (Subproject 3)
+- **Content parameters** - `Component`/`List<Component>`/`Function<T, Component>` typed parameters, filled via named call-site blocks, plus implicit `children` for unlabeled content
 - **Source maps** - Errors mapped back to original `.sk` files
 - **Gradle plugin** - `sukoCompile` and `sukoWatch` tasks
 - **Maven plugin** - `suko:compile` goal
@@ -22,6 +22,8 @@ Suko is a template language designed for building UI components in Java/Kotlin w
 ## Quick Start
 
 ### Gradle
+
+⚠️ Not yet functional end-to-end: `suko-gradle-plugin` exists and is tested directly, but doesn't yet publish a discoverable plugin ID (`gradlePlugin{}`/`META-INF/gradle-plugins/*.properties`) — `id("io.suko")` below won't resolve today. See "Estrutura de módulos" in [ARCHITECTURE.md](ARCHITECTURE.md) for the current gap. The snippet documents the intended usage once that's added.
 
 ```kotlin
 // build.gradle.kts
@@ -37,13 +39,15 @@ suko {
 
 ```bash
 # Compile .sk files to .jte
-./gradlew sukoCompile
+gradle sukoCompile
 
 # Watch mode - recompiles on changes
-./gradlew sukoWatch
+gradle sukoWatch
 ```
 
 ### Maven
+
+⚠️ Not yet functional end-to-end: `suko-maven-plugin` compiles and has unit tests, but doesn't yet produce a usable plugin descriptor (`META-INF/maven/plugin.xml`) — see the roadmap ressalva in [ARCHITECTURE.md](ARCHITECTURE.md). The snippet documents the intended usage once that's added.
 
 ```xml
 <plugin>
@@ -97,11 +101,11 @@ component Card(String title, List<String> items, String emptyLabel = "Sem itens"
 ```suko
 component Page(User user) {
   Layout(title = "Dashboard") {
-    Sidebar {
+    sidebar {
       NavLink(label = "Home", href = "/")
       NavLink(label = "Perfil")
     }
-    Content {
+    content {
       switch (user.role) {
         case "admin" -> { AdminPanel() }
         case "guest" -> { <p>Bem-vindo, visitante</p> }
@@ -112,10 +116,12 @@ component Page(User user) {
 }
 ```
 
-### Slots
+### Slots (Content Parameters)
+
+`slot<T>` was removed in favor of `Component`, `List<Component>`, and `Function<T, Component>` — cardinality is expressed with ordinary Java generics, and a component's parameter type tells the caller how to fill it. Call-site slot-fill blocks (`sidebar { ... }`) are unchanged:
 
 ```suko
-component Layout(String title, slot<Content> sidebar, slot<Content> content) {
+component Layout(String title, Component sidebar, Component content) {
   <html>
     <head><title>{title}</title></head>
     <body>
@@ -135,7 +141,7 @@ component Page() {
 
 ### Examples
 
-The `examples/` directory contains runnable Suko programs that demonstrate real usage patterns:
+The `examples/` directory contains Suko programs that demonstrate real usage patterns. Their `package`/`import` declarations match the multi-file compiler's directory convention (subproject 5), but they are not exercised by any automated test as a full multi-file project — `Forms.sk` in particular calls `Button`/`Input`/`Select` (declared in `LayoutComponents.sk`) with HTML-tag-style syntax and arguments that don't match those components' real signatures, a known pre-existing inconsistency, not something introduced by the directory-convention fix.
 
 - **`Card.sk`** - reference surface of the language: a concrete `Card` component, `NavLink`, a `Page` using the `Layout` component with named slots (`header`, `sidebar`, `body`, `footer`), and a conditional `AdminPanel`.
 - **`dashboard/Dashboard.sk`** - a dashboard layout with role-based panels (`AdminPanel`/`ManagerPanel`), sidebar navigation, and a conditional items list.
@@ -167,7 +173,9 @@ suko/
 │   ├── src/main/java/io/suko/lang/    # Core compiler
 │   │   ├── JteCompiler.java      # Main compilation pipeline
 │   │   ├── JavacTask.java        # Java type checking
+│   │   ├── ast/                  # AST node types
 │   │   ├── diagnostic/           # Error handling
+│   │   ├── project/              # Multi-file resolution (ProjectIndex, SukoProjectCompiler)
 │   │   ├── semantic/             # Semantic analysis
 │   │   └── symbol/               # Symbol table
 │   └── src/test/                 # Unit and integration tests
@@ -183,21 +191,30 @@ suko/
 
 | Subproject | Status | Description |
 |------------|--------|-------------|
-| 1. Núcleo da linguagem | ✅ Concluído | Gramática ANTLR, AST, SukoAstBuilder, JteEmitter, source maps |
-| 2. Verificador Suko | ✅ Concluído | DiagnosticCollector, SymbolTable, SemanticChecker |
-| 3. Verificação Java | ✅ Concluído | JteCompiler, JavacTask |
-| 4. Integração no build | ✅ Concluído | Gradle plugin, Maven plugin, Watch mode |
+| 1. Core language | ✅ Done | ANTLR grammar, AST, SukoAstBuilder, JteEmitter, source maps |
+| 2. Suko checker | ✅ Done | DiagnosticCollector, SymbolTable, SemanticChecker |
+| 3. Java verification | ✅ Done | JteCompiler, JavacTask |
+| 4. Build integration | ✅ Done | Gradle plugin, Maven plugin, watch mode |
+| 5. Multi-file project | ✅ Done | Cross-file `package`/`import` resolution via `ProjectIndex`, `public`/file-private visibility, output mirrors packages |
+| 6. Component model | ✅ Done | `Component`/`List<Component>`/`Function<T, Component>` replace `slot<T>`, implicit `children`, component-as-value, real string interpolation |
+| 7. Component registry/library | Planned | shadcn/ui-style distribution — depends on 5 and 6, populates `suko-components/` |
+| 8. Distribution CLI (`suko add`) | Planned | Depends on 7 |
+| 9. Documentation site | Planned | Built in Suko itself, depends on 7 and 8, populates `suko-website/` |
+
+The repository itself was also restructured into the 5-module monorepo shown above (`suko-core`/`suko-gradle-plugin`/`suko-maven-plugin`/`suko-components`/`suko-website`) — see `docs/superpowers/specs/2026-09-19-suko-monorepo-migration.md`.
 
 ## Development
 
 ### Building
 
 ```bash
+# No gradlew wrapper is committed in this repo — use the system Gradle install.
+
 # Build all modules
-./gradlew build
+gradle build
 
 # Run tests
-./gradlew test
+gradle test
 ```
 
 ### Architecture
@@ -210,8 +227,8 @@ Each subproject has a specification document in `docs/superpowers/specs/` and an
 
 ## Requirements
 
-- Java 17+
-- Gradle 8.7+ (for the plugin) or Maven 3.9+
+- Java 21+ (records, sealed interfaces, pattern-matching `switch`)
+- Gradle 9.x (no wrapper is committed — use a system install) or Maven 3.9+
 
 ## License
 

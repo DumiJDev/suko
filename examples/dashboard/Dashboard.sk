@@ -1,6 +1,6 @@
-package com.example.dashboard;
+package dashboard;
 
-import com.example.ui.layout.Layout as Layout;
+import layout.Layout as Layout;
 import com.example.model.Item;
 
 component NavLink(String label, String href = "#") {

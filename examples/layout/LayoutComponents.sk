@@ -1,6 +1,4 @@
-package com.example.ui.layout;
-
-import com.example.ui.Button as Button;
+package layout;
 
 component Layout(String title, Component header, Component sidebar, Component footer, Component body) {
   <html>
