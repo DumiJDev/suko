@@ -114,7 +114,15 @@ public class JteCompiler {
         }
 
         Map<String, ProjectIndexEntry> importedByShortName = projectIndex.resolveImports(sukoFile.imports());
-        return emitAll(sukoFile, new JteEmitter(sukoFile.components(), importedByShortName));
+        // TAREFA 8 (subprojeto 5, achado de aceitação — ver comentário do
+        // campo currentPackagePrefix em JteEmitter): o prefixo tem de vir do
+        // `package` DECLARADO no próprio ficheiro (mesma fonte que
+        // ProjectIndex.build usa para construir qualifiedName), não do
+        // fileRelativePath diretamente — ambos coincidem em projetos
+        // válidos (é exatamente o que PACKAGE_DIRECTORY_MISMATCH garante),
+        // mas packageName() é a fonte de verdade semântica.
+        String currentPackagePrefix = sukoFile.packageName().map(p -> p + ".").orElse("");
+        return emitAll(sukoFile, new JteEmitter(sukoFile.components(), importedByShortName, currentPackagePrefix));
     }
 
     private CompileResult emitAll(SukoFile sukoFile, JteEmitter emitter) {
