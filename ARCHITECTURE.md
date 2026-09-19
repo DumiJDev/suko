@@ -192,9 +192,9 @@ arquitetura):
   a chamar o caminho antigo, por ficheiro (`new JteCompiler(...).compile()`
   com um `Files.list` não recursivo). Consequências: (a) o modo watch
   escreve output **plano**, sem espelhar pacotes, divergindo do
-  `sukoCompile` na mesma pasta de output; (b) nenhum dos 4 diagnósticos
-  novos deste subprojeto (`IMPORT_NOT_FOUND`, `COMPONENT_NOT_VISIBLE`,
-  `AMBIGUOUS_IMPORT`, `PACKAGE_DIRECTORY_MISMATCH`) é visto em watch;
+  `sukoCompile` na mesma pasta de output; (b) nenhum dos 5 diagnósticos
+  a nível de projeto deste subprojeto (`IMPORT_NOT_FOUND`, `COMPONENT_NOT_VISIBLE`,
+  `AMBIGUOUS_IMPORT`, `PACKAGE_DIRECTORY_MISMATCH`, `DUPLICATE_COMPONENT`) é visto em watch;
   (c) chamadas cross-ficheiro não resolvem em watch. Deliberadamente
   **não** corrigido na revisão final do subprojeto 5: a semântica de
   recompilação incremental em modo watch (que reindexar, quando, e o
