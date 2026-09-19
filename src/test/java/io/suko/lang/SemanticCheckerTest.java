@@ -36,14 +36,14 @@ class SemanticCheckerTest {
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
 
         ComponentDecl card = new ComponentDecl("Card", List.of(), List.of(valueOne, slotOne),
-                List.of(), new SourceSpan(1, 1, 0, 10));
+                List.of(), new SourceSpan(1, 1, 0, 10), false);
 
         // Register a component that Card calls
         Param slotInNav = new Param.SlotParam(
                 new Type("Content", List.of(), 0), "content", Cardinality.ONE, false,
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
         ComponentDecl layout = new ComponentDecl("Layout", List.of(), List.of(slotInNav),
-                List.of(), new SourceSpan(1, 1, 0, 10));
+                List.of(), new SourceSpan(1, 1, 0, 10), false);
 
         // Create a component that calls Layout with the content slot filled
         ComponentDecl page = new ComponentDecl("Page", List.of(), List.of(),
@@ -51,7 +51,7 @@ class SemanticCheckerTest {
                     new Statement.ComponentCallStmt("Layout", List.of(),
                         List.of(new Statement.SlotFill("content", Optional.empty(), List.of())),
                         new SourceSpan(1, 1, 0, 10))
-                ), new SourceSpan(1, 1, 0, 10));
+                ), new SourceSpan(1, 1, 0, 10), false);
 
         // Register all components
         symbolTable.register(card);
@@ -74,7 +74,7 @@ class SemanticCheckerTest {
                 List.of(
                     new Statement.ComponentCallStmt("NonExistent", List.of(), List.of(),
                         new SourceSpan(1, 1, 0, 10))
-                ), new SourceSpan(1, 1, 0, 10));
+                ), new SourceSpan(1, 1, 0, 10), false);
 
         checker.check(new SukoFile(Optional.empty(), List.of(), List.of(caller)));
 
@@ -95,14 +95,14 @@ class SemanticCheckerTest {
                 new Type("Content", List.of(), 0), "header", Cardinality.ONE, false,
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
         ComponentDecl card = new ComponentDecl("Card", List.of(), List.of(requiredSlot),
-                List.of(), new SourceSpan(1, 1, 0, 10));
+                List.of(), new SourceSpan(1, 1, 0, 10), false);
         symbolTable.register(card);
 
         ComponentDecl caller = new ComponentDecl("Caller", List.of(), List.of(),
                 List.of(
                     new Statement.ComponentCallStmt("Card", List.of(), List.of(),
                         new SourceSpan(1, 1, 0, 10))
-                ), new SourceSpan(1, 1, 0, 10));
+                ), new SourceSpan(1, 1, 0, 10), false);
 
         checker.check(new SukoFile(Optional.empty(), List.of(), List.of(card, caller)));
 
@@ -123,7 +123,7 @@ class SemanticCheckerTest {
                 new Type("Content", List.of(), 0), "header", Cardinality.ONE, false,
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
         ComponentDecl card = new ComponentDecl("Card", List.of(), List.of(requiredSlot),
-                List.of(), new SourceSpan(1, 1, 0, 10));
+                List.of(), new SourceSpan(1, 1, 0, 10), false);
         symbolTable.register(card);
 
         ComponentDecl caller = new ComponentDecl("Caller", List.of(), List.of(),
@@ -131,7 +131,7 @@ class SemanticCheckerTest {
                     new Statement.ComponentCallStmt("Card", List.of(),
                         List.of(new Statement.SlotFill("unknown", Optional.empty(), List.of())),
                         new SourceSpan(1, 1, 0, 10))
-                ), new SourceSpan(1, 1, 0, 10));
+                ), new SourceSpan(1, 1, 0, 10), false);
 
         checker.check(new SukoFile(Optional.empty(), List.of(), List.of(card, caller)));
 
@@ -149,7 +149,7 @@ class SemanticCheckerTest {
 
         // Field não declara nenhum param "children"
         ComponentDecl field = new ComponentDecl("Field", List.of(), List.of(),
-                List.of(), new SourceSpan(1, 1, 0, 10));
+                List.of(), new SourceSpan(1, 1, 0, 10), false);
         symbolTable.register(field);
 
         ComponentDecl host = new ComponentDecl("Host", List.of(), List.of(),
@@ -157,7 +157,7 @@ class SemanticCheckerTest {
                     new Statement.ComponentCallStmt("Field", List.of(),
                         List.of(new Statement.SlotFill("children", Optional.empty(), List.of())),
                         new SourceSpan(1, 1, 0, 10))
-                ), new SourceSpan(1, 1, 0, 10));
+                ), new SourceSpan(1, 1, 0, 10), false);
 
         checker.check(new SukoFile(Optional.empty(), List.of(), List.of(field, host)));
 
@@ -176,7 +176,7 @@ class SemanticCheckerTest {
                 new Type("Component", List.of(), 0), "children", Cardinality.ONE, true,
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
         ComponentDecl field = new ComponentDecl("Field", List.of(), List.of(childrenSlot),
-                List.of(), new SourceSpan(1, 1, 0, 10));
+                List.of(), new SourceSpan(1, 1, 0, 10), false);
         symbolTable.register(field);
 
         // Field() { "solto" children { "explícito" } } => 2 fills para "children" (cardinality ONE)
@@ -188,7 +188,7 @@ class SemanticCheckerTest {
                             new Statement.SlotFill("children", Optional.empty(), List.of())
                         ),
                         new SourceSpan(1, 1, 0, 10))
-                ), new SourceSpan(1, 1, 0, 10));
+                ), new SourceSpan(1, 1, 0, 10), false);
 
         checker.check(new SukoFile(Optional.empty(), List.of(), List.of(field, host)));
 
@@ -207,7 +207,7 @@ class SemanticCheckerTest {
                 new Type("String", List.of(), 0), "children",
                 Optional.empty(), new SourceSpan(1, 1, 0, 5));
         ComponentDecl field = new ComponentDecl("Field", List.of(), List.of(badChildren),
-                List.of(), new SourceSpan(1, 1, 0, 10));
+                List.of(), new SourceSpan(1, 1, 0, 10), false);
 
         checker.check(new SukoFile(Optional.empty(), List.of(), List.of(field)));
 
@@ -231,7 +231,7 @@ class SemanticCheckerTest {
         ComponentDecl host = new ComponentDecl("Host", List.of(), List.of(),
                 List.of(
                     new Statement.VarDecl("c", naoExisteCall, new SourceSpan(1, 1, 0, 15))
-                ), new SourceSpan(1, 1, 0, 20));
+                ), new SourceSpan(1, 1, 0, 20), false);
 
         checker.check(new SukoFile(Optional.empty(), List.of(), List.of(host)));
 
