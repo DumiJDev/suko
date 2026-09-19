@@ -3,8 +3,11 @@ package io.suko.lang.semantic;
 import io.suko.lang.ast.*;
 import io.suko.lang.diagnostic.DiagnosticCollector;
 import io.suko.lang.diagnostic.SukoDiagnostic;
+import io.suko.lang.project.ProjectIndex;
+import io.suko.lang.project.ProjectIndexEntry;
 import io.suko.lang.symbol.SymbolTable;
 
+import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,18 +24,89 @@ public class SemanticChecker {
     private final SymbolTable symbolTable;
     private final DiagnosticCollector diagnostics;
     private final String sourceFile;
+    private final ProjectIndex projectIndex;
+    private final Path fileRelativePath;
+    private Map<String, ProjectIndexEntry> currentImportedByShortName = Map.of();
 
     public SemanticChecker(SymbolTable symbolTable, DiagnosticCollector diagnostics, String sourceFile) {
+        this(symbolTable, diagnostics, sourceFile, null, null);
+    }
+
+    public SemanticChecker(SymbolTable symbolTable, DiagnosticCollector diagnostics, String sourceFile,
+                            ProjectIndex projectIndex, Path fileRelativePath) {
         this.symbolTable = symbolTable;
         this.diagnostics = diagnostics;
         this.sourceFile = sourceFile;
+        this.projectIndex = projectIndex;
+        this.fileRelativePath = fileRelativePath;
     }
 
     /** Executa a verificação semântica completa em um SukoFile. */
     public void check(SukoFile sukoFile) {
         registerComponents(sukoFile);
+        currentImportedByShortName = projectIndex == null ? Map.of() : checkImportsAndBuildAliasMap(sukoFile);
+        if (projectIndex != null) {
+            checkPackageDirectoryMismatch(sukoFile);
+        }
         for (ComponentDecl component : sukoFile.components()) {
             checkComponent(component);
+        }
+    }
+
+    private Map<String, ProjectIndexEntry> checkImportsAndBuildAliasMap(SukoFile sukoFile) {
+        Map<String, ProjectIndexEntry> byShortName = new HashMap<>();
+        for (ImportDecl imp : sukoFile.imports()) {
+            var found = projectIndex.resolveQualified(imp.qualifiedName());
+            if (found.isEmpty()) {
+                diagnostics.add(new SukoDiagnostic(
+                        SukoDiagnostic.Severity.ERROR,
+                        "Import não encontrado: '" + imp.qualifiedName() + "'",
+                        "IMPORT_NOT_FOUND",
+                        sourceFile,
+                        imp.span()
+                ));
+                continue;
+            }
+            ProjectIndexEntry entry = found.get();
+            if (!entry.isPublic()) {
+                diagnostics.add(new SukoDiagnostic(
+                        SukoDiagnostic.Severity.ERROR,
+                        "Componente '" + imp.qualifiedName() + "' não é public — não pode ser importado",
+                        "COMPONENT_NOT_VISIBLE",
+                        sourceFile,
+                        imp.span()
+                ));
+            }
+            String key = imp.alias().orElse(entry.simpleName());
+            if (imp.alias().isEmpty() && byShortName.containsKey(key)) {
+                diagnostics.add(new SukoDiagnostic(
+                        SukoDiagnostic.Severity.ERROR,
+                        "Import ambíguo: '" + key + "' já foi importado de outro pacote — use 'as' para desambiguar",
+                        "AMBIGUOUS_IMPORT",
+                        sourceFile,
+                        imp.span()
+                ));
+            } else {
+                byShortName.put(key, entry);
+            }
+        }
+        return byShortName;
+    }
+
+    private void checkPackageDirectoryMismatch(SukoFile sukoFile) {
+        if (sukoFile.packageName().isEmpty()) {
+            return;
+        }
+        Path expectedDir = ProjectIndex.packageToRelativeDir(sukoFile.packageName().get());
+        Path actualDir = fileRelativePath.getParent() == null ? Path.of("") : fileRelativePath.getParent();
+        if (!expectedDir.equals(actualDir)) {
+            diagnostics.add(new SukoDiagnostic(
+                    SukoDiagnostic.Severity.ERROR,
+                    "package " + sukoFile.packageName().get() + " não corresponde à pasta do ficheiro ('" + actualDir + "')",
+                    "PACKAGE_DIRECTORY_MISMATCH",
+                    sourceFile,
+                    new SourceSpan(0, 0, 0, 0)
+            ));
         }
     }
 
@@ -190,14 +264,25 @@ public class SemanticChecker {
         switch (expr) {
             case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p -> {
                 ComponentDecl target = symbolTable.lookup(p.text());
-                if (target == null && looksLikeComponentName(p.text())) {
-                    diagnostics.add(new SukoDiagnostic(
-                            SukoDiagnostic.Severity.ERROR,
-                            "Componente '" + p.text() + "' não encontrado",
-                            "COMPONENT_NOT_FOUND",
-                            sourceFile,
-                            call.span()
-                    ));
+                if (target == null) {
+                    ProjectIndexEntry resolved = resolveViaProject(p.text());
+                    if (resolved == null && looksLikeComponentName(p.text())) {
+                        diagnostics.add(new SukoDiagnostic(
+                                SukoDiagnostic.Severity.ERROR,
+                                "Componente '" + p.text() + "' não encontrado",
+                                "COMPONENT_NOT_FOUND",
+                                sourceFile,
+                                call.span()
+                        ));
+                    } else if (resolved != null && !resolved.isPublic()) {
+                        diagnostics.add(new SukoDiagnostic(
+                                SukoDiagnostic.Severity.ERROR,
+                                "Componente '" + p.text() + "' não é public",
+                                "COMPONENT_NOT_VISIBLE",
+                                sourceFile,
+                                call.span()
+                        ));
+                    }
                 }
             }
             case Expr.TernaryExpr ternary -> {
@@ -224,16 +309,42 @@ public class SemanticChecker {
         }
     }
 
+    private ProjectIndexEntry resolveViaProject(String name) {
+        if (projectIndex == null) {
+            return null;
+        }
+        if (name.contains(".")) {
+            return projectIndex.resolveQualified(name).orElse(null);
+        }
+        return currentImportedByShortName.get(name);
+    }
+
     private void checkComponentCall(Statement.ComponentCallStmt call, Map<String, Param.SlotParam> currentScopeSlots) {
         ComponentDecl calledComponent = symbolTable.lookup(call.componentName());
         if (calledComponent == null) {
-            diagnostics.add(new SukoDiagnostic(
-                    SukoDiagnostic.Severity.ERROR,
-                    "Componente '" + call.componentName() + "' não encontrado",
-                    "COMPONENT_NOT_FOUND",
-                    sourceFile,
-                    call.span()
-            ));
+            ProjectIndexEntry resolved = resolveViaProject(call.componentName());
+            if (resolved == null) {
+                diagnostics.add(new SukoDiagnostic(
+                        SukoDiagnostic.Severity.ERROR,
+                        "Componente '" + call.componentName() + "' não encontrado",
+                        "COMPONENT_NOT_FOUND",
+                        sourceFile,
+                        call.span()
+                ));
+                return;
+            }
+            if (!resolved.isPublic()) {
+                diagnostics.add(new SukoDiagnostic(
+                        SukoDiagnostic.Severity.ERROR,
+                        "Componente '" + call.componentName() + "' não é public",
+                        "COMPONENT_NOT_VISIBLE",
+                        sourceFile,
+                        call.span()
+                ));
+            }
+            // Resolvido via projeto: a Fase 1 só indexa a assinatura (ver
+            // ProjectIndex), não os slots — verificação de slot fills
+            // cross-ficheiro não é feita aqui (limitação aceite, Tarefa 9).
             return;
         }
 
