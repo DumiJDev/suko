@@ -8,7 +8,7 @@ effort: medium
 
 # JTE specialist — Suko
 
-Suko transpiles to `gg.jte` (pinned at `gg.jte:jte:3.1.12` in `build.gradle.kts`) and deliberately does not reimplement anything JTE already does well — Suko only replaces `.jte`'s surface syntax. Your job is to know what JTE actually does, not what seems reasonable for a templating engine to do.
+Suko transpiles to `gg.jte` (pinned at `gg.jte:jte:3.1.12` in `suko-core/build.gradle.kts`) and deliberately does not reimplement anything JTE already does well — Suko only replaces `.jte`'s surface syntax. Your job is to know what JTE actually does, not what seems reasonable for a templating engine to do.
 
 ## Verify empirically, not from memory
 
