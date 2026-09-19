@@ -50,6 +50,33 @@ public class JteEmitter {
     // `componentsByName`, exatamente como antes desta tarefa.
     private final Map<String, ProjectIndexEntry> importedByShortName;
 
+    // TAREFA 8 (subprojeto 5, achado de aceitação): prefixo do pacote do
+    // PRÓPRIO ficheiro sendo emitido (ex. "ui." ou "" no pacote default),
+    // usado por resolveTemplatePath para qualificar uma chamada a um
+    // componente do MESMO ficheiro (resolvida via componentsByName) — que
+    // até esta tarefa era sempre emitida com o nome nu (ex. "Dot"). Isso
+    // está correto apenas quando o .jte de saída fica na raiz do diretório
+    // de templates (caso dos testes de emitter isolados, que não usam
+    // SukoProjectCompiler). Mas SukoProjectCompiler (Tarefa 6) escreve cada
+    // .jte gerado numa subpasta que espelha o pacote/diretório do .sk de
+    // origem (ex. um componente file-private "Dot" declarado em
+    // "ui/Badge.sk" sai para "ui/Dot.jte") — confirmado empiricamente por
+    // este teste de aceitação: chamar `Dot()` de dentro do próprio
+    // "ui/Badge.sk" emitia `@template.Dot(...)`, que o gg.jte real resolve
+    // contra a RAIZ do diretório de templates ("Dot.jte"), não
+    // "ui/Dot.jte" — falha em runtime com
+    // `gg.jte.TemplateNotFoundException: Dot.jte not found`. As chamadas
+    // resolvidas via `importedByShortName` (import outro ficheiro) já não
+    // sofriam disto, porque `ProjectIndexEntry.qualifiedName()` já inclui o
+    // prefixo do pacote do ficheiro ALVO (ver `ProjectIndex.build`) — só a
+    // chamada a um componente do MESMO ficheiro, que nunca passa por
+    // `importedByShortName`, ficava sem prefixo. Vazio ("") nos construtores
+    // mais antigos (usados pelos testes de emitter isolado e por
+    // `JteRenderSupport.renderWithDependencies`, que escrevem sempre um
+    // único diretório plano) — mantém o comportamento anterior a esta
+    // tarefa nesses casos, exatamente como antes.
+    private final String currentPackagePrefix;
+
     // DESVIO DO BRIEF (documentado, tarefa 10): ver `shouldWrapInToString`
     // mais abaixo para a razão de existir este campo — não faz parte do
     // brief original, que só previa `isContentTyped`. Reatribuído no início
@@ -70,9 +97,19 @@ public class JteEmitter {
     }
 
     public JteEmitter(List<ComponentDecl> allComponents, Map<String, ProjectIndexEntry> importedByShortName) {
+        this(allComponents, importedByShortName, "");
+    }
+
+    /** Tarefa 8 (subprojeto 5, achado de aceitação): ver o comentário sobre
+     * `currentPackagePrefix` no campo — construtor usado por
+     * `JteCompiler.compile(ProjectIndex, Path)`, o único ponto que sabe o
+     * pacote real do ficheiro sendo emitido. */
+    public JteEmitter(List<ComponentDecl> allComponents, Map<String, ProjectIndexEntry> importedByShortName,
+            String currentPackagePrefix) {
         this.componentsByName = allComponents.stream()
             .collect(Collectors.toMap(ComponentDecl::name, Function.identity()));
         this.importedByShortName = importedByShortName;
+        this.currentPackagePrefix = currentPackagePrefix;
     }
 
     public String emit(ComponentDecl component) {
@@ -434,7 +471,7 @@ public class JteEmitter {
      * Só um nome curto pós-import é reescrito para o qualifiedName real. */
     private String resolveTemplatePath(String componentName) {
         if (componentsByName.containsKey(componentName)) {
-            return componentName;
+            return currentPackagePrefix + componentName;
         }
         ProjectIndexEntry entry = importedByShortName.get(componentName);
         return entry != null ? entry.qualifiedName() : componentName;
