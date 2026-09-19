@@ -1,6 +1,7 @@
 package io.suko.lang;
 
 import io.suko.lang.ast.*;
+import io.suko.lang.project.ProjectIndexEntry;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,6 +41,15 @@ public class JteEmitter {
     // sempre `renderWithDependencies`).
     private final Map<String, ComponentDecl> componentsByName;
 
+    // Tarefa 5 (subprojeto 5): nomes curtos importados (via `import`) que
+    // resolvem para um componente noutro ficheiro do projeto — produzido
+    // por `ProjectIndex.resolveImports` (Tarefa 3) e consultado por
+    // `resolveTemplatePath` para reescrever a chamada para o
+    // `qualifiedName` real. Vazio (`Map.of()`) nos dois construtores mais
+    // antigos, que continuam a emitir apenas com base em
+    // `componentsByName`, exatamente como antes desta tarefa.
+    private final Map<String, ProjectIndexEntry> importedByShortName;
+
     // DESVIO DO BRIEF (documentado, tarefa 10): ver `shouldWrapInToString`
     // mais abaixo para a razão de existir este campo — não faz parte do
     // brief original, que só previa `isContentTyped`. Reatribuído no início
@@ -52,12 +62,17 @@ public class JteEmitter {
     private Map<String, Type> currentValueParamTypes = Map.of();
 
     public JteEmitter() {
-        this(List.of());
+        this(List.of(), Map.of());
     }
 
     public JteEmitter(List<ComponentDecl> allComponents) {
+        this(allComponents, Map.of());
+    }
+
+    public JteEmitter(List<ComponentDecl> allComponents, Map<String, ProjectIndexEntry> importedByShortName) {
         this.componentsByName = allComponents.stream()
             .collect(Collectors.toMap(ComponentDecl::name, Function.identity()));
+        this.importedByShortName = importedByShortName;
     }
 
     public String emit(ComponentDecl component) {
@@ -375,7 +390,7 @@ public class JteEmitter {
     }
 
     private void emitComponentCall(Statement.ComponentCallStmt call, StringBuilder out, java.util.Set<String> slotNames) {
-        out.append("@template.").append(call.componentName()).append('(');
+        out.append("@template.").append(resolveTemplatePath(call.componentName())).append('(');
         boolean first = true;
         for (Statement.Arg arg : call.args()) {
             if (!first) out.append(", ");
@@ -409,6 +424,20 @@ public class JteEmitter {
         }
 
         out.append(")\n");
+    }
+
+    /** Tarefa 5 (subprojeto 5): resolve um nome de chamada para o caminho
+     * de template real a usar em @template.<...>(...). Um nome já
+     * conhecido localmente (componentsByName) ou já totalmente
+     * qualificado (contém '.') passa literal — gg.jte já lê o ponto como
+     * separador de path (confirmado empiricamente, ver ARCHITECTURE.md).
+     * Só um nome curto pós-import é reescrito para o qualifiedName real. */
+    private String resolveTemplatePath(String componentName) {
+        if (componentsByName.containsKey(componentName)) {
+            return componentName;
+        }
+        ProjectIndexEntry entry = importedByShortName.get(componentName);
+        return entry != null ? entry.qualifiedName() : componentName;
     }
 
 /** Ver o comentário sobre `componentsByName` no construtor: devolve
@@ -594,8 +623,9 @@ public class JteEmitter {
             // por resolver. Se uma futura tarefa cross-file precisar de tal
             // resolução, deve introduzir o campo nesse ponto, atualizando
             // ambos os locais.
-            case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p && componentsByName.containsKey(p.text()) ->
-                "@`@template." + p.text() + "(" + emitArgs(call.args(), slotNames) + ")`";
+            case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p
+                && (componentsByName.containsKey(p.text()) || importedByShortName.containsKey(p.text())) ->
+                "@`@template." + resolveTemplatePath(p.text()) + "(" + emitArgs(call.args(), slotNames) + ")`";
             case Expr.CallExpr call -> emitExpr(call.callee(), slotNames) + "(" + emitArgs(call.args(), slotNames) + ")";
             case Expr.NotExpr not -> "!" + emitExpr(not.operand(), slotNames);
             case Expr.UnaryMinusExpr unaryMinus -> "-" + emitExpr(unaryMinus.operand(), slotNames);
