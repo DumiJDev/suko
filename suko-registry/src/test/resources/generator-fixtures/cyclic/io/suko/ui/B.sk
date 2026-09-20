@@ -1,0 +1,9 @@
+package io.suko.ui;
+
+import io.suko.ui.A;
+
+public component B(String text) {
+  <div>
+    A(text = text)
+  </div>
+}

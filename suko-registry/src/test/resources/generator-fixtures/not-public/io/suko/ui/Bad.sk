@@ -1,0 +1,5 @@
+package io.suko.ui;
+
+component Bad(String text) {
+  <div>{text}</div>
+}

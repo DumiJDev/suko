@@ -1,0 +1,10 @@
+package io.suko.ui;
+
+import io.suko.ui.Label;
+import io.suko.external.Thing;
+
+public component Field(String text) {
+  <div>
+    Label(text = text)
+  </div>
+}
