@@ -417,6 +417,31 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
 
 Fora destes seis, como subprojeto dedicado e sem data: renderização
 real de componentes genéricos (erasure para tipo-limite); subprojetos
-7-9 do roadmap revisto (registry/biblioteca de componentes, CLI de
-distribuição, site de documentação — ver a spec do subprojeto 6 para o
-roadmap completo), que dependem do 5 e do 6.
+7-10 do roadmap revisto, que dependem do 5 e do 6 (ver a spec do
+subprojeto 6 para a origem dos itens 7-9):
+
+7. **Registry/biblioteca de componentes** — preenche `suko-components/`.
+   Spec formal em
+   `docs/superpowers/specs/2026-09-20-suko-registry-componentes.md`;
+   plano ainda por escrever.
+8. **CLI de distribuição** (`suko add`, estilo shadcn/ui) — copia o
+   código-fonte `.sk` para o projeto do consumidor, que passa a possuir
+   e customizar esse código (não é dependência de biblioteca); depende
+   do 7. **Racional do modelo copy-source, além do consumidor ficar
+   dono do código:** `ProjectIndex.build(Path sourceRoot)` e
+   `SukoProjectCompiler.compile(Path sourceRoot)` só aceitam **um**
+   source root — não há hoje noção de "source root da app + source
+   root de biblioteca" no compilador. Uma biblioteca-como-dependência
+   real não é implementável sem trabalho de compilador; o modelo
+   shadcn não é preferência de estilo, é o único que a arquitetura
+   atual suporta.
+9. **Site de documentação** — preenche `suko-website/`. Inclui
+   compilação para HTML estático em build-time (deployável em
+   serverless/CDN sem JVM em runtime) como primeiro caso de uso real
+   dessa capacidade, antes de generalizá-la no compilador.
+10. **Suporte de IDE** (VSCode + IntelliJ) — language server sobre o
+    `DiagnosticCollector`/`SemanticChecker` já existentes. Sequenciado
+    depois do 7/8 (quer uma superfície de AST/diagnostics estável), mas
+    sem dependência bloqueante neles. IntelliJ não fala LSP nativamente
+    (LSP4IJ vs. plugin PSI-based próprio) — decisão a tomar no scoping
+    deste item.
