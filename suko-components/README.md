@@ -73,37 +73,68 @@ limitation, not just a library convention.
 ## Authoring conventions
 
 If you're adding a new component to this library, every `.sk` file
-under `src/main/suko/io/suko/ui/` is checked against eight conventions
-(enforced by `LibraryConventionsTest`, not just documented — a
-violation fails `gradle :suko-components:test`):
+under `src/main/suko/io/suko/ui/` is expected to follow eight
+authoring conventions. **Only some of these are enforced by
+`LibraryConventionsTest`** (a violation of one of those fails `gradle
+:suko-components:test`); the rest are a deliberate, documented
+decision to rely on contributor discipline / human review instead,
+because they have no automatic guard today:
 
 1. every component is `public component` (file-private components
-   can't be part of a distributable library);
+   can't be part of a distributable library) — **enforced by test**;
 2. one component per file, and the file name matches the component
-   name exactly (`Button.sk` declares `Button`);
-3. **never** `${...}` inside a `class` attribute — write each variant
-   as a complete Tailwind class string inside a `switch`/`if` instead
-   (this is the convention that keeps the Tailwind gotcha above from
-   biting; see `Button.sk`'s variant `switch` for the pattern);
+   name exactly (`Button.sk` declares `Button`) — **enforced by
+   test**, together with the package/folder match
+   (`LibraryConventionsTest` also checks the declared `package` line
+   against the file's folder);
+3. **never** `${...}` inside a `class` attribute, whether quoted
+   (`class="btn-${variant}"`) or unquoted (`class={variant}`) — write
+   each variant as a complete Tailwind class string inside a
+   `switch`/`if` instead (this is the convention that keeps the
+   Tailwind gotcha above from biting; see `Button.sk`'s variant
+   `switch` for the pattern) — **enforced by test** (`hasInterpolation`
+   in `LibraryConventionsTest` rejects any attribute value that isn't a
+   fully-literal string, in either syntactic form);
 4. named slots come **before** loose content in a call block (loose
    content written before a named slot silently swallows the slot —
-   see `ARCHITECTURE.md` → "Limitações conhecidas");
+   see `ARCHITECTURE.md` → "Limitações conhecidas") — **not guarded**;
+   there's no AST shape that distinguishes "author meant this order on
+   purpose" from "author made this mistake", so this is caught by
+   review, not by a test;
 5. no `{slot ?: "fallback"}` (unsupported — `Content` vs. `String`
-   have no common supertype the desugared `?:` accepts);
+   have no common supertype the desugared `?:` accepts) — **not
+   guarded**; it fails at compile time if used (a type error from the
+   Suko compiler itself), but nothing in this library's own test suite
+   walks the AST looking for it in advance;
 6. no `var c = Componente() { ... }` (a component call used as a value
    can't take a slot block; the grammar silently treats the block as
-   loose text instead of rejecting it);
-7. no literal `<`/`>` inside string literals;
+   loose text instead of rejecting it) — **not guarded**; this is
+   exactly the kind of silent-acceptance grammar gap that a test can't
+   catch by construction (there's no error to assert on), so it's
+   listed here as a trap to avoid rather than something the test suite
+   verifies;
+7. no literal `<`/`>` inside string literals — **not guarded**; same
+   reasoning as 6, this is a "know the parser's limits" convention, not
+   something with an AST shape a test could flag as wrong;
 8. imports are fully qualified and **never** aliased (`import
    io.suko.ui.Label;`, not `import io.suko.ui.Label as L;`) — the
    future CLI's package-prefix rewrite depends on seeing the real
-   qualified name.
+   qualified name — **enforced by test**.
+
+In short: conventions 1, 2, 3, and 8 (plus the package/folder match)
+fail `gradle :suko-components:test` if violated; conventions 4, 5, 6,
+and 7 are documented here and in `ARCHITECTURE.md`, and rely on
+contributor review — this was a conscious choice recorded in the
+subprojeto 7 spec ("verificadas por teste sempre que seja possível"),
+not an oversight.
 
 `Field.sk` is the only component with a non-empty `dependsOn` (it
-imports `Label` and `Input`); `Dialog` is the only one with an
-`externalRequirements` entry (Alpine.js). Neither dependency is
-inferred by magic — both come straight from reading the `.sk` source
-(imports and a fixed per-component requirements list respectively).
+imports `Label` and `Input`). Every component declares Tailwind CSS
+3.x in `externalRequirements` (every component's markup uses Tailwind
+utility classes); `Dialog` additionally declares Alpine.js 3.x, since
+it's the only one that needs it. Neither dependency is inferred by
+magic — both come straight from reading the `.sk` source (imports)
+and a fixed per-component requirements list respectively.
 
 ## Known limitation: `Dialog` has no built-in close button
 

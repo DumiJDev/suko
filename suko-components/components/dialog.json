@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "dialog",
   "version": "0.1.0",
-  "description": "Dialogo modal com Alpine.js para abrir/fechar, titulo e conteudo livre.",
+  "description": "Diálogo modal com Alpine.js para abrir/fechar, título e conteúdo livre.",
   "category": "overlay",
   "basePackage": "io.suko",
   "packageSuffix": "ui",
@@ -16,6 +16,11 @@
   ],
   "dependsOn": [],
   "externalRequirements": [
+    {
+      "kind": "css",
+      "id": "tailwindcss",
+      "versionRange": "3.x"
+    },
     {
       "kind": "js",
       "id": "alpinejs",
