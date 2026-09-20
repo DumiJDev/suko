@@ -1,0 +1,30 @@
+package io.suko.ui;
+
+// `children` é o slot ONE obrigatório (sem `= null`, mesmo desenho do
+// `Badge.children` da tarefa 6) — o caso exato que a correção de
+// `minimalSlotValueFor` (fix round 1, tarefa 6) desbloqueou para a
+// tarefa 7. `header` e `footer` são slots ONE opcionais (`= null`),
+// verificados com `!= null` (mesmo padrão de `Toolbar` em
+// JteEmitterTest: comparação direta do parâmetro `Component`, sem
+// nenhum operador de coalescência — convenção 5 do subprojeto 7, porque
+// `{slot ?: "fallback"}` não compila).
+//
+// Convenção 3: nenhum "${...}" dentro de `class` — nenhum destes
+// atributos depende de `variant`, por isso não há switch aqui.
+public component Card(Component children, Component header = null, Component footer = null) {
+  <div class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+    if (header != null) {
+      <div class="border-b border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900">
+        {header}
+      </div>
+    }
+    <div class="px-4 py-3 text-sm text-gray-700">
+      {children}
+    </div>
+    if (footer != null) {
+      <div class="border-t border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+        {footer}
+      </div>
+    }
+  </div>
+}
