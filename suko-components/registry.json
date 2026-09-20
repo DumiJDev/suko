@@ -1,3 +1,63 @@
 {
-  "components": []
+  "schemaVersion": 1,
+  "registryVersion": "0.1.0",
+  "basePackage": "io.suko",
+  "components": [
+    {
+      "name": "alert",
+      "version": "0.1.0",
+      "description": "Caixa de aviso com variantes de cor (success, warning, danger) e conteudo livre.",
+      "category": "feedback",
+      "manifest": "components/alert.json"
+    },
+    {
+      "name": "badge",
+      "version": "0.1.0",
+      "description": "Etiqueta compacta com variantes de cor (success, warning, danger).",
+      "category": "feedback",
+      "manifest": "components/badge.json"
+    },
+    {
+      "name": "button",
+      "version": "0.1.0",
+      "description": "Botao com variantes de estilo (primary, secondary, ghost) e estado desabilitado.",
+      "category": "action",
+      "manifest": "components/button.json"
+    },
+    {
+      "name": "card",
+      "version": "0.1.0",
+      "description": "Cartao com cabecalho e rodape opcionais, e conteudo obrigatorio.",
+      "category": "layout",
+      "manifest": "components/card.json"
+    },
+    {
+      "name": "dialog",
+      "version": "0.1.0",
+      "description": "Dialogo modal com Alpine.js para abrir/fechar, titulo e conteudo livre.",
+      "category": "overlay",
+      "manifest": "components/dialog.json"
+    },
+    {
+      "name": "field",
+      "version": "0.1.0",
+      "description": "Label e input emparelhados, compostos a partir dos componentes Label e Input importados.",
+      "category": "form",
+      "manifest": "components/field.json"
+    },
+    {
+      "name": "input",
+      "version": "0.1.0",
+      "description": "Campo de entrada de texto simples, com placeholder e obrigatoriedade opcional.",
+      "category": "form",
+      "manifest": "components/input.json"
+    },
+    {
+      "name": "label",
+      "version": "0.1.0",
+      "description": "Rotulo de texto simples para um campo de formulario.",
+      "category": "form",
+      "manifest": "components/label.json"
+    }
+  ]
 }

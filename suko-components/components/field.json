@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "field",
+  "version": "0.1.0",
+  "description": "Label e input emparelhados, compostos a partir dos componentes Label e Input importados.",
+  "category": "form",
+  "basePackage": "io.suko",
+  "packageSuffix": "ui",
+  "component": "Field",
+  "files": [
+    {
+      "path": "src/main/suko/io/suko/ui/Field.sk",
+      "target": "ui/Field.sk",
+      "sha256": "f5e1861ebfda6a5470f5124776ef88c612b4595842f50792f71688d6c1cc98b7"
+    }
+  ],
+  "dependsOn": [
+    "input",
+    "label"
+  ],
+  "externalRequirements": []
+}

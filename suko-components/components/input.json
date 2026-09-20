@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "input",
+  "version": "0.1.0",
+  "description": "Campo de entrada de texto simples, com placeholder e obrigatoriedade opcional.",
+  "category": "form",
+  "basePackage": "io.suko",
+  "packageSuffix": "ui",
+  "component": "Input",
+  "files": [
+    {
+      "path": "src/main/suko/io/suko/ui/Input.sk",
+      "target": "ui/Input.sk",
+      "sha256": "58a21ce62aa45585cf7737f7fe18dadaf6bf5c96cfdccb26e55dfb668af17ea8"
+    }
+  ],
+  "dependsOn": [],
+  "externalRequirements": []
+}
