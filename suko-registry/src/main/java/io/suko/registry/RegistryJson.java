@@ -21,6 +21,22 @@ import java.lang.reflect.RecordComponent;
  * raw {@code NullPointerException} downstream.
  * </p>
  * <p>
+ * Schema version 1 documents are read by this version of Suko. Earlier
+ * versions (e.g. 0) are also accepted for backward compatibility. Later
+ * versions are rejected with a clear error message.
+ * </p>
+ * <p>
+ * <strong>Maintenance note:</strong> When creating a future schema version 2,
+ * any <em>new required field</em> added to the record definition will
+ * immediately break the ability to read schema version 1 documents, since
+ * {@link #requireFields(JsonObject, Class, String)} uses reflection to require
+ * all {@code RecordComponent} fields. To preserve backward compatibility,
+ * all new fields in schema 2 records must be optional in the JSON (with
+ * default values or nullable semantics), even if the corresponding record
+ * field is not optional. Alternatively, handle schema version 1 documents with
+ * a separate deserialization path.
+ * </p>
+ * <p>
  * Output is pretty-printed with a key order that matches the declaration
  * order of the corresponding record's components (Gson's reflective field
  * order for a {@code record} compiled by {@code javac} follows declaration
@@ -104,7 +120,7 @@ public final class RegistryJson {
                             + " document must be an integer, found: " + versionElement);
         }
         int found = versionElement.getAsInt();
-        if (found != SUPPORTED_SCHEMA_VERSION) {
+        if (found > SUPPORTED_SCHEMA_VERSION) {
             throw new RegistryJsonException(
                     "Unsupported schemaVersion " + found + " in " + documentKind
                             + " document; this version of Suko only supports schemaVersion "
@@ -113,6 +129,10 @@ public final class RegistryJson {
     }
 
     private static void requireFields(JsonObject object, Class<?> recordType, String documentKind) {
+        // IMPORTANT: This method uses reflection to check all RecordComponent fields.
+        // If a new required field is added to a record in a future schema version,
+        // it will cause all documents of the previous schema version to be rejected.
+        // See the class javadoc for guidance on maintaining backward compatibility.
         for (RecordComponent component : recordType.getRecordComponents()) {
             String field = component.getName();
             if (!object.has(field) || object.get(field).isJsonNull()) {
