@@ -1,0 +1,26 @@
+package io.suko.ui;
+
+// Convenção 3 (a mais importante das oito, spec do subprojeto 7):
+// NUNCA "${...}" dentro de um atributo `class` — o scanner estático do
+// Tailwind nunca vê uma classe composta em tempo de build, e o CSS
+// correspondente simplesmente não existe no bundle final. Cada ramo do
+// switch abaixo escreve a string de classe COMPLETA.
+public component Button(String label, String variant = "primary", boolean disabled = false) {
+  switch (variant) {
+    case "secondary" -> {
+      <button type="button" class="inline-flex items-center justify-center rounded-md bg-white px-4 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50" disabled={disabled}>
+        {label}
+      </button>
+    }
+    case "ghost" -> {
+      <button type="button" class="inline-flex items-center justify-center rounded-md bg-transparent px-4 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={disabled}>
+        {label}
+      </button>
+    }
+    default -> {
+      <button type="button" class="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50" disabled={disabled}>
+        {label}
+      </button>
+    }
+  }
+}
