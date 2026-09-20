@@ -2,7 +2,7 @@ package io.suko.ui;
 
 // Convenção 3: cada ramo do switch escreve a string de classe COMPLETA
 // (mesmo padrão do Button) — nunca "${...}" dentro de `class`.
-public component Badge(String variant = "default", Component children = null) {
+public component Badge(String variant = "default", Component children) {
   switch (variant) {
     case "success" -> {
       <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">

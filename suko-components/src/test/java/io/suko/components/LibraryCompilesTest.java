@@ -4,6 +4,7 @@ import gg.jte.Content;
 import io.suko.lang.SukoAstBuilder;
 import io.suko.lang.SukoLexer;
 import io.suko.lang.SukoParser;
+import io.suko.lang.ast.Cardinality;
 import io.suko.lang.ast.ComponentDecl;
 import io.suko.lang.ast.Param;
 import io.suko.lang.ast.SukoFile;
@@ -81,6 +82,64 @@ class LibraryCompilesTest {
     private record ComponentUnderTest(Path skFile, ComponentDecl component) {
     }
 
+    /** Teste focado (Fix round 1, tarefa 6): exercita, num único
+     * componente sintético, as 4 combinações de {@code cardinality()}/
+     * {@code renderProp()} de {@code Param.SlotParam} sem valor por
+     * omissão — a árvore exata que {@code JteEmitter.jteParamDeclaration}
+     * usa para escolher o tipo Java do {@code .jte} gerado
+     * (linhas 242-253). Antes da correção desta ronda, {@code
+     * minimalParams} sintetizava sempre um {@code Function<Object,
+     * Content>}, o que batia só com o caso ONE+renderProp e produzia
+     * {@code ClassCastException} nos outros três — este teste falha (RED)
+     * contra a versão antiga e passa (GREEN) contra a corrigida, sem
+     * depender de nenhum componente real da biblioteca. */
+    @Test
+    void minimalParamsMatchGeneratedJteTypesForAllFourSlotShapes() throws IOException {
+        String source = """
+            component AllSlotShapes(
+              Component one,
+              List<Component> many,
+              Function<String, Component> oneRenderProp,
+              List<Function<String, Component>> manyRenderProp
+            ) {
+              {one}
+              for (Content c : many) {
+                {c}
+              }
+              {oneRenderProp("x")}
+              for (Function<String, Content> f : manyRenderProp) {
+                {f.apply("y")}
+              }
+            }
+            """;
+
+        SukoLexer lexer = new SukoLexer(CharStreams.fromString(source));
+        SukoParser parser = new SukoParser(new CommonTokenStream(lexer));
+        SukoFile file = new SukoAstBuilder(source).build(parser.compilationUnit());
+        ComponentDecl component = file.components().get(0);
+
+        Map<String, Object> params = minimalParams(component);
+
+        // As 4 asserções de tipo abaixo são o próprio ponto do teste:
+        // falham (com ClassCastException do JVM, não do JUnit) antes da
+        // correção, porque os 3 últimos casos recebiam um Function em vez
+        // do tipo que o .jte gerado realmente declara.
+        assertTrue(params.get("one") instanceof Content, "ONE sem renderProp tem de ser Content puro");
+        assertTrue(params.get("many") instanceof List<?> manyList && manyList.isEmpty(),
+            "MANY sem renderProp tem de ser List<Content> (vazia)");
+        assertTrue(params.get("oneRenderProp") instanceof Function<?, ?>, "ONE+renderProp tem de ser Function");
+        assertTrue(params.get("manyRenderProp") instanceof List<?> manyRenderPropList && manyRenderPropList.isEmpty(),
+            "MANY+renderProp tem de ser List<Function<...>> (vazia)");
+
+        // E a prova de ponta-a-ponta: o motor gg.jte real aceita este mapa
+        // sem exceção nenhuma (nem ClassCastException, nem
+        // TemplateException) — a asserção real é a própria chamada não
+        // lançar; `html` só é inspecionado para garantir que não é null,
+        // provando que a chamada de facto devolveu (não é um no-op).
+        String html = JteRenderSupport.render(source, "AllSlotShapes", params);
+        assertTrue(html != null, "renderProject tem de devolver o HTML produzido, nunca null");
+    }
+
     /** "io/suko/ui/Button" a partir do package declarado + nome do componente
      * — o mesmo esquema de caminho que SukoProjectCompiler usa para escrever
      * o .jte gerado (espelha a pasta do ficheiro .sk de origem). */
@@ -95,8 +154,19 @@ class LibraryCompilesTest {
 
     /** Valor mínimo (mas válido) por parâmetro, só para os que não têm
      * default: primitivos/String recebem um valor "neutro"; slots recebem
-     * um Content vazio funcional, uma vez que todo slot<T> é emitido como
-     * Function&lt;T, gg.jte.Content&gt; (ver JteEmitter). */
+     * um valor cujo tipo Java bate exatamente com o que
+     * {@code JteEmitter.jteParamDeclaration} declara no {@code .jte}
+     * gerado — que depende de {@code cardinality()}/{@code renderProp()},
+     * não só de "é um SlotParam" (ver {@code JteEmitter.java:242-253}):
+     * ONE+renderProp → {@code Function<T, Content>}; ONE sem renderProp
+     * (caso de {@code children}) → {@code Content} puro; MANY+renderProp
+     * → {@code List<Function<T, Content>>}; MANY sem renderProp →
+     * {@code List<Content>}. Antes desta correção (Fix round 1, tarefa 6),
+     * os 3 últimos casos recebiam sempre um {@code Function<Object,
+     * Content>}, o que causava {@code ClassCastException} em runtime
+     * para qualquer slot ONE não-render-prop obrigatório (ex.: `Component
+     * children` sem `= null`) — bloqueava a tarefa 7 (`Card.children`,
+     * obrigatório por desenho). */
     private static Map<String, Object> minimalParams(ComponentDecl component) {
         Map<String, Object> params = new HashMap<>();
         for (Param param : component.params()) {
@@ -108,14 +178,32 @@ class LibraryCompilesTest {
                 }
                 case Param.SlotParam slotParam -> {
                     if (slotParam.defaultValue().isEmpty()) {
-                        Function<Object, Content> emptyContent = it -> output -> {
-                        };
-                        params.put(slotParam.name(), emptyContent);
+                        params.put(slotParam.name(), minimalSlotValueFor(slotParam));
                     }
                 }
             }
         }
         return params;
+    }
+
+    private static Object minimalSlotValueFor(Param.SlotParam slotParam) {
+        boolean many = slotParam.cardinality() == Cardinality.MANY;
+        if (slotParam.renderProp()) {
+            // Lista vazia é um valor válido para cardinalidade MANY sem
+            // fills (o .jte gerado declara List<Function<T, Content>>).
+            if (many) {
+                return List.<Function<Object, Content>>of();
+            }
+            Function<Object, Content> emptyRenderProp = it -> output -> {
+            };
+            return emptyRenderProp;
+        }
+        if (many) {
+            return List.<Content>of();
+        }
+        Content emptyContent = output -> {
+        };
+        return emptyContent;
     }
 
     private static Object minimalValueFor(Param.ValueParam valueParam) {

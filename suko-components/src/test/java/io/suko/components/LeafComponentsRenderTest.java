@@ -99,17 +99,20 @@ class LeafComponentsRenderTest {
     }
 
     @Test
-    void badgeFallsBackToDefaultVariantAndAllowsNullChildren() throws IOException {
+    void badgeFallsBackToDefaultVariantWhenOmitted() throws IOException {
+        // `children` é obrigatório (sem `= null`, conforme o brief da
+        // tarefa 6): tem de ser sempre fornecido. Só `variant` fica por
+        // omissão aqui, para provar o valor por omissão `"default"`.
+        Content children = out -> out.writeContent("Novo");
         Map<String, Object> params = new HashMap<>();
-        // variant e children ficam por omissão ("default" e null,
-        // respetivamente) — prova que um Component slot com `= null`
-        // não obriga o chamador a fornecer conteúdo.
+        params.put("children", children);
 
         String html = render("Badge", params);
 
-        assertTrue(html.contains("<span"), () -> "esperava elemento <span> mesmo sem children: " + html);
+        assertTrue(html.contains("<span"), () -> "esperava elemento <span>: " + html);
         assertTrue(html.contains("bg-gray-50"),
             () -> "variante por omissão (\"default\") tem de escrever a sua classe Tailwind: " + html);
+        assertTrue(html.contains("Novo"), () -> "conteúdo do slot children tem de aparecer no output: " + html);
     }
 
     private static String render(String componentName, Map<String, Object> params) throws IOException {
