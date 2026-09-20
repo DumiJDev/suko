@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "label",
+  "version": "0.1.0",
+  "description": "Rotulo de texto simples para um campo de formulario.",
+  "category": "form",
+  "basePackage": "io.suko",
+  "packageSuffix": "ui",
+  "component": "Label",
+  "files": [
+    {
+      "path": "src/main/suko/io/suko/ui/Label.sk",
+      "target": "ui/Label.sk",
+      "sha256": "74a03dcf4e832ddb09b3e30225dc35dc8d118630b8ccd0198051c19dd8beeca3"
+    }
+  ],
+  "dependsOn": [],
+  "externalRequirements": []
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "button",
+  "version": "0.1.0",
+  "description": "Botao com variantes de estilo (primary, secondary, ghost) e estado desabilitado.",
+  "category": "action",
+  "basePackage": "io.suko",
+  "packageSuffix": "ui",
+  "component": "Button",
+  "files": [
+    {
+      "path": "src/main/suko/io/suko/ui/Button.sk",
+      "target": "ui/Button.sk",
+      "sha256": "3a15b1d1a860140a4198c223a8a271f47e88bcf1d123cf4d611b9ce29562aaa4"
+    }
+  ],
+  "dependsOn": [],
+  "externalRequirements": []
+}
