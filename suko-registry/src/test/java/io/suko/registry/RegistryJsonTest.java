@@ -175,4 +175,56 @@ class RegistryJsonTest {
         String json = RegistryJson.writeManifest(sampleManifest());
         assertTrue(json.contains("\n"), "expected indented (multi-line) output");
     }
+
+    @Test
+    void readsDocumentWithOlderSchemaVersion() {
+        String json = """
+                {
+                  "schemaVersion": 0,
+                  "name": "button",
+                  "version": "1.0.0",
+                  "description": "d",
+                  "category": "UI",
+                  "basePackage": "io.suko",
+                  "packageSuffix": "ui",
+                  "component": "Button",
+                  "files": [],
+                  "dependsOn": [],
+                  "externalRequirements": []
+                }
+                """;
+
+        // schemaVersion: 0 in an otherwise valid manifest should be accepted
+        // after the change to allow backwards-compatible reading.
+        ComponentManifest manifest = RegistryJson.readManifest(json);
+        assertEquals(0, manifest.schemaVersion());
+    }
+
+    @Test
+    void rejectsDocumentWithNewerSchemaVersionNamingBothVersions() {
+        String json = """
+                {
+                  "schemaVersion": 99,
+                  "name": "button",
+                  "version": "1.0.0",
+                  "description": "d",
+                  "category": "UI",
+                  "basePackage": "io.suko",
+                  "packageSuffix": "ui",
+                  "component": "Button",
+                  "files": [],
+                  "dependsOn": [],
+                  "externalRequirements": []
+                }
+                """;
+
+        RegistryJsonException ex = assertThrows(RegistryJsonException.class,
+                () -> RegistryJson.readManifest(json));
+
+        // Message must contain both the unsupported version found (99) and
+        // the supported version.
+        assertTrue(ex.getMessage().contains("99"), "message should mention the found version: " + ex.getMessage());
+        assertTrue(ex.getMessage().contains(String.valueOf(RegistryIndex.SCHEMA_VERSION)),
+                "message should mention the supported version: " + ex.getMessage());
+    }
 }
