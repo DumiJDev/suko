@@ -270,6 +270,18 @@ public class SemanticChecker {
                 }
                 checkStatementList(switchStmt.defaultCase(), currentScopeSlots);
             }
+            // R2 (subprojeto 7): sem este caso, os children() de uma tag nunca
+            // eram percorridos — e como quase toda a chamada real em Suko é
+            // escrita dentro de uma tag, COMPONENT_NOT_FOUND /
+            // COMPONENT_NOT_VISIBLE / SLOT_NOT_FOUND / CARDINALITY_VIOLATION
+            // eram trivialmente contornáveis. Percurso simétrico ao que
+            // checkBareBraceInStatement já fazia ao lado (:174).
+            case Statement.HtmlElement element -> {
+                for (Statement.Attribute attribute : element.attributes()) {
+                    checkExprForComponentCalls(attribute.value());
+                }
+                checkStatementList(element.children(), currentScopeSlots);
+            }
             default -> {}
         }
     }

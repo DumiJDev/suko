@@ -100,6 +100,29 @@ class SemanticCheckerProjectTest {
         assertEquals(1, diagnostics.getDiagnostics().size(), diagnostics.toString());
     }
 
+    /** Subprojeto 5: o furo real na visibilidade — um componente file-private
+     * noutro ficheiro, chamado dentro de uma tag HTML (não como statement
+     * top-level), tem de disparar COMPONENT_NOT_VISIBLE tal como dispararia
+     * fora da tag (R2, subprojeto 7). */
+    @Test
+    void reportsNonVisibleComponentCalledInsideHtmlElement(@TempDir Path sourceRoot) throws IOException {
+        writeUiBadge(sourceRoot, false);
+        // Chamada por nome QUALIFICADO, sem `import` — não passa pelo
+        // caminho de checkImportsAndBuildAliasMap (que já reportaria
+        // COMPONENT_NOT_VISIBLE na linha do import, mascarando o bug real).
+        // Isto força a visibilidade a ser verificada no próprio call site,
+        // dentro de checkExprForComponentCalls/checkComponentCall — que só é
+        // alcançado se checkStatement descer para dentro de <div> (R2).
+        String source = """
+            component Home() {
+              <div>ui.Badge(text="x")</div>
+            }
+            """;
+        DiagnosticCollector diagnostics = checkAgainstProject(sourceRoot, source, "Home.sk", Path.of("Home.sk"));
+        assertTrue(diagnostics.getDiagnostics().stream().anyMatch(d -> "COMPONENT_NOT_VISIBLE".equals(d.code())),
+            diagnostics.toString());
+    }
+
     @Test
     void packageDirectoryMismatchIsReported(@TempDir Path sourceRoot) throws IOException {
         writeUiBadge(sourceRoot, true);

@@ -243,6 +243,86 @@ class SemanticCheckerTest {
     }
 
     @Test
+    void reportsUnknownComponentCalledInsideHtmlElement() {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SymbolTable symbolTable = new SymbolTable();
+        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
+
+        String sukoSource = """
+            component Page() {
+              <div>NaoExiste()</div>
+            }
+            """;
+        org.antlr.v4.runtime.CharStream charStream = org.antlr.v4.runtime.CharStreams.fromString(sukoSource);
+        io.suko.lang.SukoLexer lexer = new io.suko.lang.SukoLexer(charStream);
+        io.suko.lang.SukoParser parser = new io.suko.lang.SukoParser(new org.antlr.v4.runtime.CommonTokenStream(lexer));
+        SukoFile file = new io.suko.lang.SukoAstBuilder(sukoSource).build(parser.compilationUnit());
+
+        checker.check(file);
+
+        assertTrue(diagnostics.hasErrors(), "Should report COMPONENT_NOT_FOUND for a call nested inside <div>: " + diagnostics);
+        assertEquals(1, diagnostics.getErrors().size(), diagnostics.getErrors().toString());
+        SukoDiagnostic diag = diagnostics.getErrors().get(0);
+        assertEquals("COMPONENT_NOT_FOUND", diag.code());
+        assertTrue(diag.message().contains("NaoExiste"));
+    }
+
+    @Test
+    void reportsUnknownComponentNestedTwoLevelsDeep() {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SymbolTable symbolTable = new SymbolTable();
+        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
+
+        String sukoSource = """
+            component Page() {
+              <div><section>NaoExiste()</section></div>
+            }
+            """;
+        org.antlr.v4.runtime.CharStream charStream = org.antlr.v4.runtime.CharStreams.fromString(sukoSource);
+        io.suko.lang.SukoLexer lexer = new io.suko.lang.SukoLexer(charStream);
+        io.suko.lang.SukoParser parser = new io.suko.lang.SukoParser(new org.antlr.v4.runtime.CommonTokenStream(lexer));
+        SukoFile file = new io.suko.lang.SukoAstBuilder(sukoSource).build(parser.compilationUnit());
+
+        checker.check(file);
+
+        assertTrue(diagnostics.hasErrors(), "Should report COMPONENT_NOT_FOUND for a call nested two levels deep: " + diagnostics);
+        assertEquals(1, diagnostics.getErrors().size(), diagnostics.getErrors().toString());
+        SukoDiagnostic diag = diagnostics.getErrors().get(0);
+        assertEquals("COMPONENT_NOT_FOUND", diag.code());
+        assertTrue(diag.message().contains("NaoExiste"));
+    }
+
+    @Test
+    void reportsSlotViolationForComponentCalledInsideHtmlElement() {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SymbolTable symbolTable = new SymbolTable();
+        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "test.sk");
+
+        Param requiredSlot = new Param.SlotParam(
+                new Type("Content", List.of(), 0), "header", Cardinality.ONE, false,
+                Optional.empty(), new SourceSpan(1, 1, 0, 5));
+        ComponentDecl card = new ComponentDecl("Card", List.of(), List.of(requiredSlot),
+                List.of(), new SourceSpan(1, 1, 0, 10), false);
+        symbolTable.register(card);
+
+        // <div>Card()</div> — Card() é uma statement-child de HtmlElement,
+        // sem fill para o slot "header" obrigatório.
+        Statement cardCall = new Statement.ComponentCallStmt("Card", List.of(), List.of(),
+                new SourceSpan(1, 1, 0, 10));
+        Statement div = new Statement.HtmlElement("div", List.of(), List.of(cardCall), false,
+                new SourceSpan(1, 1, 0, 20));
+
+        ComponentDecl page = new ComponentDecl("Page", List.of(), List.of(),
+                List.of(div), new SourceSpan(1, 1, 0, 30), false);
+
+        checker.check(new SukoFile(Optional.empty(), List.of(), List.of(card, page)));
+
+        assertTrue(diagnostics.hasErrors());
+        assertTrue(diagnostics.getErrors().stream().anyMatch(d -> d.code().equals("REQUIRED_SLOT_MISSING")),
+            diagnostics.getErrors().toString());
+    }
+
+    @Test
     void bareBraceInStringSuggestsDollarSyntax() {
         DiagnosticCollector diagnostics = new DiagnosticCollector();
         SymbolTable symbolTable = new SymbolTable();
