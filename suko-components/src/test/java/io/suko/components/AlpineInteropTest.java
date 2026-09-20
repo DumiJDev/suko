@@ -73,6 +73,44 @@ class AlpineInteropTest {
         assertTrue(html.contains("Tens a certeza?"), () -> "children tem de aparecer: " + html);
     }
 
+    /**
+     * Fix round 1 (revisão de segurança da Tarefa 8): codifica como teste
+     * permanente da suite o achado Important do {@code security-specialist}
+     * — confirmado à parte, com um teste descartável já removido, que o
+     * {@code gg.jte} escapa aspas em {@code ${id}} no contexto de
+     * atributo HTML, impedindo que um {@code id} malicioso feche o
+     * atributo e injete um atributo HTML novo (ex. {@code onmouseover}).
+     * Payload exato usado na revisão: {@code confirm" onmouseover="alert(1)}.
+     */
+    @Test
+    void idAttributeEscapesQuotesAndCannotBreakOutToInjectAnAttribute() throws IOException {
+        Content children = out -> out.writeContent("Tens a certeza?");
+        Map<String, Object> params = Map.of(
+            "id", "confirm\" onmouseover=\"alert(1)",
+            "title", "Confirmar",
+            "children", children
+        );
+
+        String html = render("Dialog", params);
+
+        // A aspa do valor de id tem de sair escapada (contexto de
+        // atributo HTML do gg.jte) — nunca uma aspa literal, que
+        // fecharia o atributo id em aberto.
+        assertTrue(html.contains("&#34;"),
+            () -> "aspa do payload tem de ser escapada (contexto de atributo HTML): " + html);
+
+        // O atributo id inteiro, com o payload escapado dentro do MESMO
+        // valor entre aspas — onmouseover nunca vira um atributo HTML
+        // real, só texto dentro do valor de id.
+        assertTrue(html.contains("id=\"dialog-confirm&#34; onmouseover=&#34;alert(1)\""),
+            () -> "payload tem de permanecer inteiro, escapado, dentro do valor de id: " + html);
+
+        // Não pode existir "onmouseover=\"" como atributo HTML real (fora
+        // do valor escapado de id) — só a forma escapada acima.
+        assertFalse(html.contains("onmouseover=\"alert(1)\""),
+            () -> "onmouseover não pode sobreviver como atributo HTML real (aspas não escapadas): " + html);
+    }
+
     private static String render(String componentName, Map<String, Object> params) throws IOException {
         String source = Files.readString(UI_DIR.resolve(componentName + ".sk"));
         return JteRenderSupport.render(source, componentName, params);
