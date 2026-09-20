@@ -18,5 +18,11 @@
     "input",
     "label"
   ],
-  "externalRequirements": []
+  "externalRequirements": [
+    {
+      "kind": "css",
+      "id": "tailwindcss",
+      "versionRange": "3.x"
+    }
+  ]
 }

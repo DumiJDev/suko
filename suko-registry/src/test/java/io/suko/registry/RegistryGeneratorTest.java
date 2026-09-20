@@ -158,6 +158,26 @@ class RegistryGeneratorTest {
         assertTrue(exception.getMessage().contains("Label"), exception.getMessage());
     }
 
+    @Test
+    void descriptionsFileIsReadAsUtf8NotIso88591() {
+        // Minor fix (final review, round 1): loadDescriptions used to read
+        // via Properties.load(InputStream), which the API assumes is
+        // ISO-8859-1 by contract — a non-ASCII character (e.g. a Portuguese
+        // accent) written to the file came out corrupted silently, with no
+        // test catching it. This fixture has real Portuguese accents; if
+        // loadDescriptions regresses to the InputStream overload, this
+        // description would come back mojibake'd instead of matching.
+        GeneratorConfig config = new GeneratorConfig(
+                "io.suko", "0.1.0", "src/main/suko",
+                Path.of("src/test/resources/generator-fixtures/valid/descriptions-utf8.properties"),
+                Map.of("Label", config("1.0.0", "form"), "Field", config("1.0.0", "form")));
+
+        GeneratedRegistry registry = RegistryGenerator.generate(VALID_FIXTURE, config);
+
+        ComponentManifest label = registry.manifestsByName().get("label");
+        assertEquals("Rótulo com acentuação: ção, ã, é.", label.description());
+    }
+
     private static String sha256Hex(byte[] content) throws Exception {
         java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
         byte[] hash = digest.digest(content);

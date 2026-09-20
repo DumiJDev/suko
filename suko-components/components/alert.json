@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "alert",
   "version": "0.1.0",
-  "description": "Caixa de aviso com variantes de cor (success, warning, danger) e conteudo livre.",
+  "description": "Caixa de aviso com variantes de cor (success, warning, danger) e conteúdo livre.",
   "category": "feedback",
   "basePackage": "io.suko",
   "packageSuffix": "ui",
@@ -15,5 +15,11 @@
     }
   ],
   "dependsOn": [],
-  "externalRequirements": []
+  "externalRequirements": [
+    {
+      "kind": "css",
+      "id": "tailwindcss",
+      "versionRange": "3.x"
+    }
+  ]
 }

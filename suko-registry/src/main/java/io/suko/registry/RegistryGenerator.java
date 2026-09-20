@@ -14,6 +14,8 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -307,10 +309,20 @@ public final class RegistryGenerator {
         inStack.remove(node);
     }
 
+    /**
+     * Reads the descriptions file as UTF-8, explicitly. {@link
+     * Properties#load(InputStream)} assumes ISO-8859-1 by contract of the
+     * {@code Properties} API — any non-ASCII character (e.g. Portuguese
+     * accents) written to the file would come out corrupted with that
+     * overload, silently and without any test failing (the golden test
+     * compares the generated manifest against the committed one, and both
+     * would be corrupted the same way). Using the {@code Reader} overload
+     * with an explicit UTF-8 {@link InputStreamReader} avoids that.
+     */
     private static Properties loadDescriptions(Path descriptionsFile) {
         Properties properties = new Properties();
-        try (InputStream in = Files.newInputStream(descriptionsFile)) {
-            properties.load(in);
+        try (Reader reader = new InputStreamReader(Files.newInputStream(descriptionsFile), StandardCharsets.UTF_8)) {
+            properties.load(reader);
         } catch (IOException e) {
             throw new RegistryGeneratorException(
                     "Could not read descriptions file '" + descriptionsFile + "': " + e.getMessage(), e);

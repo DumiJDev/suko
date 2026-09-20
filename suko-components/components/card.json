@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "name": "card",
   "version": "0.1.0",
-  "description": "Cartao com cabecalho e rodape opcionais, e conteudo obrigatorio.",
+  "description": "Cartão com cabeçalho e rodapé opcionais, e conteúdo obrigatório.",
   "category": "layout",
   "basePackage": "io.suko",
   "packageSuffix": "ui",
@@ -15,5 +15,11 @@
     }
   ],
   "dependsOn": [],
-  "externalRequirements": []
+  "externalRequirements": [
+    {
+      "kind": "css",
+      "id": "tailwindcss",
+      "versionRange": "3.x"
+    }
+  ]
 }

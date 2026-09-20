@@ -29,11 +29,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 7, secção "Convenções de autoria da biblioteca") sobre TODO ficheiro em
  * {@code src/main/suko}. As verificações são sobre o AST, não sobre o
  * texto do ficheiro — em particular a convenção 3 (nenhum {@code ${...}}
- * dentro de um atributo {@code class}) tem de olhar para
- * {@code Statement.Attribute} com {@code name().equals("class")} cujo
- * valor seja um {@code Expr.StringLiteralExpr} com partes não-literais,
- * para não gerar falsos positivos em atributos como {@code x-data} que
- * também podem conter chaves.
+ * dentro de um atributo {@code class}, seja com aspas ou sem elas) só
+ * aceita, para o atributo {@code class}, um {@code Expr.StringLiteralExpr}
+ * inteiramente literal (sem partes de interpolação); qualquer outra forma
+ * de {@code Expr} nesse atributo — incluindo um {@code Expr} que não é de
+ * todo um {@code StringLiteralExpr}, o que acontece quando o valor é
+ * escrito sem aspas, ex. {@code class={variant}} — conta como violação.
+ * Só o atributo {@code class} é verificado desta forma, para não gerar
+ * falsos positivos em atributos como {@code x-data} que também podem
+ * conter chaves.
  *
  * <p>Esta suite tem de passar com a pasta vazia (0 ficheiros .sk) — é o
  * que prova que o harness e o wiring de módulos estão corretos antes de
@@ -129,9 +133,28 @@ class LibraryConventionsTest {
         }
     }
 
+    /**
+     * Convention 3 accepts exactly one shape for a {@code class} attribute
+     * value: a fully-literal {@code Expr.StringLiteralExpr} (no interpolated
+     * parts) — e.g. {@code class="btn btn-primary"}. Anything else is a
+     * violation, not just the quoted-interpolation case
+     * ({@code class="btn-${variant}"}): {@code SukoAstBuilder.buildAttributes}
+     * (suko-core/src/main/java/io/suko/lang/SukoAstBuilder.java:296-308) can
+     * also build an attribute value directly from {@code buildExpr(...)} when
+     * it's written without quotes at all (e.g. {@code class={variant}}),
+     * which produces an {@code Expr} that is never a {@code StringLiteralExpr}
+     * — the previous version of this guard only rejected the first shape and
+     * let the second one (found for real in Input.sk's {@code id={id}}/
+     * {@code type={type}} style) through unnoticed, even though it breaks the
+     * Tailwind static scanner exactly the same way.
+     */
     private static boolean hasInterpolation(Expr value) {
-        return value instanceof Expr.StringLiteralExpr stringLiteral
-            && stringLiteral.parts().stream().anyMatch(part -> !(part instanceof Expr.StringPart.Literal));
+        if (value instanceof Expr.StringLiteralExpr stringLiteral) {
+            return stringLiteral.parts().stream().anyMatch(part -> !(part instanceof Expr.StringPart.Literal));
+        }
+        // Any non-string-literal Expr (e.g. an unquoted `class={variant}`)
+        // is, by construction, not a complete static Tailwind class string.
+        return true;
     }
 
     private static List<Path> listSkFiles() {

@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -55,19 +56,27 @@ class RegistryGoldenTest {
     // of by two configs happening to agree.
     // ------------------------------------------------------------------
 
+    // Every component in this library uses plain Tailwind utility classes in
+    // its markup (see spec D6), so every component declares this requirement
+    // — this is what makes the manifest self-sufficient for consumers that
+    // only read the JSON and never the .sk source (subprojeto 8).
+    private static final List<ExternalRequirement> TAILWIND =
+            java.util.List.of(new ExternalRequirement("css", "tailwindcss", "3.x"));
+
     private static GeneratorConfig buildConfig() {
         Map<String, GeneratorConfig.ComponentConfig> componentConfigs = new LinkedHashMap<>();
-        componentConfigs.put("Button", new GeneratorConfig.ComponentConfig("0.1.0", "action", java.util.List.of()));
-        componentConfigs.put("Input", new GeneratorConfig.ComponentConfig("0.1.0", "form", java.util.List.of()));
-        componentConfigs.put("Label", new GeneratorConfig.ComponentConfig("0.1.0", "form", java.util.List.of()));
-        componentConfigs.put("Badge", new GeneratorConfig.ComponentConfig("0.1.0", "feedback", java.util.List.of()));
-        componentConfigs.put("Alert", new GeneratorConfig.ComponentConfig("0.1.0", "feedback", java.util.List.of()));
-        componentConfigs.put("Card", new GeneratorConfig.ComponentConfig("0.1.0", "layout", java.util.List.of()));
-        componentConfigs.put("Field", new GeneratorConfig.ComponentConfig("0.1.0", "form", java.util.List.of()));
-        // The only component with externalRequirements today (Task 8):
-        // Alpine.js, used literally (x-data/x-show) by Dialog.sk.
+        componentConfigs.put("Button", new GeneratorConfig.ComponentConfig("0.1.0", "action", TAILWIND));
+        componentConfigs.put("Input", new GeneratorConfig.ComponentConfig("0.1.0", "form", TAILWIND));
+        componentConfigs.put("Label", new GeneratorConfig.ComponentConfig("0.1.0", "form", TAILWIND));
+        componentConfigs.put("Badge", new GeneratorConfig.ComponentConfig("0.1.0", "feedback", TAILWIND));
+        componentConfigs.put("Alert", new GeneratorConfig.ComponentConfig("0.1.0", "feedback", TAILWIND));
+        componentConfigs.put("Card", new GeneratorConfig.ComponentConfig("0.1.0", "layout", TAILWIND));
+        componentConfigs.put("Field", new GeneratorConfig.ComponentConfig("0.1.0", "form", TAILWIND));
+        // Dialog additionally needs Alpine.js (x-data/x-show), on top of the
+        // Tailwind requirement every component shares.
         componentConfigs.put("Dialog", new GeneratorConfig.ComponentConfig("0.1.0", "overlay",
-                java.util.List.of(new ExternalRequirement("js", "alpinejs", "3.x"))));
+                java.util.List.of(new ExternalRequirement("css", "tailwindcss", "3.x"),
+                        new ExternalRequirement("js", "alpinejs", "3.x"))));
 
         return new GeneratorConfig(
                 "io.suko",
