@@ -127,6 +127,23 @@ class RegistryGeneratorTest {
     }
 
     @Test
+    void duplicateRegistryNameAcrossDifferentPackagesFailsNamingBothFiles() {
+        // io.suko.ui.Field and io.suko.other.Field have distinct
+        // qualifiedNames, so ProjectIndex.build's own duplicate detection
+        // (identical qualifiedName) does not catch this — the registry name
+        // is only the lowercase simple name, independent of package, so
+        // this must be caught by RegistryGenerator itself.
+        Path fixture = Path.of("src/test/resources/generator-fixtures/duplicate-name-different-package");
+
+        RegistryGeneratorException exception = assertThrows(RegistryGeneratorException.class,
+                () -> RegistryGenerator.generate(fixture, configFor(fixture, Map.of(
+                        "Field", config("1.0.0", "form")))));
+
+        assertTrue(exception.getMessage().contains("io/suko/ui/Field.sk"), exception.getMessage());
+        assertTrue(exception.getMessage().contains("io/suko/other/Field.sk"), exception.getMessage());
+    }
+
+    @Test
     void missingDescriptionFailsWithExplicitMessage() {
         GeneratorConfig config = configFor(VALID_FIXTURE, Map.of("Field", config("1.0.0", "form")));
         // Overwrite with a descriptions file missing the "Label" entry.

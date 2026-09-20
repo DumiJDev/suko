@@ -1,0 +1,5 @@
+package io.suko.ui;
+
+public component Field(String text) {
+  <div>{text}</div>
+}

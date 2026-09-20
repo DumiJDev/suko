@@ -118,6 +118,23 @@ public final class RegistryGenerator {
             }
 
             String registryName = decl.name().toLowerCase(Locale.ROOT);
+            // index.duplicates() (checked above) only catches an identical
+            // qualifiedName (same package AND name). Two components with the
+            // same name in DIFFERENT packages (e.g. io.suko.ui.Field and
+            // io.suko.other.Field) have distinct qualifiedNames but collide
+            // here, because the registry name is only the lowercase simple
+            // name — without this check the second one silently overwrites
+            // the first in byRegistryName and the generation "succeeds" with
+            // one of the two components discarded, no error at all.
+            ParsedComponent previous = byRegistryName.get(registryName);
+            if (previous != null) {
+                String previousRelative = sourceRoot.relativize(previous.sourceFile()).toString().replace('\\', '/');
+                throw new RegistryGeneratorException(
+                        "Duplicate registry name '" + registryName + "' (component '" + decl.name()
+                                + "'): declared in both '" + previousRelative + "' and '" + relative
+                                + "'; registry names are case-insensitive and package-independent, so two"
+                                + " components in different packages cannot share the same name");
+            }
             byRegistryName.put(registryName, new ParsedComponent(decl, skFile, sourceBytes, file.imports()));
         }
 
