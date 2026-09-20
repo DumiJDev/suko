@@ -31,11 +31,16 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-// Java version: deixado ao default (mesmo JDK que suko-core, do qual este
-// módulo depende via `project(":suko-core")`) — um `sourceCompatibility`/
-// `targetCompatibility` explícito a 17 aqui entra em conflito de resolução de
-// variante com suko-core, que não fixa versão e por isso assume o JDK atual
-// (ver descoberta acima).
+// Java version: fixada uniformemente na raiz (D12, ver build.gradle.kts) via
+// `options.release.set(21)` em `subprojects {}`, aplicado a todos os módulos
+// por igual. O problema original registado aqui — um `sourceCompatibility`/
+// `targetCompatibility` explícito a 17 só neste módulo, em conflito de
+// resolução de variante com suko-core (que não fixava versão nenhuma) — já
+// não existe: nenhum módulo declara `sourceCompatibility`/`targetCompatibility`
+// agora, precisamente para não tocar no atributo de variante
+// `org.gradle.jvm.version`. `options.release` foi escolhido em vez desses dois
+// por essa razão: fixa o piso de bytecode (major version 65) e a API Java
+// aceite em tempo de compilação, sem alterar esse atributo de variante.
 
 // Jar configuration for Maven plugin
 tasks.jar {
