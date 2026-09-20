@@ -61,10 +61,38 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
 - **`suko-maven-plugin/`** — plugin Maven (`SukoCompileMojo`), depende de
   `suko-core`. Ver a ressalva já documentada no item 4 do roadmap sobre o
   descritor de plugin Maven não estar completo.
-- **`suko-components/`** — scaffold vazio para a biblioteca de
-  componentes (subprojeto 7), depende de `suko-core`.
+- **`suko-registry/`** — modelo de dados do manifesto da biblioteca
+  (`RegistryIndex`/`ComponentManifest`/`ComponentFile`/
+  `ExternalRequirement`), leitor/escritor JSON (`RegistryJson`, Gson
+  2.11.0 pinado — **não** Jackson, para minimizar transitivas no
+  futuro fat-jar da CLI do subprojeto 8) e o gerador do manifesto a
+  partir de `.sk` (`RegistryGenerator`, reusa `ProjectIndex`/
+  `SukoAstBuilder` de `suko-core`, não reimplementa parsing). Depende
+  de `suko-core` via `api` (não `implementation`) porque expõe tipos
+  do compilador — `ComponentDecl`, `SukoFile`, `ProjectIndex` — na
+  própria assinatura pública. **Nunca toca em `suko-core`**: Gson vive
+  exclusivamente aqui, `suko-core` não ganha nenhuma dependência JSON
+  nova (restrição do subprojeto 7).
+- **`suko-components/`** — biblioteca de componentes (subprojeto 7),
+  **conteúdo puro**: sem `src/main/java` e sem nenhuma dependência
+  declarada em `main`. Contém `src/main/suko/io/suko/ui/*.sk` (8
+  componentes: `Button`, `Input`, `Label`, `Badge`, `Alert`, `Card`,
+  `Field`, `Dialog`) mais `registry.json`/`components/*.json`
+  gerados e commitados. As dependências em `src/test` (`suko-registry`,
+  `testFixtures(suko-core)`, `gg.jte` pinado) existem só para o módulo
+  se auto-validar — compilar e renderizar a própria biblioteca com o
+  motor `gg.jte` real, e falhar se o manifesto commitado divergir dos
+  fontes (`RegistryGoldenTest`).
 - **`suko-website/`** — scaffold vazio para o site de documentação
-  (subprojeto 9), depende de `suko-core` e `suko-components`.
+  (subprojeto 9). **Achado, não corrigido aqui:** o
+  `build.gradle.kts` deste módulo continua a declarar
+  `implementation(project(":suko-components"))` — uma dependência que
+  hoje não compila nada, porque `suko-components` não tem `src/main/java`
+  desde que passou a conteúdo puro. A dependência que faria sentido é
+  sobre `suko-registry` (se `suko-website` vier a listar/renderizar o
+  catálogo de componentes) ou nenhuma (se só for consumir os `.sk` via
+  `suko add`, como qualquer outro consumidor). Decisão de scoping do
+  subprojeto 9, não deste.
 
 `examples/` (ficheiros `.sk` de referência) permanece na raiz do
 repositório, fora de qualquer módulo — não é uma unidade de build.
@@ -250,31 +278,6 @@ arquitetura):
   de valor. Um nome composto (`ui.NavLink()`) como valor de expressão
   continua fora de âmbito — precisaria de reconhecer `Expr.AccessExpr`
   como callee, não implementado.
-- **Limitação aceite: `SemanticChecker` não desce a HTML aninhado.**
-  `checkStatement` trata `ComponentCallStmt`, `VarDecl`,
-  `Interpolation`, `IfStmt`, `ForStmt` e `SwitchStmt`, mas não tem caso
-  para `Statement.HtmlElement` — os `children()` de uma tag nunca são
-  percorridos. Uma chamada de componente aninhada dentro de uma tag
-  (`<div>SomeComponent()</div>`) escapa por completo à validação
-  semântica: `COMPONENT_NOT_FOUND`, `COMPONENT_NOT_VISIBLE`,
-  `SLOT_NOT_FOUND`, `CARDINALITY_VIOLATION`, etc. nunca disparam para
-  ela, mesmo que o componente não exista ou não seja `public`. Pré-
-  existente a este subprojeto (não introduzido nem corrigido pelas
-  Tarefas 1-8) — descoberto durante a Tarefa 8. Correção exigiria
-  adicionar um caso `Statement.HtmlElement` a `checkStatement` que
-  chame `checkStatementList` sobre `children()`.
-  **Consequência prática (revisão final do subprojeto 5) — isto não é
-  cosmético.** Como a esmagadora maioria das chamadas reais em Suko é
-  escrita dentro de uma tag HTML (`<div>SomeComponent()</div>`), as
-  próprias verificações de existência e visibilidade que este
-  subprojeto introduz (`COMPONENT_NOT_VISIBLE`, `IMPORT_NOT_FOUND`,
-  `COMPONENT_NOT_FOUND`) são trivialmente contornadas no caso comum. O
-  modelo de visibilidade tal como está entregue é, na prática,
-  "verificado apenas no nível de topo do corpo de um componente", não
-  "verificado". O que faz a funcionalidade parecer correta hoje é o
-  **emitter** (que resolve as chamadas aninhadas corretamente), não o
-  **verificador** — fechar esta lacuna é pré-requisito para se poder
-  dizer que a visibilidade é realmente imposta.
 - **Children implícitos (subprojeto 6) resolveram o caso principal, mas
   há uma ordem que ainda engole um slot nomeado em silêncio.** Um
   componente que declara um parâmetro `Component children` (ou
@@ -348,6 +351,36 @@ arquitetura):
   gerado** (o conteúdo do fill é escrito dentro de `` @`...` `` sem
   escape). É um bug de fidelidade de output, não de segurança: `.sk` é
   código do developer, não input não-confiável.
+- **Limitação de autoria (subprojeto 7): Tailwind não vê classe
+  composta por interpolação.** `class="btn btn-${variant}"` faz parse,
+  compila e renderiza sem nenhum erro — o `.jte` gerado produz HTML
+  válido em runtime — mas **não estiliza**, porque o scanner do
+  Tailwind é estático: ele grepa os ficheiros de `content` à procura de
+  tokens com forma de nome de classe, nunca executa nada. `btn-${variant}`
+  nunca aparece como literal em lado nenhum do código-fonte, logo a
+  classe correspondente nunca entra na folha de estilo gerada. Isto não
+  é detetável pelo compilador Suko (que não sabe nada de Tailwind) nem
+  é um bug do `gg.jte` — é uma incompatibilidade estrutural entre
+  "gerar classes dinamicamente" e "scanner de classes estático", que
+  qualquer stack com Tailwind partilha. A biblioteca de componentes
+  (`suko-components/`) contorna isto por convenção de autoria (cada
+  variante é uma string de classe Tailwind completa dentro de um
+  `switch`/`if`, nunca composta com `${}`), verificada por teste
+  (`LibraryConventionsTest`) — mas é uma convenção que qualquer `.sk`
+  escrito fora dessa biblioteca também precisa de seguir manualmente;
+  não há verificação do compilador para isto.
+- **`Dialog` (biblioteca de componentes, subprojeto 7) não tem botão de
+  fecho interativo embutido** — não por escolha de design, mas porque a
+  gramática não permite escrevê-lo. `htmlName`
+  (`Identifier (MINUS Identifier)*`) não aceita `:` nem `@` num nome de
+  atributo, logo nenhuma das duas formas reais de vincular um evento em
+  Alpine.js (`x-on:click="..."` ou `@click="..."`) pode ser escrita num
+  `.sk` hoje. `Dialog.sk` usa `x-data`/`x-show` no `<div>` externo
+  (que não precisam de `:`/`@`) para abrir/fechar a partir de fora, mas
+  não consegue oferecer um controlo de fecho próprio. Estender
+  `htmlName` para aceitar estes carateres é trabalho de gramática fora
+  do âmbito do subprojeto 7 (regra D5: só a correção da Tarefa 1 estava
+  pré-aprovada).
 
 ## Validação feita até agora
 
@@ -420,10 +453,18 @@ real de componentes genéricos (erasure para tipo-limite); subprojetos
 7-10 do roadmap revisto, que dependem do 5 e do 6 (ver a spec do
 subprojeto 6 para a origem dos itens 7-9):
 
-7. **Registry/biblioteca de componentes** — preenche `suko-components/`.
-   Spec formal em
-   `docs/superpowers/specs/2026-09-20-suko-registry-componentes.md`;
-   plano ainda por escrever.
+7. **Registry/biblioteca de componentes** — CONCLUÍDO. Spec formal em
+   `docs/superpowers/specs/2026-09-20-suko-registry-componentes.md`,
+   plano em `docs/superpowers/plans/2026-09-20-suko-registry-componentes.md`.
+   `suko-components/` preenchido com 8 componentes `.sk` reais
+   (`Button`, `Input`, `Label`, `Badge`, `Alert`, `Card`, `Field`,
+   `Dialog`, Tailwind 3.x + Alpine 3.x) e um manifesto
+   (`registry.json` + `components/*.json`) gerado a partir dos fontes
+   e commitado, num módulo novo dedicado a essa lógica
+   (`suko-registry`). Corrigido também o único bug de compilador
+   pré-aprovado deste subprojeto (`SemanticChecker` passou a descer a
+   HTML aninhado — antes, uma chamada de componente dentro de uma tag
+   escapava por completo à validação semântica).
 8. **CLI de distribuição** (`suko add`, estilo shadcn/ui) — copia o
    código-fonte `.sk` para o projeto do consumidor, que passa a possuir
    e customizar esse código (não é dependência de biblioteca); depende
