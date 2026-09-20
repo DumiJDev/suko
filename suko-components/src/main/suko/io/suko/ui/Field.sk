@@ -1,0 +1,29 @@
+package io.suko.ui;
+
+import io.suko.ui.Input;
+import io.suko.ui.Label;
+
+// Único componente da biblioteca com `dependsOn` não-vazio (Tarefa 9,
+// grafo de dependências): compõe `Label` + `Input`, ambos importados
+// com o nome totalmente qualificado, SEM alias (convenção 8) — é a
+// substituição de prefixo do subprojeto 8 (a CLI, mais tarde) que
+// depende de o import já vir por extenso, não abreviado.
+//
+// Prova, com conteúdo real (não sintético), a resolução cross-ficheiro
+// do subprojeto 5: `Label` e `Input` vivem em ficheiros `.sk`
+// diferentes deste, no mesmo pacote `io.suko.ui`, e mesmo assim têm de
+// ser importados explicitamente — chamar pelo nome curto sem import
+// falharia com COMPONENT_NOT_FOUND (mesmo pacote não basta).
+public component Field(
+  String id,
+  String name,
+  String label,
+  String type = "text",
+  boolean required = false,
+  String placeholder = null
+) {
+  <div class="space-y-1">
+    Label(text = label)
+    Input(id = id, name = name, type = type, required = required, placeholder = placeholder)
+  </div>
+}
