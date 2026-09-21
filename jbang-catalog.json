@@ -1,0 +1,10 @@
+{
+  "catalogs": {},
+  "aliases": {
+    "suko": {
+      "script-ref": "https://github.com/suko-lang/suko/releases/download/v0.1.0-SNAPSHOT/suko-cli-0.1.0-SNAPSHOT-all.jar",
+      "description": "Suko CLI: install and update Suko components from a registry (suko init/list/add/diff/update).",
+      "main": "io.suko.cli.Main"
+    }
+  }
+}

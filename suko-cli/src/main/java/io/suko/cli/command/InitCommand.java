@@ -3,6 +3,7 @@ package io.suko.cli.command;
 import io.suko.cli.Args;
 import io.suko.cli.CliException;
 import io.suko.cli.ProjectConfig;
+import io.suko.cli.Version;
 
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -27,16 +28,12 @@ import java.util.Scanner;
 public final class InitCommand {
 
     /**
-     * Placeholder registry defaults until the CLI knows its own release
-     * tag (Task 13 of the subprojeto 8 plan wires in {@code Version}, per
-     * spec D5 — the registry ref should default to the CLI's own version
-     * tag once that exists). "main" is used here in the meantime: it is
-     * the only ref that is guaranteed to exist without a release having
-     * happened yet, and both fields are always shown to the user and
-     * freely overridable via --registry / --registry-ref or by editing
-     * suko.json afterwards.
+     * The CLI's own version, prefixed as a tag (spec D5). Also used by
+     * {@link AddCommand} as the fallback registry ref for a {@code
+     * suko.json} written before this default existed (no {@code ref} at
+     * all in the {@code registry} object).
      */
-    static final String DEFAULT_REGISTRY_REF = "main";
+    static final String DEFAULT_REGISTRY_REF = "v" + Version.current();
     static final String DEFAULT_REGISTRY_BASE_TEMPLATE =
             "https://raw.githubusercontent.com/suko-lang/suko/%s/suko-components/";
 
@@ -55,6 +52,19 @@ public final class InitCommand {
         String basePackage = promptBasePackage(scanner, out, args);
         ProjectConfig.validateBasePackage(basePackage);
 
+        // D5: the registry ref defaults to the CLI's own version tag
+        // ("v" + Version.current()), not a hardcoded branch name — so a
+        // project created with a released CLI points at the matching
+        // registry snapshot by default. When Version.current() is only
+        // the fallback (no jar manifest to read a real version from, e.g.
+        // running from an IDE's exploded classes directory), that would
+        // be a wrong default masquerading as a real one, so this is said
+        // out loud on stderr instead of silently written into suko.json.
+        if (Version.isFallback() && args.registryRef() == null) {
+            err.println("Warning: could not determine the suko CLI's own version (running outside a built jar); "
+                    + "defaulting the registry ref to \"" + DEFAULT_REGISTRY_REF + "\", which is almost certainly "
+                    + "not a real release tag. Pass --registry-ref <tag> explicitly to avoid this.");
+        }
         String registryRef = promptOrDefault(scanner, out, args.yes(),
                 "Registry ref (tag)", args.registryRef(), DEFAULT_REGISTRY_REF);
 
