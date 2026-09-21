@@ -1,5 +1,12 @@
 package io.suko.cli;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
+
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -27,6 +34,18 @@ public record ProjectConfig(int schemaVersion, String sourceRoot, String basePac
     public static final int SCHEMA_VERSION = 1;
     public static final String DEFAULT_SOURCE_ROOT = "src/main/suko";
     public static final String FILE_NAME = "suko.json";
+
+    // Gson, not a hand-rolled parser: suko-registry already brings Gson
+    // 2.11.0 into the resolved dependency graph (declared there as
+    // `implementation`, so only on suko-cli's runtime classpath by
+    // default); this module declares the same pinned version explicitly
+    // (see build.gradle.kts) so it is also visible at compile time here.
+    // Task 10 of the subprojeto 8 plan explicitly requires a single JSON
+    // library in the fat jar for the lockfile (`suko.lock.json`) — using
+    // Gson for `suko.json` too, instead of a second hand-rolled parser, is
+    // what keeps that true from the start rather than requiring a later
+    // migration.
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public record Registry(String base, String ref) {
     }
@@ -108,21 +127,14 @@ public record ProjectConfig(int schemaVersion, String sourceRoot, String basePac
 
     /** Parses a {@code suko.json} document already read into memory. */
     public static ProjectConfig parse(String json, String sourceDescription) {
-        Object parsed;
-        try {
-            parsed = SimpleJson.parse(json);
-        } catch (SimpleJson.JsonSyntaxException e) {
-            throw new CliException("Malformed JSON in " + sourceDescription + ": " + e.getMessage());
-        }
-        if (!(parsed instanceof java.util.Map<?, ?> root)) {
-            throw new CliException("Expected a JSON object at the top level of " + sourceDescription);
-        }
+        JsonObject root = parseObject(json, sourceDescription);
 
-        Object schemaVersionValue = requireField(root, "schemaVersion", sourceDescription);
-        if (!(schemaVersionValue instanceof Number)) {
-            throw new CliException("Field \"schemaVersion\" in " + sourceDescription + " must be an integer, found: " + schemaVersionValue);
+        JsonElement schemaVersionElement = requireField(root, "schemaVersion", sourceDescription);
+        if (!schemaVersionElement.isJsonPrimitive() || !schemaVersionElement.getAsJsonPrimitive().isNumber()) {
+            throw new CliException(
+                    "Field \"schemaVersion\" in " + sourceDescription + " must be an integer, found: " + schemaVersionElement);
         }
-        int foundSchemaVersion = ((Number) schemaVersionValue).intValue();
+        int foundSchemaVersion = schemaVersionElement.getAsInt();
         if (foundSchemaVersion > SCHEMA_VERSION) {
             throw new CliException(
                     "Unsupported schemaVersion " + foundSchemaVersion + " in " + sourceDescription
@@ -133,30 +145,44 @@ public record ProjectConfig(int schemaVersion, String sourceRoot, String basePac
         String sourceRoot = requireStringField(root, "sourceRoot", sourceDescription);
         String basePackage = requireStringField(root, "basePackage", sourceDescription);
 
-        Object registryValue = requireField(root, "registry", sourceDescription);
-        if (!(registryValue instanceof java.util.Map<?, ?> registryMap)) {
-            throw new CliException("Field \"registry\" in " + sourceDescription + " must be an object with \"base\" and \"ref\".");
+        JsonElement registryElement = requireField(root, "registry", sourceDescription);
+        if (!registryElement.isJsonObject()) {
+            throw new CliException(
+                    "Field \"registry\" in " + sourceDescription + " must be an object with \"base\" and \"ref\".");
         }
-        String base = requireStringField(registryMap, "base", sourceDescription + " (registry)");
-        String ref = requireStringField(registryMap, "ref", sourceDescription + " (registry)");
+        JsonObject registryObject = registryElement.getAsJsonObject();
+        String base = requireStringField(registryObject, "base", sourceDescription + " (registry)");
+        String ref = requireStringField(registryObject, "ref", sourceDescription + " (registry)");
 
         return new ProjectConfig(foundSchemaVersion, sourceRoot, basePackage, new Registry(base, ref));
     }
 
-    private static Object requireField(java.util.Map<?, ?> map, String field, String sourceDescription) {
-        Object value = map.get(field);
-        if (value == null) {
-            throw new CliException("Missing required field \"" + field + "\" in " + sourceDescription);
+    private static JsonObject parseObject(String json, String sourceDescription) {
+        JsonElement element;
+        try {
+            element = JsonParser.parseString(json);
+        } catch (JsonSyntaxException e) {
+            throw new CliException("Malformed JSON in " + sourceDescription + ": " + e.getMessage());
         }
-        return value;
+        if (!element.isJsonObject()) {
+            throw new CliException("Expected a JSON object at the top level of " + sourceDescription);
+        }
+        return element.getAsJsonObject();
     }
 
-    private static String requireStringField(java.util.Map<?, ?> map, String field, String sourceDescription) {
-        Object value = requireField(map, field, sourceDescription);
-        if (!(value instanceof String)) {
+    private static JsonElement requireField(JsonObject object, String field, String sourceDescription) {
+        if (!object.has(field) || object.get(field).isJsonNull()) {
+            throw new CliException("Missing required field \"" + field + "\" in " + sourceDescription);
+        }
+        return object.get(field);
+    }
+
+    private static String requireStringField(JsonObject object, String field, String sourceDescription) {
+        JsonElement value = requireField(object, field, sourceDescription);
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isString()) {
             throw new CliException("Field \"" + field + "\" in " + sourceDescription + " must be a string, found: " + value);
         }
-        return (String) value;
+        return value.getAsString();
     }
 
     /** Writes this configuration to {@code suko.json} in {@code projectDir}, in LF, UTF-8. */
@@ -172,17 +198,22 @@ public record ProjectConfig(int schemaVersion, String sourceRoot, String basePac
 
     /** Renders this configuration as pretty-printed JSON, field order matching D6's example. */
     public String toJson() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("{\n");
-        sb.append("  \"schemaVersion\": ").append(schemaVersion).append(",\n");
-        sb.append("  \"sourceRoot\": ").append(SimpleJson.quote(sourceRoot)).append(",\n");
-        sb.append("  \"basePackage\": ").append(SimpleJson.quote(basePackage)).append(",\n");
-        sb.append("  \"registry\": {\n");
-        sb.append("    \"base\": ").append(SimpleJson.quote(registry.base())).append(",\n");
-        sb.append("    \"ref\": ").append(SimpleJson.quote(registry.ref())).append("\n");
-        sb.append("  }\n");
-        sb.append("}\n");
-        return sb.toString();
+        JsonObject root = new JsonObject();
+        root.addProperty("schemaVersion", schemaVersion);
+        root.addProperty("sourceRoot", sourceRoot);
+        root.addProperty("basePackage", basePackage);
+
+        JsonObject registryObject = new JsonObject();
+        registryObject.addProperty("base", registry.base());
+        registryObject.addProperty("ref", registry.ref());
+        root.add("registry", registryObject);
+
+        // GSON's pretty printer emits "\n" line breaks (not
+        // System.lineSeparator()), so this is already LF-only (D8); the
+        // trailing newline below just gives the file a POSIX-style final
+        // newline, matching every other generated JSON document in this
+        // repo (see RegistryJson's golden files).
+        return GSON.toJson(root) + "\n";
     }
 
     /**

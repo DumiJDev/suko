@@ -43,6 +43,14 @@ public final class Main {
             return 0;
         }
 
+        if (args.help()) {
+            // Per-command --help short-circuits before any real work: an
+            // interactive `suko init --help` must not block on stdin, and
+            // `suko list --help` must not touch the registry.
+            out.print(Args.COMMAND_HELP.get(args.command()));
+            return 0;
+        }
+
         try {
             switch (args.command()) {
                 case "init" -> new InitCommand().run(args, in, out, err, projectDir);
