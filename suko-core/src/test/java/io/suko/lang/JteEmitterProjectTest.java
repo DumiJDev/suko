@@ -60,7 +60,7 @@ class JteEmitterProjectTest {
 
             component Home() {
               var c = CardA();
-              {c}
+              ${c}
             }
             """);
         ComponentDecl home = file.components().get(0);
