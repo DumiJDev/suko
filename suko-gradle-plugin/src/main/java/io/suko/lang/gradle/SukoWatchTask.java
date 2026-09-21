@@ -132,8 +132,20 @@ public class SukoWatchTask extends SukoBaseTask {
      * do resultado trazem o subcaminho do pacote (ex. "ui/NavLink.jte").
      * Package-private para ser testável diretamente, sem correr o loop
      * infinito do WatchService.
+     * <p>
+     * Public (not package-private) since Task 14 of the subprojeto 8 plan:
+     * {@code FullCycleTest}, in {@code suko-cli}'s test sourceSet — a
+     * different module — needs to invoke the exact same production method
+     * the real {@code sukoWatch} task action delegates to, to verify watch
+     * mode's mirrored-package output without running the task's actual
+     * infinite {@code WatchService} loop under Gradle TestKit (which has no
+     * built-in single-shot mode and would otherwise hang the test
+     * indefinitely). This keeps the "closest faithful substitute" honest:
+     * it is the real method, not a reimplementation, only invoked directly
+     * instead of through the loop that normally calls it forever.
+     * </p>
      */
-    void compileAll(Path sourceDir, Path outputDir) {
+    public void compileAll(Path sourceDir, Path outputDir) {
         SukoProjectCompiler.ProjectCompileResult result = new SukoProjectCompiler().compile(sourceDir);
 
         for (var entry : result.generatedJteSources().entrySet()) {
