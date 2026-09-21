@@ -75,6 +75,62 @@ class MainTest {
         assertTrue(java.nio.file.Files.exists(projectDir.resolve("suko.json")));
     }
 
+    /**
+     * Fix round 1, Achado 2: {@code suko init --help} must show help and
+     * return without running the interactive flow at all — in particular,
+     * it must never touch stdin (an empty stdin here would otherwise make
+     * a real run of InitCommand hang reading prompts, or silently accept
+     * every default and write a bogus suko.json) and must never write
+     * suko.json.
+     */
+    @Test
+    void initHelpShowsHelpAndDoesNotRunTheInteractiveFlow(@TempDir Path projectDir) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int exitCode = Main.run(new String[] { "init", "--help" }, emptyStdin(), printStream(out),
+                printStream(new ByteArrayOutputStream()), projectDir);
+
+        assertEquals(0, exitCode);
+        String helpText = out.toString(StandardCharsets.UTF_8);
+        assertTrue(helpText.contains("Usage: suko init"), "stdout: " + helpText);
+        assertTrue(helpText.contains("--base-package"), "stdout: " + helpText);
+        assertFalse(java.nio.file.Files.exists(projectDir.resolve("suko.json")),
+                "suko init --help must not write suko.json");
+    }
+
+    /**
+     * Fix round 1, Achado 2: {@code suko list --help} must show help and
+     * return without attempting to read any registry (no --registry flag
+     * and no suko.json are given here — a real run of ListCommand would
+     * throw a CliException about a missing registry; this test would fail
+     * with that exception's message on stderr, not the expected help on
+     * stdout, if the fix regressed).
+     */
+    @Test
+    void listHelpShowsHelpAndDoesNotRunTheRealCommand(@TempDir Path projectDir) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        int exitCode = Main.run(new String[] { "list", "--help" }, emptyStdin(), printStream(out),
+                printStream(err), projectDir);
+
+        assertEquals(0, exitCode);
+        String helpText = out.toString(StandardCharsets.UTF_8);
+        assertTrue(helpText.contains("Usage: suko list"), "stdout: " + helpText);
+        assertEquals("", err.toString(StandardCharsets.UTF_8), "must not attempt the real command and fail");
+    }
+
+    @Test
+    void helpIsAvailablePerCommandForEveryCommand(@TempDir Path projectDir) {
+        for (String command : Args.COMMANDS) {
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            int exitCode = Main.run(new String[] { command, "--help" }, emptyStdin(), printStream(out),
+                    printStream(new ByteArrayOutputStream()), projectDir);
+
+            assertEquals(0, exitCode, command + " --help should exit 0");
+            assertTrue(out.toString(StandardCharsets.UTF_8).contains("Usage: suko " + command),
+                    command + " --help stdout: " + out.toString(StandardCharsets.UTF_8));
+        }
+    }
+
     private static InputStream emptyStdin() {
         return new ByteArrayInputStream(new byte[0]);
     }

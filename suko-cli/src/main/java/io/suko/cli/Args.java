@@ -3,6 +3,7 @@ package io.suko.cli;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Hand-rolled command-line argument parser (no picocli, no third-party
@@ -41,6 +42,86 @@ public final class Args {
               --yes                   Accept defaults without prompting
               --help, -h              Show this help
             """;
+
+    /**
+     * Per-command help, shown by {@code suko <command> --help} instead of
+     * running the command (brief Step 3: "ambos [Main e Args] com --help
+     * por comando"). Keyed by command name; every entry in {@link
+     * #COMMANDS} has one, including the three not implemented yet by this
+     * task, so {@code suko add --help} explains itself instead of either
+     * running the (nonexistent) command or falling back to the generic
+     * top-level usage.
+     */
+    public static final Map<String, String> COMMAND_HELP = Map.of(
+            "init", """
+                    Usage: suko init [options]
+
+                    Create this project's suko.json (interactive). Every option below has a
+                    visible default that is used if you just press enter, except
+                    --base-package, which has none and is always asked (guessing it from
+                    folder structure would fail silently and only surface much later as a
+                    compiler PACKAGE_DIRECTORY_MISMATCH).
+
+                    Options:
+                      --source-root <path>    Root folder for .sk files (default: src/main/suko)
+                      --base-package <pkg>    Java/Suko base package (no default; always asked)
+                      --registry <path|url>   Registry base to record in suko.json
+                      --registry-ref <tag>    Registry tag/ref to record in suko.json
+                      --force                 Overwrite an existing suko.json
+                      --yes                   Accept every other default without prompting (still
+                                               requires --base-package to be given)
+                      --help, -h              Show this help
+                    """,
+            "list", """
+                    Usage: suko list [options]
+
+                    List the components available in the registry: name, version, category
+                    and description, column-aligned.
+
+                    Options:
+                      --registry <path|url>   Registry base (overrides suko.json)
+                      --registry-ref <tag>    Registry tag/ref to use
+                      --help, -h              Show this help
+                    """,
+            "add", """
+                    Usage: suko add <name>... [options]
+
+                    Install one or more components, and the transitive closure of their
+                    dependencies, into this project.
+
+                    Not implemented yet.
+
+                    Options:
+                      --registry <path|url>   Registry base (overrides suko.json)
+                      --registry-ref <tag>    Registry tag/ref to use
+                      --force                 Overwrite locally-edited files
+                      --dry-run               Show what would happen without writing anything
+                      --help, -h              Show this help
+                    """,
+            "diff", """
+                    Usage: suko diff [<name>] [options]
+
+                    Show the difference between a local file and its upstream source
+                    (after namespace rewriting), for one component or all installed ones.
+
+                    Not implemented yet.
+
+                    Options:
+                      --help, -h              Show this help
+                    """,
+            "update", """
+                    Usage: suko update [<name>] [options]
+
+                    Reapply the reconciliation matrix (spec D7) to one component or all
+                    installed ones, updating files that were not edited locally.
+
+                    Not implemented yet.
+
+                    Options:
+                      --force                 Overwrite locally-edited files too
+                      --dry-run               Show what would happen without writing anything
+                      --help, -h              Show this help
+                    """);
 
     private final String command;
     private final List<String> positionals;
