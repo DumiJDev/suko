@@ -84,11 +84,14 @@ val fatJar = tasks.register<Jar>("fatJar") {
         classpath.map { if (it.isDirectory) it else zipTree(it) }
     })
 
-    // A fat jar bundling ANTLR/gg.jte-adjacent dependency graphs (even
-    // though suko-cli itself never depends on suko-core — see the
-    // dependency block above) can exceed the 65535-entry limit of the
-    // classic zip format once every dependency's classes are unpacked
-    // into it; Zip64 lifts that ceiling.
+    // suko-cli's own dependency graph (suko-registry + gson) is small —
+    // this fat jar is ~400KB and comfortably under the classic zip
+    // format's 65535-entry limit. Zip64 is enabled anyway as a safe
+    // default: it costs nothing when the entry count is small, and avoids
+    // a silent, hard-to-diagnose failure mode if a future dependency ever
+    // pushes this module past that limit (e.g. a heavier registry source
+    // or JSON library swapped in later) without anyone remembering to
+    // revisit this task's assumptions first.
     isZip64 = true
 }
 
