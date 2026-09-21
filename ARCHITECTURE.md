@@ -104,7 +104,7 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   formas: o próprio jar, um alias `jbang` (`jbang-catalog.json` na raiz) e
   scripts wrapper (`scripts/suko`/`scripts/suko.bat`). Um binário nativo
   GraalVM é opt-in e exclusivamente do lado do consumidor
-  (`jbang --native --build-dir <dir> suko@<owner>`) — nunca construído nem
+  (`jbang --native --build-dir <dir> suko@suko-lang`) — nunca construído nem
   publicado por este projeto. Ver `suko-cli/README.md` para a referência
   de comandos e o desenho de duplo hash do `suko.lock.json`.
 - **`suko-website/`** — scaffold vazio para o site de documentação
@@ -445,7 +445,7 @@ arquitetura):
   um mecanismo de histórico de versões por componente que permita "botão
   X na versão N, botão Y na versão N+1" na mesma instalação.
 - **`suko-cli`: binário nativo GraalVM é exclusivamente
-  `jbang --native --build-dir ... suko@<owner>` do lado do consumidor,**
+  `jbang --native --build-dir ... suko@suko-lang` do lado do consumidor,**
   nunca construído nem publicado por este projeto — não há tarefa Gradle
   de `native-image`, não há CI a produzir um binário, e não há matriz de
   plataformas. `--build-dir` não é opcional: sem ele, a primeira
