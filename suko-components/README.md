@@ -15,10 +15,10 @@ lives in the sibling module `suko-registry`, not here.
 
 Suko ships this library the same way shadcn/ui ships its components:
 by copying source into your project, not by pulling in a compiled jar.
-When the CLI in subprojeto 8 exists, `suko add field` will copy
-`Field.sk` (and its transitive dependencies, `Label.sk`/`Input.sk`)
-into your own `src/main/suko` — rewriting the package prefix to match
-your project — and from that point on the file is **yours**: you edit
+`suko add field` copies `Field.sk` (and its transitive dependencies,
+`Label.sk`/`Input.sk`) into your own `src/main/suko` — rewriting the
+package prefix to match your project — and from that point on the file
+is **yours**: you edit
 it, version it, and diverge from upstream exactly like you would with
 any other file you wrote yourself. There is no runtime coupling to
 this module and no version to keep in sync afterwards.
