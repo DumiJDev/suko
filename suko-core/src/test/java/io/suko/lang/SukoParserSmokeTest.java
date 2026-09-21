@@ -84,7 +84,7 @@ class SukoParserSmokeTest {
     void parsesInterpolatedStringWithTrailingText() {
         String source = """
             component Greeting(String name) {
-              <p>{"Olá ${name}!"}</p>
+              <p>${"Olá ${name}!"}</p>
             }
             """;
         // Só precisa de não lançar exceção de parse — a tradução para AST/Java
