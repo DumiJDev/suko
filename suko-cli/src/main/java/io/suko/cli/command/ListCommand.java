@@ -3,8 +3,7 @@ package io.suko.cli.command;
 import io.suko.cli.Args;
 import io.suko.cli.CliException;
 import io.suko.cli.ProjectConfig;
-import io.suko.registry.FileSystemRegistrySource;
-import io.suko.registry.HttpRegistrySource;
+import io.suko.cli.RegistrySources;
 import io.suko.registry.RegistryIndex;
 import io.suko.registry.RegistryJson;
 import io.suko.registry.RegistryJsonException;
@@ -35,7 +34,7 @@ public final class ListCommand {
                     "No registry configured. Pass --registry <path|url>, or run `suko init` to create a suko.json.");
         }
 
-        RegistrySource source = resolveSource(registryBase);
+        RegistrySource source = RegistrySources.resolve(registryBase);
 
         byte[] indexBytes;
         try {
@@ -54,12 +53,6 @@ public final class ListCommand {
         printTable(out, index.components());
     }
 
-    private RegistrySource resolveSource(String base) {
-        if (base.startsWith("http://") || base.startsWith("https://")) {
-            return new HttpRegistrySource(base);
-        }
-        return new FileSystemRegistrySource(Path.of(base));
-    }
 
     private void printTable(PrintStream out, List<RegistryIndex.Entry> components) {
         if (components.isEmpty()) {
