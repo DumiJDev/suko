@@ -47,7 +47,7 @@ jbang --native --build-dir <a-directory-of-your-choice> suko@<owner>
   native binary, no per-platform release matrix, and the binary that comes
   out is specific to whatever machine/OS/CPU it was compiled on.
 - The reflection needed by the manifest/lockfile's Gson-based (de)serialization
-  is pre-recorded in `suko-cli/src/main/resources/META-INF/native-image/io.suko/suko-cli/reflect-config.json`,
+  is pre-recorded in `suko-cli/src/main/resources/META-INF/native-image/io.suko/suko-cli/reachability-metadata.json`,
   embedded in the fat jar, and honored automatically by `native-image` — no
   extra flags needed. **Any new CLI command, or any new field read/written
   reflectively by Gson, requires re-running the `native-image-agent` smoke
