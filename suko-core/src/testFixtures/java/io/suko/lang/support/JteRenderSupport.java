@@ -104,4 +104,33 @@ public final class JteRenderSupport {
         templateEngine.render(entryRelativePath + ".jte", params, output);
         return output.toString();
     }
+
+    /**
+     * Renders a template from a directory of {@code .jte} files that
+     * <b>already exist on disk</b> — no compilation step at all, unlike
+     * every other method in this class. Added for the subprojeto 8 capstone
+     * test ({@code FullCycleTest}, in {@code suko-cli}): after a real
+     * TestKit {@code sukoCompile} run against a consumer project produced
+     * by {@code suko add}, the {@code .jte} files are already sitting under
+     * {@code build/generated-src/suko/...}; that test needs to point
+     * {@code gg.jte}'s engine straight at that directory, not recompile
+     * from {@code .sk} source a second time (which would exercise the
+     * compiler again instead of proving the render step works on what the
+     * plugin actually wrote).
+     *
+     * @param jteDir            directory that directly contains the
+     *                          (possibly package-nested) {@code .jte} tree,
+     *                          e.g. {@code build/generated-src/suko}
+     * @param entryRelativePath path to the entry template, relative to
+     *                          {@code jteDir}, without the {@code .jte}
+     *                          extension (e.g. {@code "com/acme/web/ui/Field"})
+     */
+    public static String renderFromDirectory(Path jteDir, String entryRelativePath, Map<String, Object> params) {
+        CodeResolver codeResolver = new DirectoryCodeResolver(jteDir);
+        TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Html);
+
+        TemplateOutput output = new StringOutput();
+        templateEngine.render(entryRelativePath + ".jte", params, output);
+        return output.toString();
+    }
 }

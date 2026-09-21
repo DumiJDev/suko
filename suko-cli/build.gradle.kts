@@ -18,13 +18,76 @@ dependencies {
     // parser à parte do que o lockfile vai usar.
     implementation("com.google.code.gson:gson:2.11.0")
 
+    // Task 14: the plan's capstone test (FullCycleTest) is the ONE place in
+    // this module that needs the compiler, the Gradle plugin, and the real
+    // gg.jte engine — and, per the deliberate note in the task brief, that
+    // need is confined to `src/test`, exactly like suko-components does
+    // since subprojeto 7. `main` above still depends on nothing but
+    // suko-registry + gson (D3/D9 of the subprojeto 8 plan).
+    testImplementation(project(":suko-gradle-plugin"))
+    testImplementation(testFixtures(project(":suko-core")))
+    // suko-core declares jte as `implementation`, not `api` — not
+    // transitive. Version pinned to match suko-core's own.
+    testImplementation("gg.jte:jte:3.1.12")
+    testImplementation(gradleApi())
+    testImplementation(gradleTestKit())
+
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+// Task 14: the one real design problem in this task. `FullCycleTest` uses
+// Gradle TestKit's `GradleRunner` to apply `io.suko.lang` in an isolated,
+// temporary consumer build — but that test lives in `suko-cli`'s own test
+// sourceSet, a DIFFERENT module from the one that declares the plugin
+// (`suko-gradle-plugin`). Bare `GradleRunner.withPluginClasspath()` (used
+// successfully by `SukoPluginFunctionalTest`, inside suko-gradle-plugin
+// itself) only auto-detects a plugin-under-test classpath when the calling
+// test lives inside the module that applies `java-gradle-plugin` — that
+// plugin wires a generated `plugin-under-test-metadata.properties` onto
+// ITS OWN `test` sourceSet's runtime classpath, not onto any other
+// module's.
+//
+// The fix: a resolvable configuration here, attributed exactly like the
+// standard Java runtime classpath (Usage.JAVA_RUNTIME), depending on
+// `project(":suko-gradle-plugin")`. Variant-aware resolution then picks
+// that project's `runtimeElements` variant — main output (including the
+// generated plugin descriptor resource, since java-gradle-plugin wires
+// `generatePluginDescriptors`'s output into the main sourceSet) plus every
+// transitive runtime dependency (suko-core, and everything IT pulls in:
+// the ANTLR runtime, gg.jte, slf4j-api, ...). That resolved file
+// collection is exactly the `List<File>` `GradleRunner.withPluginClasspath(List<File>)`
+// needs. It reaches the test JVM as a system property (set in `doFirst`,
+// not eagerly at configuration time, so the dependency's tasks — e.g.
+// suko-gradle-plugin's compileJava — run first and the files actually
+// exist by the time they're read).
+val pluginUnderTestRuntime: Configuration by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage::class.java, Usage.JAVA_RUNTIME))
+    }
+}
+
+dependencies {
+    pluginUnderTestRuntime(project(":suko-gradle-plugin"))
+}
+
 tasks.test {
     useJUnitPlatform()
+
+    // Task 14: FullCycleTest uses org.gradle.testfixtures.ProjectBuilder
+    // (Step 5, to construct a SukoWatchTask instance directly) in the SAME
+    // test JVM as a GradleRunner-driven TestKit build (Step 3). On modern
+    // JDKs, ProjectBuilder's internal "inject legacy interfaces into the
+    // classloader" step needs a privateLookupIn into java.lang, which the
+    // module system refuses without this opens — surfacing as
+    // IllegalAccessException: "module java.base does not open java.lang to
+    // unnamed module" only in this cross-module combination (suko-gradle-plugin's
+    // own equivalent test, SukoWatchTaskE2ETest, never combines ProjectBuilder
+    // with a GradleRunner build in the same test JVM, so it doesn't hit this).
+    jvmArgs("--add-opens", "java.base/java.lang=ALL-UNNAMED")
 
     // NativeImageSmokeTest (Step 7, Task 13) needs a fresh fat jar to run
     // `jbang build --native` against; the jar build itself is cheap (a few
@@ -33,6 +96,13 @@ tasks.test {
     // `fatJar` invocation first. `fatJar` is declared further down this
     // file; Gradle resolves the forward reference at configuration time.
     dependsOn(tasks.named("fatJar"))
+
+    dependsOn(pluginUnderTestRuntime)
+    doFirst {
+        systemProperty(
+            "suko.pluginUnderTestClasspath",
+            pluginUnderTestRuntime.files.joinToString(File.pathSeparator) { it.absolutePath })
+    }
 }
 
 // Step 2 (Task 13): the CLI needs to know its own version at runtime (see
