@@ -100,15 +100,15 @@ package com.example.ui;
 
 component Card(String title, List<String> items, String emptyLabel = "Sem itens") {
   <div class="card">
-    <h2>{title}</h2>
+    <h2>${title}</h2>
     if (items.size() > 0) {
       <ul>
         for (String item : items) {
-          <li>{item}</li>
+          <li>${item}</li>
         }
       </ul>
     } else {
-      <p>{emptyLabel}</p>
+      <p>${emptyLabel}</p>
     }
   </div>
 }
@@ -127,7 +127,7 @@ component Page(User user) {
       switch (user.role) {
         case "admin" -> { AdminPanel() }
         case "guest" -> { <p>Bem-vindo, visitante</p> }
-        default -> { <p>Bem-vindo, {user.name}</p> }
+        default -> { <p>Bem-vindo, ${user.name}</p> }
       }
     }
   }
@@ -141,10 +141,10 @@ component Page(User user) {
 ```suko
 component Layout(String title, Component sidebar, Component content) {
   <html>
-    <head><title>{title}</title></head>
+    <head><title>${title}</title></head>
     <body>
-      <aside>{sidebar}</aside>
-      <main>{content}</main>
+      <aside>${sidebar}</aside>
+      <main>${content}</main>
     </body>
   </html>
 }

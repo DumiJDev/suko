@@ -94,7 +94,7 @@ because they have no automatic guard today:
    (`LibraryConventionsTest` also checks the declared `package` line
    against the file's folder);
 3. **never** `${...}` inside a `class` attribute, whether quoted
-   (`class="btn-${variant}"`) or unquoted (`class={variant}`) — write
+   (`class="btn-${variant}"`) or unquoted (`class=${variant}`) — write
    each variant as a complete Tailwind class string inside a
    `switch`/`if` instead (this is the convention that keeps the
    Tailwind gotcha above from biting; see `Button.sk`'s variant
@@ -107,7 +107,7 @@ because they have no automatic guard today:
    there's no AST shape that distinguishes "author meant this order on
    purpose" from "author made this mistake", so this is caught by
    review, not by a test;
-5. no `{slot ?: "fallback"}` (unsupported — `Content` vs. `String`
+5. no `${slot ?: "fallback"}` (unsupported — `Content` vs. `String`
    have no common supertype the desugared `?:` accepts) — **not
    guarded**; it fails at compile time if used (a type error from the
    Suko compiler itself), but nothing in this library's own test suite

@@ -16,26 +16,14 @@ mergear. Este documento resulta do scoping arquitetural dessa data e das
 decisões do utilizador sobre ele (D1-D9 abaixo; **D3 foi rejeitada**, e
 está registada como tal, com o status quo mantido).
 
-### Nota sobre a numeração — assumida, não confirmada
+### Nota sobre a numeração — confirmada em 2026-09-21
 
-Esta spec assume que este trabalho passa a ser o **subprojeto 9**, e que o
-site de documentação e o suporte de IDE deslizam para **10** e **11**. O
-utilizador confirmou a prioridade (fazer isto primeiro) mas **não**
-confirmou explicitamente a renumeração.
-
-Se a renumeração for aceite, quatro sítios têm de ser atualizados no mesmo
-commit, senão a próxima pessoa a abrir `suko-website/` lê que está a
-trabalhar no subprojeto 9:
-
-- `ARCHITECTURE.md:567-576` (roadmap: itens 9 e 10);
-- `ARCHITECTURE.md:111` e `ARCHITECTURE.md:119` (descrição de
-  `suko-website/`, que remete o scoping "para o subprojeto 9");
-- `suko-website/README.md:8`;
-- `suko-website/src/main/suko/README.md:9`.
-
-**Ação requerida antes de o plano ser executado:** confirmar a
-renumeração, ou dizer que este trabalho entra com outro número (por
-exemplo, "subprojeto 8.5" ou "9-bis") e o site mantém o 9.
+Este trabalho é o **subprojeto 9**; o site de documentação passa a **10** e
+o suporte de IDE a **11**. Confirmado pelo utilizador depois da escrita
+desta spec; aplicado pela Task 13 do plano nos cinco sítios que o
+referiam (`ARCHITECTURE.md` roadmap e descrição de `suko-website/`,
+`suko-website/README.md`, `suko-website/src/main/suko/README.md`,
+`README.md`).
 
 ### Correção de âmbito: são três superfícies, não duas
 
