@@ -22,11 +22,12 @@ import java.util.regex.Pattern;
  * field (precedence: flag &gt; file &gt; default).
  * <p>
  * {@code basePackage} deliberately has no built-in default anywhere in this
- * class: guessing it from folder structure would fail silently and only
- * surface much later, from the compiler, as {@code PACKAGE_DIRECTORY_MISMATCH}
- * — a diagnostic that does not point back at the real cause. It is always
- * either explicitly configured (file or flag) or the caller is told to run
- * {@code suko init} / pass {@code --base-package}.
+ * class: guessing it from folder structure would fail silently, and the
+ * wrong guess would only surface much later as a confusing
+ * package/folder-mismatch error from the compiler — one that does not
+ * point back at the real cause. It is always either explicitly configured
+ * (file or flag) or the caller is told to run {@code suko init} / pass
+ * {@code --base-package}.
  * </p>
  */
 public record ProjectConfig(int schemaVersion, String sourceRoot, String basePackage, Registry registry) {

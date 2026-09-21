@@ -17,10 +17,11 @@ import java.util.Scanner;
  * Every field except {@code basePackage} has a visible built-in default
  * (shown in the prompt, accepted on an empty line). {@code basePackage}
  * is <strong>always</strong> asked, with no default at all: guessing it
- * from folder structure would fail silently and only surface much later,
- * from the compiler, as {@code PACKAGE_DIRECTORY_MISMATCH}. {@code --yes}
- * accepts every other default without prompting, but still requires
- * {@code --base-package} to have been passed — it cannot invent one.
+ * from folder structure would fail silently, and the wrong guess would
+ * only surface much later as a confusing package/folder-mismatch error
+ * from the compiler. {@code --yes} accepts every other default without
+ * prompting, but still requires {@code --base-package} to have been
+ * passed — it cannot invent one.
  * </p>
  */
 public final class InitCommand {
@@ -73,13 +74,15 @@ public final class InitCommand {
             if (args.basePackage() == null) {
                 throw new CliException(
                         "--yes was given but --base-package was not. basePackage cannot be guessed from the "
-                                + "folder structure (a wrong guess only surfaces later as a compiler "
-                                + "PACKAGE_DIRECTORY_MISMATCH), so it must be passed explicitly: "
-                                + "suko init --yes --base-package <pkg>");
+                                + "folder structure (a wrong guess would only surface much later as a confusing "
+                                + "package/folder-mismatch error from the compiler), so it must be passed "
+                                + "explicitly: suko init --yes --base-package <pkg>");
             }
             return args.basePackage();
         }
 
+        out.println("Base package: no default is guessed from folder structure — a wrong guess would only "
+                + "surface much later as a confusing compiler error, so it's always asked explicitly.");
         String prompt = args.basePackage() != null
                 ? "Base package [" + args.basePackage() + "]: "
                 : "Base package (e.g. com.acme.web, required): ";

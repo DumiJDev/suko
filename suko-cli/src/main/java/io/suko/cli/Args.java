@@ -59,8 +59,9 @@ public final class Args {
                     Create this project's suko.json (interactive). Every option below has a
                     visible default that is used if you just press enter, except
                     --base-package, which has none and is always asked (guessing it from
-                    folder structure would fail silently and only surface much later as a
-                    compiler PACKAGE_DIRECTORY_MISMATCH).
+                    folder structure would fail silently, and the wrong guess would only
+                    surface much later as a confusing package/folder-mismatch error from
+                    the compiler).
 
                     Options:
                       --source-root <path>    Root folder for .sk files (default: src/main/suko)
