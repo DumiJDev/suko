@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -122,5 +123,41 @@ class SukoInterpolationSyntaxTest {
     void legacyBraceStillParsesForNow() {
         assertEquals(List.of(), parseErrors("component A(String x) { {x} }"));
         assertEquals(List.of(), parseErrors("component A(String x) { <p id={x}>y</p> }"));
+    }
+
+    @Test
+    void astMarksLegacyBraceInterpolation() {
+        SukoFile file = ast("component A(String x) { {x} }");
+        Statement.Interpolation interpolation = (Statement.Interpolation) file.components().get(0).body().get(0);
+        assertTrue(interpolation.legacyBraceForm(), "'{x}' tem de ficar marcado como forma legada");
+    }
+
+    @Test
+    void astDoesNotMarkModernInterpolation() {
+        SukoFile file = ast("component A(String x) { ${x} }");
+        Statement.Interpolation interpolation = (Statement.Interpolation) file.components().get(0).body().get(0);
+        assertFalse(interpolation.legacyBraceForm(), "'${x}' é a forma atual, não legada");
+    }
+
+    @Test
+    void astMarksLegacyBraceAttribute() {
+        SukoFile file = ast("component A(String x) { <p id={x}>y</p> }");
+        Statement.HtmlElement element = (Statement.HtmlElement) file.components().get(0).body().get(0);
+        assertTrue(element.attributes().get(0).legacyBraceForm());
+    }
+
+    @Test
+    void astDoesNotMarkModernAttributeOrQuotedString() {
+        SukoFile modern = ast("component A(String x) { <p id=${x}>y</p> }");
+        assertFalse(((Statement.HtmlElement) modern.components().get(0).body().get(0))
+            .attributes().get(0).legacyBraceForm());
+
+        SukoFile quoted = ast("component A(String x) { <p id=\"v-${x}\">y</p> }");
+        assertFalse(((Statement.HtmlElement) quoted.components().get(0).body().get(0))
+            .attributes().get(0).legacyBraceForm());
+
+        SukoFile bare = ast("component A() { <input required /> }");
+        assertFalse(((Statement.HtmlElement) bare.components().get(0).body().get(0))
+            .attributes().get(0).legacyBraceForm());
     }
 }

@@ -146,7 +146,10 @@ public class SukoAstBuilder {
             return buildHtmlElement(ctx.htmlElement());
         }
         if (ctx.interpolation() != null) {
-            return new Statement.Interpolation(buildExpr(ctx.interpolation().expression()), spanOf(ctx.interpolation()));
+            return new Statement.Interpolation(
+                buildExpr(ctx.interpolation().expression()),
+                ctx.interpolation().legacy != null,
+                spanOf(ctx.interpolation()));
         }
         if (ctx.textRun() != null) {
             return new Statement.TextRun(textOf(ctx.textRun()), spanOf(ctx.textRun()));
@@ -274,7 +277,7 @@ public class SukoAstBuilder {
             return buildStatements(blockCtx.templateStatement());
         }
         // "case X -> expression;" — trata a expressão como uma única interpolação.
-        return List.of(new Statement.Interpolation(buildExpr(exprCtx), spanOf(exprCtx)));
+        return List.of(new Statement.Interpolation(buildExpr(exprCtx), false, spanOf(exprCtx)));
     }
 
     private Statement.HtmlElement buildHtmlElement(SukoParser.HtmlElementContext ctx) {
@@ -302,7 +305,9 @@ public class SukoAstBuilder {
                 : attrCtx.interpolation() != null
                     ? buildExpr(attrCtx.interpolation().expression())
                     : new Expr.PrimaryExpr("true", spanOf(attrCtx));
-            attributes.add(new Statement.Attribute(name, value, spanOf(attrCtx)));
+            boolean legacyBraceForm = attrCtx.interpolation() != null
+                && attrCtx.interpolation().legacy != null;
+            attributes.add(new Statement.Attribute(name, value, legacyBraceForm, spanOf(attrCtx)));
         }
         return attributes;
     }
