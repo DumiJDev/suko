@@ -47,9 +47,8 @@ public final class Args {
      * Per-command help, shown by {@code suko <command> --help} instead of
      * running the command (brief Step 3: "ambos [Main e Args] com --help
      * por comando"). Keyed by command name; every entry in {@link
-     * #COMMANDS} has one, including the three not implemented yet by this
-     * task, so {@code suko add --help} explains itself instead of either
-     * running the (nonexistent) command or falling back to the generic
+     * #COMMANDS} has one, so {@code suko add --help} explains itself instead
+     * of either running the command or falling back to the generic
      * top-level usage.
      */
     public static final Map<String, String> COMMAND_HELP = Map.of(

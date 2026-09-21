@@ -16,7 +16,7 @@ dependency-bundling tool). There are three ways to run it:
 ### 1. jbang (recommended)
 
 ```
-jbang suko@<owner> --help
+jbang suko@suko-lang --help
 ```
 
 The alias in the repo root's `jbang-catalog.json` points straight at a
@@ -24,6 +24,13 @@ GitHub Release asset (the fat jar) — nothing is published to Maven Central
 or any other Maven repository. `jbang` downloads the jar once, caches it,
 and runs it with `java -jar`. See `jbang-catalog.md` for the exact alias
 name and how new releases update it.
+
+The jbang alias and the CLI's default registry base (`suko-lang`, hardcoded
+in `jbang-catalog.json`'s `script-ref` and in `InitCommand`'s default
+registry base template) both only resolve once a real, non-`SNAPSHOT`
+release tag has actually been cut and published. Until then, use
+"Building from source" below (`gradle :suko-cli:fatJar` plus
+`scripts/suko`/`scripts/suko.bat`) as the working install path.
 
 ### 2. Wrapper scripts
 
@@ -48,7 +55,7 @@ one, you compile it yourself, once, locally, with GraalVM (`native-image`)
 already installed:
 
 ```
-jbang --native --build-dir <a-directory-of-your-choice> suko@<owner>
+jbang --native --build-dir <a-directory-of-your-choice> suko@suko-lang
 ```
 
 `--build-dir` is **not optional**. Without it, the first native compilation
@@ -111,6 +118,14 @@ suko update                  # refreshes every directly-installed component
   (conflicting or unowned). Never a three-way merge, under any
   circumstance: a conflicting file is refused, or overwritten outright with
   `--force` — never merged.
+  Note: a bare `suko update` (no positional component names) validates
+  every currently-direct component's name against the registry *before*
+  resolving or writing anything — so if any previously-direct-installed
+  component has since been removed from the upstream registry, the whole
+  command aborts with an error naming it, without touching disk. This is
+  fail-safe (no partial or corrupt writes), but if you hit it, the fix is to
+  either restore that component in the registry you point at, or run
+  `suko update` naming only the components that still exist.
 
 ## The lockfile: two hashes, not one
 
@@ -175,6 +190,23 @@ once; there's no facility today for "component X's manifest as it existed
 three tags ago, alongside everything else at the current tag." If you need
 an older version of a single component, the practical path is to check out
 that older registry tag entirely and `suko add` from it.
+
+## Custom registries: `NamespaceRewriter` limitations
+
+If you're building or using a custom (third-party) registry, be aware that
+`NamespaceRewriter` (the code that rewrites `package`/`import` lines to your
+`basePackage`) intentionally passes some things through unchanged, and
+silently:
+
+- A wildcard import (`import io.suko.ui.*;`) and an `import static` line are
+  never rewritten, even if they reference the registry's own base package.
+- A `.sk` file with no `package` line at all is left as-is, with no warning.
+
+Neither pattern occurs anywhere in this project's own registry
+(`suko-components`), so `suko add`/`suko update` against it are unaffected.
+But if a custom registry's components use either pattern, the rewritten
+copy installed into your project can end up with lingering references to
+the registry's original base package, and nothing will tell you.
 
 ## External requirements (Tailwind, Alpine)
 

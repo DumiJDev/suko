@@ -35,11 +35,14 @@ import java.util.concurrent.TimeoutException;
  *   {@code localhost}) during development or in tests</b> &mdash; this class
  *   has no way to tell "trusted local test fixture" apart from "attacker on
  *   the same network downgrading a real registry to plaintext", so this
- *   decision is deliberately left to the caller (and ultimately, in the
- *   suko-cli, to an explicit {@code --allow-insecure} flag) rather than ever
- *   being inferred automatically (e.g. from the hostname being
- *   {@code localhost}, which is not a security boundary an attacker
- *   couldn't also claim).</li>
+ *   decision is deliberately left to the caller rather than ever being
+ *   inferred automatically (e.g. from the hostname being {@code localhost},
+ *   which is not a security boundary an attacker couldn't also claim).
+ *   {@code suko-cli} currently has no way for a user to opt into this at all
+ *   — it always constructs this class with {@code allowInsecure = false} —
+ *   so in practice only {@code https} registries are reachable from the CLI
+ *   today; {@code allowInsecure = true} is exercised only by this module's
+ *   own tests (and any consumer's tests) against a throwaway local server.</li>
  *   <li><b>Redirects are never followed.</b> The underlying {@link
  *   HttpClient} is configured with {@link HttpClient.Redirect#NEVER}. A
  *   redirect is the HTTP equivalent of the symlink that {@link
@@ -151,8 +154,8 @@ public final class HttpRegistrySource implements RegistrySource {
             }
         } else if (!"https".equalsIgnoreCase(scheme)) {
             throw new IllegalArgumentException(
-                    "Registry base URL must use https (or http with allowInsecure for local test servers), got scheme \""
-                            + scheme + "\" in: " + baseUrl);
+                    "Registry base URL must use https, got scheme \"" + scheme + "\" in: " + baseUrl
+                            + ". Only https registries are supported today.");
         }
 
         this.base = parsedBase;
