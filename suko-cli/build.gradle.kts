@@ -149,6 +149,20 @@ val fatJar = tasks.register<Jar>("fatJar") {
         )
     }
 
+    // `configurations.runtimeClasspath` is a `Configuration`/`FileCollection`,
+    // not a `Provider` — so the `.map` right below resolves to Kotlin's
+    // eager `Iterable.map`, not a lazy `Provider.map`. It materializes a
+    // plain `List<Any>` at configuration time, which does NOT carry the
+    // `Configuration`'s task-dependency metadata with it. Without this
+    // explicit `dependsOn`, Gradle has no way to know that e.g.
+    // `:suko-registry:jar` must run before this task tries to `zipTree()`
+    // its output jar — invisible on a build with stale `build/libs` output
+    // lying around from a previous run, but a real, reproduced failure on
+    // a genuine `gradle clean build` (`Cannot expand ZIP '.../suko-registry/
+    // build/libs/suko-registry-....jar' as it does not exist`), since
+    // `:suko-registry:jar` is then never scheduled at all.
+    dependsOn(configurations.runtimeClasspath)
+
     from(sourceSets.main.get().output)
     from(configurations.runtimeClasspath.map { classpath ->
         classpath.map { if (it.isDirectory) it else zipTree(it) }
