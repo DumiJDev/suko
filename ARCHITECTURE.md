@@ -376,11 +376,22 @@ arquitetura):
   `SemanticChecker` deteta heuristicamente um `textRun` cujo texto contém
   `var x = Componente(` (com `Componente` a resolver na tabela de símbolos)
   e emite o aviso `VAR_DECL_NOT_PARSED`.
-- **Erros de parse não param a compilação.** Não há `ErrorListener` em
-  `src/main`: o ANTLR imprime o erro no stderr e o `SukoAstBuilder`
-  continua a percorrer uma árvore com nós de erro, produzindo `.jte`
-  corrompido em silêncio. Diagnóstico de sintaxe é infraestrutura em
-  falta, não coberta por nenhum subprojeto até agora.
+- **Erros de parse param a compilação no caminho principal, e só nesse.**
+  `SukoErrorListener` (`io.suko.lang.diagnostic`) existe em `src/main` e é
+  instalado por `JteCompiler.parseAndBuild`, que aborta em
+  `diagnostics.hasErrors()` — um `.sk` sintaticamente inválido compilado
+  por aí dá erro com ficheiro, linha e coluna, não `.jte` corrompido.
+  **Há dois caminhos de parse que removem os error listeners de
+  propósito** e não têm essa proteção: `ProjectIndex.parseQuietly`
+  (invocado por `ProjectIndex.build`, Fase 1 da indexação multi-ficheiro,
+  que só quer a assinatura e delega o diagnóstico à Fase 2) e
+  `RegistryGenerator` (geração do manifesto da biblioteca). Nesses dois,
+  um ficheiro que deixe de fazer parse produz recuperação silenciosa do
+  ANTLR e um AST parcial — no segundo, isso significa um manifesto gerado
+  a partir de uma árvore truncada, que sai commitado em JSON com aspeto
+  normal. É por isso que o subprojeto 9 manteve a produção legada de
+  chaveta nua na gramática e rejeitou a sintaxe antiga no
+  `SemanticChecker`, em vez de a apagar do `.g4`.
 - **`</` literal em texto livre** é erro de parse (consequência aceite
   da desambiguação do `textRun`).
 - **Um literal de string Suko não pode conter `<` nem `>`**
