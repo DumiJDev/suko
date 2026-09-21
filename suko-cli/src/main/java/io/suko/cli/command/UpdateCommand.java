@@ -13,7 +13,6 @@ import io.suko.cli.ResolutionPlan;
 import io.suko.cli.Resolver;
 import io.suko.registry.ComponentFile;
 import io.suko.registry.ComponentManifest;
-import io.suko.registry.ExternalRequirement;
 import io.suko.registry.RegistryIndex;
 import io.suko.registry.RegistryJson;
 import io.suko.registry.RegistryJsonException;
@@ -33,62 +32,69 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * {@code suko add}: installs one or more components (and the transitive
- * closure of their {@code dependsOn}) into this project.
+ * {@code suko update}: reapplies the reconciliation matrix (spec D7) to
+ * already-installed components, refreshing files that were not edited
+ * locally against whatever the registry currently has.
  * <p>
- * The eight steps below are the mitigation of risk R1 in the subprojeto 8
- * plan and their order is <strong>not negotiable</strong>: config; index +
- * dependency closure ({@link Resolver}); fetch every file and verify its
- * {@code sha256} against the manifest (before any rewriting — this is the
- * only place the manifest's hash is ever compared against real bytes);
- * rewrite every file's namespace in memory ({@link NamespaceRewriter});
- * compute destinations and reconcile against the existing lockfile
- * ({@link Reconciler}) — a single unresolved conflict aborts before a
- * single byte is written; write files; write the lockfile last; print the
- * aggregated {@code externalRequirements}. Every step before "write files"
- * operates purely in memory, which is what makes the whole operation
- * atomic: any failure in fetching, hash verification, or reconciliation
- * throws a {@link CliException} before the first {@code Files.write} call,
- * so a failure partway through never leaves a partial install on disk or a
- * stale lockfile.
+ * Unlike {@code suko add}, this command never installs a component that is
+ * not already in {@code suko.lock.json}: with no positional argument it
+ * only walks the lockfile's {@code direct} entries and whatever their
+ * <em>current</em> {@code dependsOn} still requires (transitives no longer
+ * required by any direct component are left on disk untouched — deleting
+ * them is out of scope — but reported as orphaned). With one or more
+ * names, only those components (and whatever their current {@code
+ * dependsOn} pulls in) are updated; each must already be an entry in the
+ * lockfile.
+ * </p>
+ * <p>
+ * <strong>No three-way merge, under any circumstance</strong> (subprojeto 8
+ * plan, this task's binding decision): a file that was edited locally AND
+ * whose upstream changed ({@link Reconciler.Action#CONFLICT}) — or a file
+ * that exists on disk with no lockfile entry ({@link
+ * Reconciler.Action#REFUSE_UNOWNED}) — aborts the whole command, before a
+ * single byte is written, unless {@code --force} is given; with {@code
+ * --force} it is overwritten outright, never merged.
  * </p>
  */
-public final class AddCommand {
+public final class UpdateCommand {
 
     public void run(Args args, PrintStream out, Path projectDir) {
-        if (args.positionals().isEmpty()) {
-            throw new CliException(
-                    "suko add requires at least one component name, e.g. `suko add button`. "
-                            + "Run `suko list` to see available components.");
+        Lockfile lockfile = Lockfile.load(projectDir).orElseThrow(() -> new CliException(
+                "No " + Lockfile.FILE_NAME + " found in " + projectDir
+                        + " — nothing is installed yet. Run `suko add <name>` first."));
+
+        boolean wholeProject = args.positionals().isEmpty();
+        List<String> requestedNames = wholeProject ? directNames(lockfile) : args.positionals();
+        for (String name : requestedNames) {
+            if (lockfile.components().stream().noneMatch(c -> c.name().equals(name))) {
+                throw new CliException(
+                        "Component \"" + name + "\" is not installed (no entry in " + Lockfile.FILE_NAME
+                                + "). Run `suko add " + name + "` first — `suko update` only refreshes what is "
+                                + "already installed.");
+            }
+        }
+        if (requestedNames.isEmpty()) {
+            out.println("Nothing to update: " + Lockfile.FILE_NAME + " has no \"direct\" components.");
+            return;
         }
 
-        // Step 1: config.
         ProjectConfig config = ProjectConfig.resolve(args, projectDir);
         String registryBase = config.registry().base();
         if (registryBase == null) {
             throw new CliException(
                     "No registry configured. Pass --registry <path|url>, or run `suko init` to create a suko.json.");
         }
-        String registryRef = config.registry().ref() != null ? config.registry().ref() : InitCommand.DEFAULT_REGISTRY_REF;
+        String registryRef = config.registry().ref() != null ? config.registry().ref() : lockfile.registry().ref();
 
         RegistrySource source = RegistrySources.resolve(registryBase);
-
-        // Step 2: index + dependency closure.
         RegistryIndex index = loadIndex(source, registryBase);
-        ResolutionPlan plan = Resolver.resolve(index, source, args.positionals());
+        ResolutionPlan plan = Resolver.resolve(index, source, requestedNames);
 
-        // Step 3: fetch every file and verify its sha256 against the
-        // manifest — the ONLY time the manifest's hash is compared against
-        // real bytes, since these bytes are still pre-rewrite.
         List<FetchedFile> fetched = fetchAndVerify(plan, source);
-
-        // Step 4: rewrite every file's namespace, entirely in memory.
         List<RewrittenFile> rewritten = rewriteAll(fetched, config);
 
-        // Step 5: compute destinations and reconcile against the lockfile.
         Path sourceRootAbsolute = projectDir.resolve(config.sourceRoot()).toAbsolutePath().normalize();
-        Optional<Lockfile> existingLockfile = Lockfile.load(projectDir);
-        List<PlannedFile> plannedFiles = classifyAll(rewritten, config, sourceRootAbsolute, existingLockfile);
+        List<PlannedFile> plannedFiles = classifyAll(rewritten, config, sourceRootAbsolute, lockfile);
 
         List<String> unresolved = new ArrayList<>();
         for (PlannedFile planned : plannedFiles) {
@@ -99,12 +105,18 @@ public final class AddCommand {
         }
         if (!unresolved.isEmpty()) {
             throw new CliException(
-                    "Aborting `suko add` before writing anything — the following file(s) need attention:\n"
+                    "Aborting `suko update` before writing anything — the following file(s) need attention:\n"
                             + String.join("\n", unresolved)
                             + "\n\nInspect with `suko diff`, or pass --force to overwrite.");
         }
 
         printPlan(out, plannedFiles, args.dryRun());
+        Set<String> resolvedNames = new LinkedHashSet<>();
+        for (ResolutionPlan.Resolved resolved : plan.components()) {
+            resolvedNames.add(resolved.manifest().name());
+        }
+        List<String> orphans = wholeProject ? orphanedTransitives(lockfile, resolvedNames) : List.of();
+        printOrphans(out, orphans);
 
         if (args.dryRun()) {
             out.println();
@@ -112,24 +124,45 @@ public final class AddCommand {
             return;
         }
 
-        // Step 6: write files.
         for (PlannedFile planned : plannedFiles) {
             if (planned.write) {
                 writeFile(planned.diskPath, planned.finalBytes);
             }
         }
 
-        // Step 7: write the lockfile last.
-        Lockfile newLockfile = buildLockfile(config, index, registryBase, registryRef, plan, plannedFiles, existingLockfile);
+        Lockfile newLockfile = buildLockfile(config, index, registryBase, registryRef, plan, plannedFiles, lockfile);
         newLockfile.write(projectDir);
         out.println();
         out.println("Wrote " + projectDir.resolve(Lockfile.FILE_NAME));
-
-        // Step 8: print external requirements, never act on them.
-        printExternalRequirements(out, plan);
     }
 
-    // --- Step 1 helpers ---
+    private List<String> directNames(Lockfile lockfile) {
+        List<String> names = new ArrayList<>();
+        for (LockEntry entry : lockfile.components()) {
+            if (LockEntry.REASON_DIRECT.equals(entry.reason())) {
+                names.add(entry.name());
+            }
+        }
+        return names;
+    }
+
+    /**
+     * Components that were {@code transitive} in the old lockfile but are
+     * not required by any of the resolved (current) direct components'
+     * {@code dependsOn} graph. Reported, never deleted — removing files is
+     * out of scope for this task.
+     */
+    private List<String> orphanedTransitives(Lockfile oldLockfile, Set<String> resolvedNames) {
+        List<String> orphans = new ArrayList<>();
+        for (LockEntry entry : oldLockfile.components()) {
+            if (LockEntry.REASON_TRANSITIVE.equals(entry.reason()) && !resolvedNames.contains(entry.name())) {
+                orphans.add(entry.name());
+            }
+        }
+        return orphans;
+    }
+
+    // --- index/manifest loading (same shape as AddCommand/DiffCommand) ---
 
     private RegistryIndex loadIndex(RegistrySource source, String registryBase) {
         byte[] indexBytes;
@@ -145,7 +178,7 @@ public final class AddCommand {
         }
     }
 
-    // --- Step 3 ---
+    // --- fetch + verify (pre-rewrite sha256, same as AddCommand's step 3) ---
 
     private record FetchedFile(ComponentManifest manifest, ComponentFile manifestFile, byte[] rawBytes) {
     }
@@ -161,7 +194,7 @@ public final class AddCommand {
                 } catch (IOException e) {
                     throw new CliException(
                             "Could not fetch \"" + manifestFile.path() + "\" for component \"" + manifest.name()
-                                    + "\": " + e.getMessage() + ". Aborting `suko add` — nothing was written.");
+                                    + "\": " + e.getMessage() + ". Aborting `suko update` — nothing was written.");
                 }
                 String actualSha256 = Hashes.sha256OfRaw(rawBytes);
                 if (!actualSha256.equals(manifestFile.sha256())) {
@@ -169,7 +202,7 @@ public final class AddCommand {
                             "Content fetched for \"" + manifestFile.path() + "\" (component \"" + manifest.name()
                                     + "\") does not match the sha256 recorded in its manifest (expected "
                                     + manifestFile.sha256() + ", got " + actualSha256
-                                    + "). Aborting `suko add` — nothing was written. This registry may be "
+                                    + "). Aborting `suko update` — nothing was written. This registry may be "
                                     + "corrupted, or the transport modified the content in transit.");
                 }
                 result.add(new FetchedFile(manifest, manifestFile, rawBytes));
@@ -178,7 +211,7 @@ public final class AddCommand {
         return result;
     }
 
-    // --- Step 4 ---
+    // --- rewrite (same as AddCommand's step 4) ---
 
     private record RewrittenFile(ComponentManifest manifest, ComponentFile manifestFile, byte[] rewrittenBytes) {
     }
@@ -193,14 +226,14 @@ public final class AddCommand {
         return result;
     }
 
-    // --- Step 5 ---
+    // --- reconciliation (same matrix as AddCommand's step 5, against the existing lockfile) ---
 
     private record PlannedFile(ComponentManifest manifest, ComponentFile manifestFile, String lockTarget,
                                 Path diskPath, Reconciler.Action action, boolean write, byte[] finalBytes) {
     }
 
     private List<PlannedFile> classifyAll(List<RewrittenFile> rewritten, ProjectConfig config,
-            Path sourceRootAbsolute, Optional<Lockfile> existingLockfile) {
+            Path sourceRootAbsolute, Lockfile existingLockfile) {
         String basePackageFolder = config.basePackage().replace('.', '/');
 
         List<PlannedFile> result = new ArrayList<>(rewritten.size());
@@ -211,23 +244,17 @@ public final class AddCommand {
             String lockTarget = basePackageFolder + "/" + manifestFile.target();
             Path diskPath = sourceRootAbsolute.resolve(lockTarget).normalize();
             if (!diskPath.startsWith(sourceRootAbsolute)) {
-                // Defense in depth, mirroring FileSystemRegistrySource's own
-                // containment check against its base, in the opposite
-                // direction: a manifest target that (once combined with
-                // basePackage) escapes sourceRoot must never be written,
-                // however that target got here (hand-edited registry,
-                // future bug in the generator, ...).
                 throw new CliException(
                         "Component \"" + manifest.name() + "\" declares a file target \"" + manifestFile.target()
                                 + "\" that would resolve outside of sourceRoot \"" + sourceRootAbsolute
                                 + "\". Refusing to write it.");
             }
 
-            Optional<LockEntry.FileEntry> lockEntry = existingLockfile.flatMap(lf -> lf.components().stream()
+            Optional<LockEntry.FileEntry> lockEntry = existingLockfile.components().stream()
                     .filter(c -> c.name().equals(manifest.name()))
                     .flatMap(c -> c.files().stream())
                     .filter(f -> f.target().equals(lockTarget))
-                    .findFirst());
+                    .findFirst();
 
             Optional<byte[]> diskBytes = readDiskBytes(diskPath);
 
@@ -238,8 +265,8 @@ public final class AddCommand {
                 case NO_OP, KEEP_LOCAL_EDIT -> false;
                 // CONFLICT/REFUSE_UNOWNED without --force already aborted
                 // the whole command before this loop's caller inspects
-                // `write`; with --force they are treated as an authorized
-                // overwrite.
+                // `write`; with --force they are an authorized overwrite —
+                // never a merge, see this class's own javadoc.
                 case CONFLICT, REFUSE_UNOWNED -> true;
             };
             byte[] finalBytes = write ? file.rewrittenBytes() : diskBytes.orElse(file.rewrittenBytes());
@@ -263,11 +290,11 @@ public final class AddCommand {
     private String describeUnresolved(PlannedFile planned) {
         String reason = planned.action == Reconciler.Action.CONFLICT
                 ? "edited locally AND upstream changed (conflict)"
-                : "exists on disk but is not tracked by suko.lock.json (not installed by suko add)";
+                : "exists on disk but is not tracked by suko.lock.json (not installed by suko add/update)";
         return "  " + planned.diskPath + " — " + reason;
     }
 
-    // --- Step 6 ---
+    // --- write ---
 
     private void writeFile(Path diskPath, byte[] bytes) {
         try {
@@ -275,21 +302,23 @@ public final class AddCommand {
             if (parent != null) {
                 Files.createDirectories(parent);
             }
-            // NamespaceRewriter always produces LF-only bytes (D8); written
-            // as-is, with no further translation.
             Files.write(diskPath, bytes);
         } catch (IOException e) {
             throw new CliException("Could not write " + diskPath + ": " + e.getMessage());
         }
     }
 
-    // --- Step 7 ---
+    // --- lockfile (merges resolved components into the existing one; every
+    // untouched entry — including an orphaned transitive — is carried over
+    // unchanged, never dropped) ---
 
     private Lockfile buildLockfile(ProjectConfig config, RegistryIndex index, String registryBase, String registryRef,
-            ResolutionPlan plan, List<PlannedFile> plannedFiles, Optional<Lockfile> existingLockfile) {
+            ResolutionPlan plan, List<PlannedFile> plannedFiles, Lockfile existingLockfile) {
 
-        Map<String, LockEntry> existingByName = new LinkedHashMap<>();
-        existingLockfile.ifPresent(lf -> lf.components().forEach(c -> existingByName.put(c.name(), c)));
+        Map<String, LockEntry> componentsByName = new LinkedHashMap<>();
+        for (LockEntry entry : existingLockfile.components()) {
+            componentsByName.put(entry.name(), entry);
+        }
 
         Map<String, List<LockEntry.FileEntry>> filesByComponent = new LinkedHashMap<>();
         for (PlannedFile planned : plannedFiles) {
@@ -298,10 +327,9 @@ public final class AddCommand {
                             Hashes.sha256OfNormalized(planned.finalBytes)));
         }
 
-        Map<String, LockEntry> componentsByName = new LinkedHashMap<>(existingByName);
         for (ResolutionPlan.Resolved resolved : plan.components()) {
             ComponentManifest manifest = resolved.manifest();
-            LockEntry existing = existingByName.get(manifest.name());
+            LockEntry existing = componentsByName.get(manifest.name());
             boolean alreadyDirect = existing != null && LockEntry.REASON_DIRECT.equals(existing.reason());
             String reason = (resolved.direct() || alreadyDirect) ? LockEntry.REASON_DIRECT : LockEntry.REASON_TRANSITIVE;
             List<LockEntry.FileEntry> files = filesByComponent.getOrDefault(manifest.name(), List.of());
@@ -312,13 +340,24 @@ public final class AddCommand {
                 config.basePackage(), config.sourceRoot(), new ArrayList<>(componentsByName.values()));
     }
 
-    // --- Printing (steps 5/6 plan, and step 8) ---
+    // --- printing ---
 
     private void printPlan(PrintStream out, List<PlannedFile> plannedFiles, boolean dryRun) {
         out.println(dryRun ? "Plan (dry run — nothing will be written):" : "Plan:");
         for (PlannedFile planned : plannedFiles) {
             out.println("  " + planned.manifest.name() + ": " + planned.manifestFile.target() + " -> "
                     + planned.diskPath + " (" + actionLabel(planned.action) + ")");
+        }
+    }
+
+    private void printOrphans(PrintStream out, List<String> orphans) {
+        if (orphans.isEmpty()) {
+            return;
+        }
+        out.println();
+        out.println("Orphaned (no longer required by any direct component, left on disk untouched):");
+        for (String name : orphans) {
+            out.println("  " + name);
         }
     }
 
@@ -331,26 +370,5 @@ public final class AddCommand {
             case CONFLICT -> "overwrite (--force: edited locally AND upstream changed)";
             case REFUSE_UNOWNED -> "overwrite (--force: was not tracked)";
         };
-    }
-
-    private void printExternalRequirements(PrintStream out, ResolutionPlan plan) {
-        Set<String> seen = new LinkedHashSet<>();
-        List<ExternalRequirement> aggregated = new ArrayList<>();
-        for (ResolutionPlan.Resolved resolved : plan.components()) {
-            for (ExternalRequirement requirement : resolved.manifest().externalRequirements()) {
-                String key = requirement.kind() + ":" + requirement.id();
-                if (seen.add(key)) {
-                    aggregated.add(requirement);
-                }
-            }
-        }
-        if (aggregated.isEmpty()) {
-            return;
-        }
-        out.println();
-        out.println("External requirements (not installed automatically — see the suko-cli README):");
-        for (ExternalRequirement requirement : aggregated) {
-            out.println("  " + requirement.kind() + " " + requirement.id() + " " + requirement.versionRange());
-        }
     }
 }

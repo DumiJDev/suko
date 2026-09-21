@@ -1,8 +1,10 @@
 package io.suko.cli;
 
 import io.suko.cli.command.AddCommand;
+import io.suko.cli.command.DiffCommand;
 import io.suko.cli.command.InitCommand;
 import io.suko.cli.command.ListCommand;
+import io.suko.cli.command.UpdateCommand;
 
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -57,10 +59,10 @@ public final class Main {
                 case "init" -> new InitCommand().run(args, in, out, err, projectDir);
                 case "list" -> new ListCommand().run(args, out, projectDir);
                 case "add" -> new AddCommand().run(args, out, projectDir);
-                case "diff", "update" -> {
-                    err.println("`suko " + args.command() + "` is not implemented yet.");
-                    return 1;
+                case "diff" -> {
+                    return new DiffCommand().run(args, out, projectDir);
                 }
+                case "update" -> new UpdateCommand().run(args, out, projectDir);
                 default -> throw new IllegalStateException("Args.parse should never return an unknown command: " + args.command());
             }
         } catch (CliException e) {
