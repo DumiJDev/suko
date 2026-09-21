@@ -8,13 +8,12 @@ import io.suko.cli.Lockfile;
 import io.suko.cli.NamespaceRewriter;
 import io.suko.cli.ProjectConfig;
 import io.suko.cli.Reconciler;
+import io.suko.cli.RegistrySources;
 import io.suko.cli.ResolutionPlan;
 import io.suko.cli.Resolver;
 import io.suko.registry.ComponentFile;
 import io.suko.registry.ComponentManifest;
 import io.suko.registry.ExternalRequirement;
-import io.suko.registry.FileSystemRegistrySource;
-import io.suko.registry.HttpRegistrySource;
 import io.suko.registry.RegistryIndex;
 import io.suko.registry.RegistryJson;
 import io.suko.registry.RegistryJsonException;
@@ -74,7 +73,7 @@ public final class AddCommand {
         }
         String registryRef = config.registry().ref() != null ? config.registry().ref() : InitCommand.DEFAULT_REGISTRY_REF;
 
-        RegistrySource source = resolveSource(registryBase);
+        RegistrySource source = RegistrySources.resolve(registryBase);
 
         // Step 2: index + dependency closure.
         RegistryIndex index = loadIndex(source, registryBase);
@@ -133,13 +132,6 @@ public final class AddCommand {
     }
 
     // --- Step 1 helpers ---
-
-    private RegistrySource resolveSource(String base) {
-        if (base.startsWith("http://") || base.startsWith("https://")) {
-            return new HttpRegistrySource(base);
-        }
-        return new FileSystemRegistrySource(Path.of(base));
-    }
 
     private RegistryIndex loadIndex(RegistrySource source, String registryBase) {
         byte[] indexBytes;
