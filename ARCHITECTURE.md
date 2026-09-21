@@ -54,9 +54,12 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   antigo módulo raiz sem mudança de comportamento. Depende de
   `suko-core`. Aplica `java-gradle-plugin` e declara
   `gradlePlugin { plugins { create("suko") { id = "io.suko.lang" } } }`
-  (subprojeto 8, tarefa 4) — `plugins { id("io.suko.lang") }` já resolve,
-  inclusive via TestKit; deixou de existir só como classe `Plugin<Project>`
-  testada diretamente.
+  (subprojeto 8, tarefa 4) — `plugins { id("io.suko.lang") }` já resolve
+  via composite build (`includeBuild`) e via TestKit; deixou de existir só
+  como classe `Plugin<Project>` testada diretamente. **Não publicado no
+  Gradle Plugin Portal** (D11): o ID serve composite builds/TestKit, não
+  um `plugins { id("io.suko.lang") version "..." }` isolado — publicação
+  real fica em aberto, dependente da mesma questão de D1 do subprojeto 7.
 - **`suko-maven-plugin/`** — plugin Maven (`SukoCompileMojo`), depende de
   `suko-core`. Ver a ressalva já documentada no item 4 do roadmap sobre o
   descritor de plugin Maven não estar completo — **este lado permanece
@@ -499,9 +502,12 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    subprojeto 8, tarefa 4):** o caminho Gradle está hoje suportado de
    ponta-a-ponta — `suko-gradle-plugin` aplica `java-gradle-plugin` e
    declara `gradlePlugin { plugins { create("suko") { id = "io.suko.lang" } } }`,
-   com `plugins { id("io.suko.lang") }` a resolver de verdade, inclusive
-   via TestKit (ver "Estrutura de módulos" acima e `FullCycleTest` do
-   subprojeto 8). O caminho Maven **continua sem mudança**: nenhum
+   com `plugins { id("io.suko.lang") }` a resolver de verdade via
+   composite build (`includeBuild`) e via TestKit (ver "Estrutura de
+   módulos" acima e `FullCycleTest` do subprojeto 8) — mas **sem
+   publicação no Gradle Plugin Portal**, então um `plugins { id(...)
+   version "..." }` isolado, fora de um composite build, ainda não
+   resolve. O caminho Maven **continua sem mudança**: nenhum
    `plugin.xml` foi produzido, a ressalva acima mantém-se integralmente.
 5. **Projeto multi-ficheiro (resolução de nomes)** — CONCLUÍDO
    (`docs/superpowers/specs/2026-09-19-suko-projeto-multificheiro.md`).
