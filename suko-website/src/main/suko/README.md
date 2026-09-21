@@ -6,6 +6,6 @@ site itself, built with Suko (dogfooding) and consuming
 
 Empty as of the monorepo migration
 (`docs/superpowers/specs/2026-09-19-suko-monorepo-migration.md`) — real
-content is subprojeto 9 of the roadmap
+content is subprojeto 10 of the roadmap
 (`ARCHITECTURE.md` → "Roadmap por subprojeto"), which depends on
 subprojeto 7 (`suko-components`) having real components to consume.

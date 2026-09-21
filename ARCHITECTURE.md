@@ -108,7 +108,7 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   publicado por este projeto. Ver `suko-cli/README.md` para a referência
   de comandos e o desenho de duplo hash do `suko.lock.json`.
 - **`suko-website/`** — scaffold vazio para o site de documentação
-  (subprojeto 9). **Achado, não corrigido aqui:** o
+  (subprojeto 10). **Achado, não corrigido aqui:** o
   `build.gradle.kts` deste módulo continua a declarar
   `implementation(project(":suko-components"))` — uma dependência que
   hoje não compila nada, porque `suko-components` não tem `src/main/java`
@@ -116,7 +116,7 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   sobre `suko-registry` (se `suko-website` vier a listar/renderizar o
   catálogo de componentes) ou nenhuma (se só for consumir os `.sk` via
   `suko add`, como qualquer outro consumidor). Decisão de scoping do
-  subprojeto 9, não deste.
+  subprojeto 10, não deste.
 
 `examples/` (ficheiros `.sk` de referência) permanece na raiz do
 repositório, fora de qualquer módulo — não é uma unidade de build.
@@ -575,11 +575,20 @@ subprojeto 6 para a origem dos itens 7-9):
    Ver `suko-cli/README.md` e "Limitações conhecidas" acima para o
    desenho de duplo hash do lockfile e as lacunas aceites (sem
    assinatura no JSON do registry, sem pinagem por componente).
-9. **Site de documentação** — preenche `suko-website/`. Inclui
-   compilação para HTML estático em build-time (deployável em
-   serverless/CDN sem JVM em runtime) como primeiro caso de uso real
-   dessa capacidade, antes de generalizá-la no compilador.
-10. **Suporte de IDE** (VSCode + IntelliJ) — language server sobre o
+9. **Unificação da sintaxe de interpolação** — CONCLUÍDO. Spec em
+   `docs/superpowers/specs/2026-09-21-suko-interpolacao-unificada.md`,
+   plano em `docs/superpowers/plans/2026-09-21-suko-interpolacao-unificada.md`.
+   `${expr}` passa a ser a única forma de interpolar, nas três posições
+   (statement/corpo de tag, valor de atributo sem aspas, literal de
+   string); a chaveta nua deixa de interpolar em qualquer posição e passa
+   a erro com a correção literal na mensagem. `$ident` dentro de strings
+   mantém-se (D3 rejeitada). Antecipado à frente do site de documentação
+   por pedido explícito do utilizador.
+10. **Site de documentação** — preenche `suko-website/`. Inclui
+    compilação para HTML estático em build-time (deployável em
+    serverless/CDN sem JVM em runtime) como primeiro caso de uso real
+    dessa capacidade, antes de generalizá-la no compilador.
+11. **Suporte de IDE** (VSCode + IntelliJ) — language server sobre o
     `DiagnosticCollector`/`SemanticChecker` já existentes. Sequenciado
     depois do 7/8 (quer uma superfície de AST/diagnostics estável), mas
     sem dependência bloqueante neles. IntelliJ não fala LSP nativamente

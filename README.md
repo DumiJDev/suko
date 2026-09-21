@@ -220,7 +220,8 @@ suko/
 | 6. Component model | ✅ Done | `Component`/`List<Component>`/`Function<T, Component>` replace `slot<T>`, implicit `children`, component-as-value, real string interpolation |
 | 7. Component registry/library | ✅ Done | shadcn/ui-style distribution — depends on 5 and 6, populates `suko-components/` |
 | 8. Distribution CLI (`suko add`) | ✅ Done | `suko-cli` module: `suko init`/`list`/`add`/`diff`/`update`, depends on 7 |
-| 9. Documentation site | Planned | Built in Suko itself, depends on 7 and 8, populates `suko-website/` |
+| 9. Interpolation unification | ✅ Done | `${expr}` is the only interpolation syntax, in all three positions; bare braces never interpolate |
+| 10. Documentation site | Planned | Built in Suko itself, depends on 7 and 8, populates `suko-website/` |
 
 The repository itself was also restructured into a multi-module monorepo, starting with the 5 modules described in `docs/superpowers/specs/2026-09-19-suko-monorepo-migration.md` (`suko-core`/`suko-gradle-plugin`/`suko-maven-plugin`/`suko-components`/`suko-website`) and now at 8 modules total, shown in the tree above (`suko-registry`, `suko-registry-generator`, and `suko-cli` added by subprojetos 7 and 8).
 
