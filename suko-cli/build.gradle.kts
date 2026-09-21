@@ -136,9 +136,16 @@ val fatJar = tasks.register<Jar>("fatJar") {
 
     // Some entries can legitimately collide across independent jars on
     // the classpath (e.g. more than one dependency shipping the same
-    // META-INF/LICENSE-ish file); last-one-wins is fine here since none
-    // of those files affect behavior, and there is nothing
-    // service-loader-shaped to merge instead of overwrite.
+    // META-INF/LICENSE-ish file). DuplicatesStrategy.EXCLUDE is
+    // first-one-wins: for any path already added, every later `from(...)`
+    // entry at that same path is silently dropped, not merged and not
+    // overwritten. That is fine here since none of those files affect
+    // behavior, and there is nothing service-loader-shaped to merge
+    // instead of drop — but it makes the declaration order of the two
+    // `from(...)` calls below load-bearing: `sourceSets.main.get().output`
+    // must be declared before `configurations.runtimeClasspath`'s jars, so
+    // that suko-cli's own classes are the ones kept if a path ever
+    // collided between the two.
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
     manifest {

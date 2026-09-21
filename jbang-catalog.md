@@ -1,6 +1,6 @@
 # `jbang-catalog.json`
 
-This catalog is what makes `jbang suko@<owner>` (or `jbang suko@<owner>/suko`)
+This catalog is what makes `jbang suko@suko-lang` (or `jbang suko@suko-lang/suko`)
 resolve to a released `suko-cli` fat jar, without publishing anything to
 Maven Central or any other Maven repository — subprojeto 7's D1 already
 established that no such publication exists in this repo, and this catalog
@@ -12,7 +12,7 @@ it) to the new tag's asset.
 ## Running the CLI via jbang
 
 ```
-jbang suko@<owner> --help
+jbang suko@suko-lang --help
 ```
 
 `jbang` downloads the jar referenced by the alias above (once, then caches
@@ -26,7 +26,7 @@ only supported way to get one is for the *consumer* to compile it locally,
 with `jbang`, from the same fat jar the alias above already points at:
 
 ```
-jbang --native --build-dir <a-directory-of-your-choice> suko@<owner>
+jbang --native --build-dir <a-directory-of-your-choice> suko@suko-lang
 ```
 
 - `--build-dir` is **not optional** here. Without it, the first native

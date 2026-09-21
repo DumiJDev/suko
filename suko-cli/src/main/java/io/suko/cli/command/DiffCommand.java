@@ -86,6 +86,19 @@ public final class DiffCommand {
             for (ComponentFile manifestFile : manifest.files()) {
                 String lockTarget = basePackageFolder + "/" + manifestFile.target();
                 Path diskPath = sourceRootAbsolute.resolve(lockTarget).normalize();
+                if (!diskPath.startsWith(sourceRootAbsolute)) {
+                    // Defense in depth, mirroring AddCommand's/UpdateCommand's
+                    // own containment check: a manifest target that (once
+                    // combined with basePackage) escapes sourceRoot must
+                    // never be read or printed, however that target got here
+                    // (hand-edited registry, future bug in the generator,
+                    // or — the threat model ARCHITECTURE.md already documents
+                    // as in-scope — a hostile/compromised registry).
+                    throw new CliException(
+                            "Component \"" + manifest.name() + "\" declares a file target \"" + manifestFile.target()
+                                    + "\" that would resolve outside of sourceRoot \"" + sourceRootAbsolute
+                                    + "\". Refusing to read it.");
+                }
 
                 byte[] rawUpstream = fetchAndVerify(source, manifestFile, lockEntryComponent.name());
                 byte[] rewrittenUpstream = NamespaceRewriter.rewrite(

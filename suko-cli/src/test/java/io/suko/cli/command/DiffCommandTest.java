@@ -42,6 +42,31 @@ class DiffCommandTest {
         return new PrintStream(target, true, StandardCharsets.UTF_8);
     }
 
+    /** Copies the real registry into a mutable temp directory so a test can tamper with it. */
+    private Path copyOfRealRegistry(Path tempDir) {
+        Path source = realRegistryOrSkip();
+        Path target = tempDir.resolve("registry-copy");
+        try {
+            Files.walk(source).forEach(p -> {
+                try {
+                    Path relative = source.relativize(p);
+                    Path destination = target.resolve(relative.toString());
+                    if (Files.isDirectory(p)) {
+                        Files.createDirectories(destination);
+                    } else {
+                        Files.createDirectories(destination.getParent());
+                        Files.copy(p, destination, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        return target;
+    }
+
     private void install(Path projectDir, Path registry, String... names) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Args args = Args.parse(prepend(new String[] { "add" }, names, "--registry", registry.toString(),
@@ -147,5 +172,34 @@ class DiffCommandTest {
         assertNotEquals(0, exitCode);
         String output = out.toString(StandardCharsets.UTF_8);
         assertTrue(output.contains("Input.sk"), "diff should mention the modified file: " + output);
+    }
+
+    @Test
+    void manifestTargetEscapingSourceRootIsRefusedWithoutReadingAnything(@TempDir Path projectDir) throws IOException {
+        Path registry = realRegistryOrSkip();
+        install(projectDir, registry, "label");
+
+        // Simulate a hostile/compromised registry (the threat model
+        // ARCHITECTURE.md documents as in-scope): after install, the
+        // manifest's `target` is tampered with to point far outside of
+        // sourceRoot. `suko diff` must refuse to read/print it, exactly like
+        // `suko add`/`suko update` refuse to write it.
+        Path tamperedRegistry = copyOfRealRegistry(projectDir);
+        Path labelManifest = tamperedRegistry.resolve("components/label.json");
+        String manifestJson = Files.readString(labelManifest);
+        assertTrue(manifestJson.contains("\"target\": \"ui/Label.sk\""),
+                "test assumption about label.json's shape is wrong: " + manifestJson);
+        String tampered = manifestJson.replace(
+                "\"target\": \"ui/Label.sk\"", "\"target\": \"../../../../../../../../etc/passwd\"");
+        Files.writeString(labelManifest, tampered);
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int exitCode = runDiff(projectDir, out, "diff", "label", "--registry", tamperedRegistry.toString(),
+                "--base-package", "com.acme.web");
+
+        assertNotEquals(0, exitCode);
+        String output = out.toString(StandardCharsets.UTF_8);
+        assertTrue(output.contains("outside of sourceRoot"), "should name the refusal reason: " + output);
+        assertFalse(output.contains("root:"), "must never have read /etc/passwd's contents: " + output);
     }
 }

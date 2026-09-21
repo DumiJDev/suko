@@ -24,8 +24,8 @@ Suko is a template language designed for building UI components in Java/Kotlin w
 ### Try a component (`suko-cli`)
 
 ```bash
-jbang suko@<owner> init --yes --base-package com.example.app
-jbang suko@<owner> add button
+jbang suko@suko-lang init --yes --base-package com.example.app
+jbang suko@suko-lang add button
 ```
 
 See `suko-cli/README.md` for installation options (jbang, fat jar, wrapper
