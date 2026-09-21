@@ -1,5 +1,6 @@
 package io.suko.cli;
 
+import io.suko.cli.command.AddCommand;
 import io.suko.cli.command.InitCommand;
 import io.suko.cli.command.ListCommand;
 
@@ -55,7 +56,8 @@ public final class Main {
             switch (args.command()) {
                 case "init" -> new InitCommand().run(args, in, out, err, projectDir);
                 case "list" -> new ListCommand().run(args, out, projectDir);
-                case "add", "diff", "update" -> {
+                case "add" -> new AddCommand().run(args, out, projectDir);
+                case "diff", "update" -> {
                     err.println("`suko " + args.command() + "` is not implemented yet.");
                     return 1;
                 }

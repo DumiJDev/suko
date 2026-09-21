@@ -90,8 +90,6 @@ public final class Args {
                     Install one or more components, and the transitive closure of their
                     dependencies, into this project.
 
-                    Not implemented yet.
-
                     Options:
                       --registry <path|url>   Registry base (overrides suko.json)
                       --registry-ref <tag>    Registry tag/ref to use
