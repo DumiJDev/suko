@@ -374,6 +374,8 @@ public class SukoAstBuilder {
                 flushLiteral(parts, literalRun);
                 // "$nome" — remove o "$" inicial do texto do token.
                 parts.add(new Expr.StringPart.SimpleInterp(partCtx.getText().substring(1)));
+            } else if (partCtx.STRING_ESCAPE() != null) {
+                literalRun.append(javaEscapeOf(partCtx.getText()));
             } else {
                 literalRun.append(partCtx.getText());
             }
@@ -387,6 +389,33 @@ public class SukoAstBuilder {
             parts.add(new Expr.StringPart.Literal(literalRun.toString()));
             literalRun.setLength(0);
         }
+    }
+
+    /** Um escape Suko é sempre `\` + 1 caractere (token STRING_ESCAPE). O
+     * texto acumulado aqui vai parar DENTRO de um literal de string Java
+     * emitido no `.jte`, por isso tem de ser um escape que o javac aceite.
+     *
+     * `\$` não é escape Java válido ("illegal escape character") — e é a
+     * única forma de escrever um `$` literal desde que `${...}` passou a
+     * ser o único sigilo de interpolação em todas as posições (subprojeto
+     * 9, D1/D6). Traduz-se para a sequência de 6 caracteres `\u0024`, e
+     * NÃO para um `$` cru: um `$` cru volta a aparecer no texto do `.jte`,
+     * onde um `${` seguinte seria lido pelo próprio gg.jte como início de
+     * interpolação; `\u0024` nunca forma um `${` no `.jte`, e o javac
+     * resolve-o para `$` no pré-processamento de escapes unicode, antes
+     * de lexar.
+     *
+     * Fora de uma string, não há forma de escrever um `${` literal — essa
+     * limitação já está documentada na spec e não muda aqui.
+     *
+     * Qualquer outro escape passa intacto: `\"`, `\\`, `\n`, `\t`, `\r`,
+     * `\b`, `\f`, `\s` já são válidos em Java, e traduzi-los aqui só
+     * arriscaria mudar-lhes o significado. */
+    private String javaEscapeOf(String sukoEscape) {
+        if (sukoEscape.equals("\\$")) {
+            return "\\u0024";
+        }
+        return sukoEscape;
     }
 
     /** Recupera o texto literal de um textRun pela posição de carácter no fonte
