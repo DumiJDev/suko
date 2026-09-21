@@ -21,14 +21,32 @@ Suko is a template language designed for building UI components in Java/Kotlin w
 
 ## Quick Start
 
+### Try a component (`suko-cli`)
+
+```bash
+jbang suko@suko-lang init --yes --base-package com.example.app
+jbang suko@suko-lang add button
+```
+
+See `suko-cli/README.md` for installation options (jbang, fat jar, wrapper
+scripts, and an opt-in consumer-compiled native binary) and the full
+command reference.
+
 ### Gradle
 
-⚠️ Not yet functional end-to-end: `suko-gradle-plugin` exists and is tested directly, but doesn't yet publish a discoverable plugin ID (`gradlePlugin{}`/`META-INF/gradle-plugins/*.properties`) — `id("io.suko")` below won't resolve today. See "Estrutura de módulos" in [ARCHITECTURE.md](ARCHITECTURE.md) for the current gap. The snippet documents the intended usage once that's added.
+⚠️ Not published to the Gradle Plugin Portal: `suko-gradle-plugin` declares a
+real, discoverable plugin ID (`gradlePlugin{}`, `id = "io.suko.lang"`), which
+already resolves via a composite build (`includeBuild`) or Gradle TestKit —
+but there is no Portal publication behind it, so the exact snippet below
+(which assumes a Portal-resolved `version "0.1.0"`) won't work as a
+standalone `plugins {}` block today. See "Estrutura de módulos" in
+[ARCHITECTURE.md](ARCHITECTURE.md) for the current gap. The snippet
+documents the intended usage once a real publication exists.
 
 ```kotlin
 // build.gradle.kts
 plugins {
-    id("io.suko") version "0.1.0"
+    id("io.suko.lang") version "0.1.0"
 }
 
 suko {
@@ -167,7 +185,7 @@ examples/
 ```
 suko/
 ├── build.gradle.kts              # Root aggregator — no source of its own
-├── settings.gradle.kts           # Declares the 5 modules below
+├── settings.gradle.kts           # Declares the 8 modules below
 ├── suko-core/                    # The compiler
 │   ├── src/main/antlr/io/suko/lang/   # ANTLR grammar files
 │   ├── src/main/java/io/suko/lang/    # Core compiler
@@ -179,9 +197,12 @@ suko/
 │   │   ├── semantic/             # Semantic analysis
 │   │   └── symbol/               # Symbol table
 │   └── src/test/                 # Unit and integration tests
-├── suko-gradle-plugin/           # Gradle plugin (io.suko.lang.gradle.*)
-├── suko-maven-plugin/            # Maven plugin module
-├── suko-components/              # Future component library (empty scaffold)
+├── suko-gradle-plugin/           # Gradle plugin (io.suko.lang.gradle.*), discoverable ID "io.suko.lang" (not Portal-published)
+├── suko-maven-plugin/            # Maven plugin module (no plugin.xml yet — not end-to-end usable)
+├── suko-registry/                # Registry data model + JSON I/O (registry.json/manifest), no suko-core dependency
+├── suko-registry-generator/      # Generates the manifest from suko-components' .sk sources
+├── suko-components/              # Component library: 8 real .sk components + generated registry.json/manifest
+├── suko-cli/                     # `suko` CLI: init/list/add/diff/update, copy-source distribution
 ├── suko-website/                 # Future docs site built in Suko (empty scaffold)
 ├── examples/                     # Example .sk files
 └── docs/superpowers/             # Specs and plans
@@ -197,11 +218,11 @@ suko/
 | 4. Build integration | ✅ Done | Gradle plugin, Maven plugin, watch mode |
 | 5. Multi-file project | ✅ Done | Cross-file `package`/`import` resolution via `ProjectIndex`, `public`/file-private visibility, output mirrors packages |
 | 6. Component model | ✅ Done | `Component`/`List<Component>`/`Function<T, Component>` replace `slot<T>`, implicit `children`, component-as-value, real string interpolation |
-| 7. Component registry/library | Planned | shadcn/ui-style distribution — depends on 5 and 6, populates `suko-components/` |
-| 8. Distribution CLI (`suko add`) | Planned | Depends on 7 |
+| 7. Component registry/library | ✅ Done | shadcn/ui-style distribution — depends on 5 and 6, populates `suko-components/` |
+| 8. Distribution CLI (`suko add`) | ✅ Done | `suko-cli` module: `suko init`/`list`/`add`/`diff`/`update`, depends on 7 |
 | 9. Documentation site | Planned | Built in Suko itself, depends on 7 and 8, populates `suko-website/` |
 
-The repository itself was also restructured into the 5-module monorepo shown above (`suko-core`/`suko-gradle-plugin`/`suko-maven-plugin`/`suko-components`/`suko-website`) — see `docs/superpowers/specs/2026-09-19-suko-monorepo-migration.md`.
+The repository itself was also restructured into a multi-module monorepo, starting with the 5 modules described in `docs/superpowers/specs/2026-09-19-suko-monorepo-migration.md` (`suko-core`/`suko-gradle-plugin`/`suko-maven-plugin`/`suko-components`/`suko-website`) and now at 8 modules total, shown in the tree above (`suko-registry`, `suko-registry-generator`, and `suko-cli` added by subprojetos 7 and 8).
 
 ## Development
 

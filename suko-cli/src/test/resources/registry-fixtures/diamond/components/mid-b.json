@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "mid-b",
+  "version": "0.1.0",
+  "description": "The other component that also depends on leaf (diamond).",
+  "category": "test",
+  "basePackage": "io.suko.fixture",
+  "packageSuffix": "ui",
+  "component": "MidB",
+  "files": [],
+  "dependsOn": ["leaf"],
+  "externalRequirements": []
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "x",
+  "version": "0.1.0",
+  "description": "Declares dependsOn a component absent from this registry's index.",
+  "category": "test",
+  "basePackage": "io.suko.fixture",
+  "packageSuffix": "ui",
+  "component": "X",
+  "files": [],
+  "dependsOn": ["ghost"],
+  "externalRequirements": []
+}

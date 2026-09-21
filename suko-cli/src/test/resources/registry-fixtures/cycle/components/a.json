@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "a",
+  "version": "0.1.0",
+  "description": "Depends on b, which depends back on a (cycle).",
+  "category": "test",
+  "basePackage": "io.suko.fixture",
+  "packageSuffix": "ui",
+  "component": "A",
+  "files": [],
+  "dependsOn": ["b"],
+  "externalRequirements": []
+}

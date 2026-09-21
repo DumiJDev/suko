@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Minimal wrapper: finds the suko-cli fat jar next to this script (or in
+# this repo's suko-cli/build/libs/, for a checkout of the source repo) and
+# runs it with `java -jar`. Not a build tool, not a jbang replacement — just
+# the thin "I have the jar, run it" path documented alongside the jbang
+# alias in jbang-catalog.md.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
+
+if ! command -v java >/dev/null 2>&1; then
+    echo "suko: 'java' was not found on PATH. Install a Java 21+ runtime (or use" >&2
+    echo "'jbang suko@<owner>' instead, which manages its own JDK) and try again." >&2
+    exit 1
+fi
+
+# Prefer a jar sitting right next to this script (the distributed layout:
+# scripts/suko + scripts/suko-cli-<version>-all.jar side by side), then
+# fall back to a source checkout's Gradle build output.
+JAR="$(ls -1 "${SCRIPT_DIR}"/suko-cli-*-all.jar 2>/dev/null | sort -V | tail -n 1 || true)"
+if [ -z "${JAR}" ]; then
+    JAR="$(ls -1 "${SCRIPT_DIR}"/../suko-cli/build/libs/suko-cli-*-all.jar 2>/dev/null | sort -V | tail -n 1 || true)"
+fi
+
+if [ -z "${JAR}" ]; then
+    echo "suko: could not find a suko-cli-<version>-all.jar next to this script," >&2
+    echo "nor under ../suko-cli/build/libs/. Build one with 'gradle :suko-cli:fatJar'" >&2
+    echo "or download a release asset and place it next to this script." >&2
+    exit 1
+fi
+
+exec java -jar "${JAR}" "$@"

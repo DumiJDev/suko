@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "leaf",
+  "version": "0.1.0",
+  "description": "Shared leaf dependency with no dependencies of its own.",
+  "category": "test",
+  "basePackage": "io.suko.fixture",
+  "packageSuffix": "ui",
+  "component": "Leaf",
+  "files": [],
+  "dependsOn": [],
+  "externalRequirements": []
+}

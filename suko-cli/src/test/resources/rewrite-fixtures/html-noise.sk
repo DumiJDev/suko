@@ -1,0 +1,13 @@
+package io.suko.ui;
+
+import io.suko.ui.Label;
+
+// Fixture for NamespaceRewriterTest: proves the rewrite is line-anchored,
+// not a global string replace. Both the attribute value below and the
+// plain HTML text contain the literal substring "io.suko" and must come
+// out of the rewrite byte-for-byte identical.
+public component Noise() {
+  <div data-note="io.suko.ui is not a namespace here, just text">
+    io.suko.ui also appears here, as plain HTML text, untouched
+  </div>
+}

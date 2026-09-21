@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "top",
+  "version": "0.1.0",
+  "description": "Depends on both mid-a and mid-b, which both depend on leaf.",
+  "category": "test",
+  "basePackage": "io.suko.fixture",
+  "packageSuffix": "ui",
+  "component": "Top",
+  "files": [],
+  "dependsOn": ["mid-a", "mid-b"],
+  "externalRequirements": []
+}

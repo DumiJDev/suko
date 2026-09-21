@@ -15,10 +15,10 @@ lives in the sibling module `suko-registry`, not here.
 
 Suko ships this library the same way shadcn/ui ships its components:
 by copying source into your project, not by pulling in a compiled jar.
-When the CLI in subprojeto 8 exists, `suko add field` will copy
-`Field.sk` (and its transitive dependencies, `Label.sk`/`Input.sk`)
-into your own `src/main/suko` — rewriting the package prefix to match
-your project — and from that point on the file is **yours**: you edit
+`suko add field` copies `Field.sk` (and its transitive dependencies,
+`Label.sk`/`Input.sk`) into your own `src/main/suko` — rewriting the
+package prefix to match your project — and from that point on the file
+is **yours**: you edit
 it, version it, and diverge from upstream exactly like you would with
 any other file you wrote yourself. There is no runtime coupling to
 this module and no version to keep in sync afterwards.
@@ -30,11 +30,17 @@ a library's source, resolved together" isn't something the compiler
 can do yet. See `ARCHITECTURE.md` → roadmap item 8 for the full
 rationale.
 
-**The CLI that consumes this manifest does not exist yet.** This
-module (subprojeto 7) produces the data (`registry.json` +
-`components/*.json`); the `suko add` command that reads it (subprojeto
-8) is future work. Until then, the only way to use these components is
-to copy the `.sk` files under `src/main/suko/io/suko/ui/` by hand.
+**The CLI that consumes this manifest now exists** (subprojeto 8,
+`suko-cli`). This module produces the data (`registry.json` +
+`components/*.json`); `suko add field` (for example) reads it, verifies
+each fetched file's `sha256` against the manifest, rewrites the package
+prefix to your project's `basePackage`, and copies `Field.sk` (and its
+transitive dependencies, `Label.sk`/`Input.sk`) into your own
+`src/main/suko`. See `suko-cli/README.md` for the full command reference
+(`suko init`/`list`/`add`/`diff`/`update`) and the lockfile's dual-hash
+design. Copying the `.sk` files by hand under
+`src/main/suko/io/suko/ui/` still works too, if you'd rather not use the
+CLI.
 
 ## External requirements
 

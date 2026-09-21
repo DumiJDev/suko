@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "mid-a",
+  "version": "0.1.0",
+  "description": "One of two components that both depend on leaf.",
+  "category": "test",
+  "basePackage": "io.suko.fixture",
+  "packageSuffix": "ui",
+  "component": "MidA",
+  "files": [],
+  "dependsOn": ["leaf"],
+  "externalRequirements": []
+}
