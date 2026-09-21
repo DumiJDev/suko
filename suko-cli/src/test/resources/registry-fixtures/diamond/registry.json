@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "registryVersion": "0.1.0-test",
+  "basePackage": "io.suko.fixture",
+  "components": [
+    {
+      "name": "leaf",
+      "version": "0.1.0",
+      "description": "Shared leaf dependency with no dependencies of its own.",
+      "category": "test",
+      "manifest": "components/leaf.json"
+    },
+    {
+      "name": "mid-a",
+      "version": "0.1.0",
+      "description": "One of two components that both depend on leaf.",
+      "category": "test",
+      "manifest": "components/mid-a.json"
+    },
+    {
+      "name": "mid-b",
+      "version": "0.1.0",
+      "description": "The other component that also depends on leaf (diamond).",
+      "category": "test",
+      "manifest": "components/mid-b.json"
+    },
+    {
+      "name": "top",
+      "version": "0.1.0",
+      "description": "Depends on both mid-a and mid-b, which both depend on leaf.",
+      "category": "test",
+      "manifest": "components/top.json"
+    }
+  ]
+}
