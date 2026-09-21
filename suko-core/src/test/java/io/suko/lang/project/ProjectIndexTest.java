@@ -20,7 +20,7 @@ class ProjectIndexTest {
             package ui;
 
             public component NavLink(String href) {
-              <a href="{href}">link</a>
+              <a href="${href}">link</a>
             }
             """);
         Files.writeString(sourceRoot.resolve("Home.sk"), """
@@ -49,7 +49,7 @@ class ProjectIndexTest {
             package ui;
 
             public component Badge(String text) {
-              <span>{text}</span>
+              <span>${text}</span>
             }
             """);
 

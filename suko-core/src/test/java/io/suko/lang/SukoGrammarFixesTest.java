@@ -97,21 +97,21 @@ class SukoGrammarFixesTest {
     void realStringLiteralsStillWork() {
         // regressão: garante que o predicado não quebra strings normais
         List<String> errors = parseErrors(
-            "component A(String label = \"Dashboard\") { <p>{label}</p> }");
+            "component A(String label = \"Dashboard\") { <p>${label}</p> }");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
 
     @Test
     void unaryMinus() {
         List<String> errors = parseErrors(
-            "component A(int x) { <p>{-1}</p> <p>{-x}</p> }");
+            "component A(int x) { <p>${-1}</p> <p>${-x}</p> }");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
 
     @Test
     void renderPropSlotFillSyntax() {
         List<String> errors = parseErrors(
-            "component A() { Foo() { row { item -> <li>{item}</li> } } } component Foo() { }");
+            "component A() { Foo() { row { item -> <li>${item}</li> } } } component Foo() { }");
         assertTrue(errors.isEmpty(), "Erros: " + errors);
     }
 

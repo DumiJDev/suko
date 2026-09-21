@@ -21,7 +21,7 @@ class MultiFileAcceptanceTest {
             package ui;
 
             public component NavLink(String href, String label) {
-              <a href="${href}">{label}</a>
+              <a href="${href}">${label}</a>
             }
             """);
 
@@ -34,12 +34,12 @@ class MultiFileAcceptanceTest {
 
             public component Badge(String text) {
               <span class="badge">
-                {text}
+                ${text}
                 Dot()
               </span>
             }
             """);
-        // NOTA (achado de aceitação, Tarefa 8): {text} tem de vir ANTES de
+        // NOTA (achado de aceitação, Tarefa 8): ${text} tem de vir ANTES de
         // Dot() aqui, não depois. A gramática (componentCall: qualifiedName
         // LPAREN argList? RPAREN slotBlock?, slotBlock: LBRACE
         // (namedSlot|templateStatement)* RBRACE) associa greedily qualquer

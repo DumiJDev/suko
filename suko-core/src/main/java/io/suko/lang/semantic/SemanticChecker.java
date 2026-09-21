@@ -163,7 +163,9 @@ public class SemanticChecker {
      * certamente o autor queria `${ident}` (interpolação), mas `{...}`
      * dentro de uma string é, por design, texto literal (ver ARCHITECTURE.md:
      * Alpine.js `x-data="{ open: false }"`, custom properties CSS, JS
-     * inline). */
+     * inline). Depois do subprojeto 9 (sintaxe de interpolação unificada), a
+     * chaveta nua não interpola em posição nenhuma — não só dentro de
+     * strings. */
     /** Diagnósticos de SINTAXE sobre o corpo de um componente
      * (`BARE_BRACE_IN_STRING`, `VAR_DECL_NOT_PARSED`, e os de forma legada
      * do subprojeto 9). Renomeado de `checkBareBraceInStrings` quando

@@ -102,7 +102,7 @@ class SukoParserSmokeTest {
     void parsesPublicAndDefaultVisibilityComponentsWithoutErrors() {
         String source = """
             public component NavLink(String href) {
-              <a href="{href}">link</a>
+              <a href="${href}">link</a>
             }
             component Helper() {
               <span>x</span>

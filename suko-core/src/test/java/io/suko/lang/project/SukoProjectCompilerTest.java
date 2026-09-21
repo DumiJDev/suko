@@ -128,14 +128,14 @@ class SukoProjectCompilerTest {
             package ui;
 
             public component Badge(String text) {
-              <span class="a">{text}</span>
+              <span class="a">${text}</span>
             }
             """);
         Files.writeString(uiDir.resolve("BadgeB.sk"), """
             package ui;
 
             public component Badge(String text) {
-              <span class="b">{text}</span>
+              <span class="b">${text}</span>
             }
             """);
 
@@ -164,7 +164,7 @@ class SukoProjectCompilerTest {
             package ui;
 
             public component NavLink(String href, String label) {
-              <a href="${href}">{label}</a>
+              <a href="${href}">${label}</a>
             }
             """);
         Files.writeString(sourceRoot.resolve("Home.sk"), """

@@ -17,10 +17,10 @@ class JteCompilerTest {
         String source = """
             component Card(String title, List<String> items) {
               <div class="card">
-                <h2>{title}</h2>
+                <h2>${title}</h2>
                 <ul>
                   for (String item : items) {
-                    <li>{item}</li>
+                    <li>${item}</li>
                   }
                 </ul>
               </div>
@@ -58,7 +58,7 @@ class JteCompilerTest {
         // MIGRADO (tarefa 2, subprojeto 6): `slot<String>` -> `Component`.
         String source = """
             component Card(Component header) {
-              <div>{header}</div>
+              <div>${header}</div>
             }
             component Page() {
               Card()
@@ -77,7 +77,7 @@ class JteCompilerTest {
     void compilesMultipleComponents() {
         String source = """
             component Card(String title) {
-              <div class="card"><h2>{title}</h2></div>
+              <div class="card"><h2>${title}</h2></div>
             }
             component Page() {
               Card(title = "Hello")

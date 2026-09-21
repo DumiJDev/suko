@@ -44,15 +44,15 @@ class SukoEndToEndTest {
         String source = """
             component CardOfNames(String title, List<String> names, String emptyLabel = "Sem itens") {
               <div class="card">
-                <h2>{title}</h2>
+                <h2>${title}</h2>
                 if (names.size() > 0) {
                   <ul>
                   for (String name : names) {
-                    <li>{name?.trim() ?: "sem nome"}</li>
+                    <li>${name?.trim() ?: "sem nome"}</li>
                   }
                   </ul>
                 } else {
-                  <p>{emptyLabel}</p>
+                  <p>${emptyLabel}</p>
                 }
               </div>
             }
@@ -73,15 +73,15 @@ class SukoEndToEndTest {
         String source = """
             component CardOfNames(String title, List<String> names, String emptyLabel = "Sem itens") {
               <div class="card">
-                <h2>{title}</h2>
+                <h2>${title}</h2>
                 if (names.size() > 0) {
                   <ul>
                   for (String name : names) {
-                    <li>{name?.trim() ?: "sem nome"}</li>
+                    <li>${name?.trim() ?: "sem nome"}</li>
                   }
                   </ul>
                 } else {
-                  <p>{emptyLabel}</p>
+                  <p>${emptyLabel}</p>
                 }
               </div>
             }

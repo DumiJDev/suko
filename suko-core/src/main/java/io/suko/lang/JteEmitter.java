@@ -360,8 +360,8 @@ public class JteEmitter {
     // do gg.jte:
     //
     // 1) Expressões cujo tipo Java resultante é primitivo (`int`, `boolean`,
-    //    etc. — ex.: `{a + b}`, `{a > b}` em rendersArithmeticAndComparisonExpressions,
-    //    `{label?.length() ?: -1}` em rendersNullSafeAccessAndElvis) não
+    //    etc. — ex.: `${a + b}`, `${a > b}` em rendersArithmeticAndComparisonExpressions,
+    //    `${label?.length() ?: -1}` em rendersNullSafeAccessAndElvis) não
     //    compilam quando comparadas a `null` ("bad operand types for binary
     //    operator '=='... first type: int, second type: <null>"). Não há
     //    forma de saber, sem inferência de tipo real (que o projeto já
@@ -369,11 +369,11 @@ public class JteEmitter {
     //    expressão composta (aritmética, elvis, ternário, chamada) produz.
     //
     // 2) Expressões que produzem Content por um caminho que não é a leitura
-    //    direta de um slot (`{header}`) — ex.: chamada de render-prop
-    //    (`{row(item)}`), `.apply(...)` explícito sobre uma variável Function
-    //    de loop (`{row.apply("x")}`), ou uma variável local atribuída a
+    //    direta de um slot (`${header}`) — ex.: chamada de render-prop
+    //    (`${row(item)}`), `.apply(...)` explícito sobre uma variável Function
+    //    de loop (`${row.apply("x")}`), ou uma variável local atribuída a
     //    partir de uma chamada de componente como valor (`var c = useA ?
-    //    CardA() : CardB(); {c}`, tarefa 5) — ficam incorretamente
+    //    CardA() : CardB(); ${c}`, tarefa 5) — ficam incorretamente
     //    embrulhadas em `.toString()`, que imprime a identidade do objeto
     //    Java em vez de renderizar o conteúdo.
     //
@@ -394,7 +394,7 @@ public class JteEmitter {
     //
     // Limitação aceite (mesma natureza da já documentada no brief): uma
     // expressão composta que produza um valor Java arbitrário sem overload
-    // dedicado (ex.: `{obj.getAlgumaCoisaArbitraria()}`) não é
+    // dedicado (ex.: `${obj.getAlgumaCoisaArbitraria()}`) não é
     // auto-toString'd por esta tarefa — precisaria de inferência de tipo
     // real, fora de âmbito (ver ARCHITECTURE.md, limitações conhecidas).
     private boolean shouldWrapInToString(Expr expr, java.util.Set<String> slotNames) {
@@ -403,7 +403,7 @@ public class JteEmitter {
     }
 
     /** Núcleo da decisão de auto-toString, partilhado pelas duas posições em
-     * que uma interpolação pode aparecer: `Statement.Interpolation` (`{expr}`,
+     * que uma interpolação pode aparecer: `Statement.Interpolation` (`${expr}`,
      * tarefa 10) e `Expr.StringPart.Interp`/`SimpleInterp` (`"...${expr}..."`,
      * tarefa 9 — inclui os valores de atributo). Antes da revisão final do
      * subprojeto 6 esta lógica só existia no primeiro caso, o que fazia o
