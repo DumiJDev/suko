@@ -1,24 +1,22 @@
 package io.suko.ui;
 
 // Único componente da biblioteca com `externalRequirements` de
-// Alpine.js (Tarefa 9, manifesto). `x-data`/`x-show` são JavaScript
-// literal do Alpine — string Suko sem nenhum "$" dentro, por isso
-// sobrevivem ao emit exatamente como escritos: a interpolação Suko
-// dentro de um literal string exige "$" (`${expr}` ou `$ident`, ver
-// SukoLexer.g4 STRING_MODE); sem "$" não há interpolação, ponto.
+// Alpine.js (Tarefa 9 do subprojeto 7, manifesto). `x-data`/`x-show` são
+// JavaScript literal do Alpine — as chavetas nuas de `{ open: false }`
+// são texto literal dentro de uma string Suko, e continuam a sê-lo
+// depois da unificação do subprojeto 9: a regra da linguagem é que
+// interpolação é SEMPRE `${...}` e uma chaveta nua nunca interpola, em
+// posição nenhuma.
 //
-// O atributo `id` ao lado, `id="dialog-${id}"`, É interpolação Suko
-// real (mesma sintaxe de literal string, desta vez com "$") — prova
-// empírica de que os dois convivem no mesmo componente sem
-// ambiguidade: o motor não confunde as chaves nuas do Alpine com os
-// pontos de interpolação do Suko (decisão do subprojeto 6 de rejeitar
-// chaveta nua fora de "$").
+// `id="dialog-${id}"` ao lado É interpolação Suko real — prova empírica
+// de que o JavaScript do Alpine e a interpolação do Suko convivem no
+// mesmo atributo sem ambiguidade.
 public component Dialog(String id, String title, Component children) {
   <div id="dialog-${id}" x-data="{ open: false }" x-show="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
     <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
-      <h2 class="text-lg font-semibold text-gray-900">{title}</h2>
+      <h2 class="text-lg font-semibold text-gray-900">${title}</h2>
       <div class="mt-2 text-sm text-gray-600">
-        {children}
+        ${children}
       </div>
     </div>
   </div>

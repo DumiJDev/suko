@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "badge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Etiqueta compacta com variantes de cor (success, warning, danger).",
   "category": "feedback",
   "basePackage": "io.suko",
@@ -11,7 +11,7 @@
     {
       "path": "src/main/suko/io/suko/ui/Badge.sk",
       "target": "ui/Badge.sk",
-      "sha256": "3cc6e2e00ca2174d7c3bb5280fb4878ac4deca73cf950ab5ddabb055c197af83"
+      "sha256": "57589dc56c13a6585d592bd5f6105e7bb9f1de452895d7f13b300c40021e05f8"
     }
   ],
   "dependsOn": [],

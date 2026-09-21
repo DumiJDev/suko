@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "label",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Rótulo de texto simples para um campo de formulário.",
   "category": "form",
   "basePackage": "io.suko",
@@ -11,7 +11,7 @@
     {
       "path": "src/main/suko/io/suko/ui/Label.sk",
       "target": "ui/Label.sk",
-      "sha256": "74a03dcf4e832ddb09b3e30225dc35dc8d118630b8ccd0198051c19dd8beeca3"
+      "sha256": "daf4d783950df338e2a97ab877e52fb1764a5b925e6dc8706c9f7ee3c87aaeb0"
     }
   ],
   "dependsOn": [],

@@ -63,24 +63,29 @@ class RegistryGoldenTest {
     private static final List<ExternalRequirement> TAILWIND =
             java.util.List.of(new ExternalRequirement("css", "tailwindcss", "3.x"));
 
+    // 0.2.0 (subprojeto 9): o fonte destes componentes passou a usar
+    // `${...}` como única forma de interpolação e exige um compilador Suko
+    // do subprojeto 9 ou posterior. O manifesto não tem campo de versão
+    // mínima de linguagem (C8) — o que protege um consumidor antigo é a
+    // tag por omissão do registry derivar da versão da CLI.
     private static GeneratorConfig buildConfig() {
         Map<String, GeneratorConfig.ComponentConfig> componentConfigs = new LinkedHashMap<>();
-        componentConfigs.put("Button", new GeneratorConfig.ComponentConfig("0.1.0", "action", TAILWIND));
-        componentConfigs.put("Input", new GeneratorConfig.ComponentConfig("0.1.0", "form", TAILWIND));
-        componentConfigs.put("Label", new GeneratorConfig.ComponentConfig("0.1.0", "form", TAILWIND));
-        componentConfigs.put("Badge", new GeneratorConfig.ComponentConfig("0.1.0", "feedback", TAILWIND));
-        componentConfigs.put("Alert", new GeneratorConfig.ComponentConfig("0.1.0", "feedback", TAILWIND));
-        componentConfigs.put("Card", new GeneratorConfig.ComponentConfig("0.1.0", "layout", TAILWIND));
-        componentConfigs.put("Field", new GeneratorConfig.ComponentConfig("0.1.0", "form", TAILWIND));
+        componentConfigs.put("Button", new GeneratorConfig.ComponentConfig("0.2.0", "action", TAILWIND));
+        componentConfigs.put("Input", new GeneratorConfig.ComponentConfig("0.2.0", "form", TAILWIND));
+        componentConfigs.put("Label", new GeneratorConfig.ComponentConfig("0.2.0", "form", TAILWIND));
+        componentConfigs.put("Badge", new GeneratorConfig.ComponentConfig("0.2.0", "feedback", TAILWIND));
+        componentConfigs.put("Alert", new GeneratorConfig.ComponentConfig("0.2.0", "feedback", TAILWIND));
+        componentConfigs.put("Card", new GeneratorConfig.ComponentConfig("0.2.0", "layout", TAILWIND));
+        componentConfigs.put("Field", new GeneratorConfig.ComponentConfig("0.2.0", "form", TAILWIND));
         // Dialog additionally needs Alpine.js (x-data/x-show), on top of the
         // Tailwind requirement every component shares.
-        componentConfigs.put("Dialog", new GeneratorConfig.ComponentConfig("0.1.0", "overlay",
+        componentConfigs.put("Dialog", new GeneratorConfig.ComponentConfig("0.2.0", "overlay",
                 java.util.List.of(new ExternalRequirement("css", "tailwindcss", "3.x"),
                         new ExternalRequirement("js", "alpinejs", "3.x"))));
 
         return new GeneratorConfig(
                 "io.suko",
-                "0.1.0",
+                "0.2.0",
                 "src/main/suko",
                 SOURCE_ROOT.resolve("descriptions.properties"),
                 Map.copyOf(componentConfigs));
