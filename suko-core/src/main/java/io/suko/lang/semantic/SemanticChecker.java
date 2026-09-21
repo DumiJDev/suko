@@ -152,7 +152,7 @@ public class SemanticChecker {
         for (Statement statement : component.body()) {
             checkStatement(statement, declaredSlots);
         }
-        checkBareBraceInStrings(component);
+        checkSyntaxSurface(component);
     }
 
     private static final java.util.regex.Pattern BARE_BRACE_IDENT =
@@ -164,28 +164,67 @@ public class SemanticChecker {
      * dentro de uma string é, por design, texto literal (ver ARCHITECTURE.md:
      * Alpine.js `x-data="{ open: false }"`, custom properties CSS, JS
      * inline). */
-    private void checkBareBraceInStrings(ComponentDecl component) {
+    /** Diagnósticos de SINTAXE sobre o corpo de um componente
+     * (`BARE_BRACE_IN_STRING`, `VAR_DECL_NOT_PARSED`, e os de forma legada
+     * do subprojeto 9). Renomeado de `checkBareBraceInStrings` quando
+     * deixou de ser só sobre chavetas em strings. */
+    private void checkSyntaxSurface(ComponentDecl component) {
         java.util.Set<String> paramNames = component.params().stream()
                 .map(Param::name).collect(java.util.stream.Collectors.toSet());
-        for (Statement statement : component.body()) {
-            checkBareBraceInStatement(statement, paramNames);
+        checkSyntaxInStatements(component.body(), paramNames);
+    }
+
+    private void checkSyntaxInStatements(List<Statement> statements, java.util.Set<String> paramNames) {
+        for (Statement statement : statements) {
+            checkSyntaxInStatement(statement, paramNames);
         }
     }
 
-    private void checkBareBraceInStatement(Statement statement, java.util.Set<String> paramNames) {
+    // EXAUSTIVO SOBRE AS 8 VARIANTES DE `Statement`, sem `default` — de
+    // propósito. A versão anterior tinha `default -> {}` e não descia a
+    // if/for/switch, e nenhum percurso do checker descia a corpos de slot
+    // fill: Alert.sk, Badge.sk e Button.sk têm o corpo INTEIRO dentro de um
+    // switch, logo o BARE_BRACE_IN_STRING nunca os via. Sem `default`, uma
+    // variante nova de Statement passa a ser erro de compilação aqui, em
+    // vez de um buraco silencioso.
+    private void checkSyntaxInStatement(Statement statement, java.util.Set<String> paramNames) {
         switch (statement) {
             case Statement.HtmlElement element -> {
                 for (Statement.Attribute attribute : element.attributes()) {
                     checkBareBraceInExpr(attribute.value(), paramNames, attribute.span());
                 }
-                for (Statement child : element.children()) {
-                    checkBareBraceInStatement(child, paramNames);
-                }
+                checkSyntaxInStatements(element.children(), paramNames);
             }
             case Statement.Interpolation interpolation ->
                 checkBareBraceInExpr(interpolation.expr(), paramNames, interpolation.span());
             case Statement.TextRun textRun -> checkSwallowedVarDecl(textRun);
-            default -> {}
+            case Statement.VarDecl varDecl ->
+                checkBareBraceInExpr(varDecl.value(), paramNames, varDecl.span());
+            case Statement.IfStmt ifStmt -> {
+                checkBareBraceInExpr(ifStmt.condition(), paramNames, ifStmt.span());
+                checkSyntaxInStatements(ifStmt.thenBranch(), paramNames);
+                checkSyntaxInStatements(ifStmt.elseBranch(), paramNames);
+            }
+            case Statement.ForStmt forStmt -> {
+                checkBareBraceInExpr(forStmt.iterable(), paramNames, forStmt.span());
+                checkSyntaxInStatements(forStmt.body(), paramNames);
+            }
+            case Statement.SwitchStmt switchStmt -> {
+                checkBareBraceInExpr(switchStmt.subject(), paramNames, switchStmt.span());
+                for (Statement.SwitchCase switchCase : switchStmt.cases()) {
+                    checkBareBraceInExpr(switchCase.matchValue(), paramNames, switchStmt.span());
+                    checkSyntaxInStatements(switchCase.body(), paramNames);
+                }
+                checkSyntaxInStatements(switchStmt.defaultCase(), paramNames);
+            }
+            case Statement.ComponentCallStmt call -> {
+                for (Statement.Arg arg : call.args()) {
+                    checkBareBraceInExpr(arg.value(), paramNames, call.span());
+                }
+                for (Statement.SlotFill fill : call.slotFills()) {
+                    checkSyntaxInStatements(fill.body(), paramNames);
+                }
+            }
         }
     }
 
@@ -275,7 +314,7 @@ public class SemanticChecker {
             // escrita dentro de uma tag, COMPONENT_NOT_FOUND /
             // COMPONENT_NOT_VISIBLE / SLOT_NOT_FOUND / CARDINALITY_VIOLATION
             // eram trivialmente contornáveis. Percurso simétrico ao que
-            // checkBareBraceInStatement já fazia ao lado (:174).
+            // checkSyntaxInStatement já fazia ao lado.
             case Statement.HtmlElement element -> {
                 for (Statement.Attribute attribute : element.attributes()) {
                     checkExprForComponentCalls(attribute.value());
