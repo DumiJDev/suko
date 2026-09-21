@@ -43,7 +43,7 @@ class MainTest {
 
     @Test
     void notYetImplementedCommandsReturnNonZeroWithAClearMessage(@TempDir Path projectDir) {
-        for (String command : new String[] { "add", "diff", "update" }) {
+        for (String command : new String[] { "diff", "update" }) {
             ByteArrayOutputStream err = new ByteArrayOutputStream();
             int exitCode = Main.run(new String[] { command }, emptyStdin(), printStream(new ByteArrayOutputStream()),
                     printStream(err), projectDir);
@@ -57,6 +57,18 @@ class MainTest {
     void listDispatchesToListCommandAndSurfacesItsCliExceptionCleanly(@TempDir Path projectDir) {
         ByteArrayOutputStream err = new ByteArrayOutputStream();
         int exitCode = Main.run(new String[] { "list" }, emptyStdin(), printStream(new ByteArrayOutputStream()),
+                printStream(err), projectDir);
+
+        assertNotEquals(0, exitCode);
+        String errText = err.toString(StandardCharsets.UTF_8);
+        assertTrue(errText.contains("suko init"), "stderr: " + errText);
+        assertFalse(errText.contains("Exception"), "should not leak a stack trace: " + errText);
+    }
+
+    @Test
+    void addDispatchesToAddCommandAndSurfacesItsCliExceptionCleanly(@TempDir Path projectDir) {
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        int exitCode = Main.run(new String[] { "add", "button" }, emptyStdin(), printStream(new ByteArrayOutputStream()),
                 printStream(err), projectDir);
 
         assertNotEquals(0, exitCode);
