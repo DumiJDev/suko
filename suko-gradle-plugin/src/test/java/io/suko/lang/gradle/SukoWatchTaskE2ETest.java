@@ -30,7 +30,7 @@ class SukoWatchTaskE2ETest {
         Path skFile = sourceDir.resolve("Card.sk");
         String source = """
             component Card(String title) {
-              <div class="card"><h2>{title}</h2></div>
+              <div class="card"><h2>${title}</h2></div>
             }
             """;
         Files.writeString(skFile, source);
@@ -72,7 +72,7 @@ assertTrue(result.success(), "Compilação deve ter sucesso");
         Path skFile = sourceDir.resolve("Card.sk");
         String source = """
             component Card(String title) {
-              <div class="card"><h2>{title}</h2></div>
+              <div class="card"><h2>${title}</h2></div>
             }
             """;
         Files.writeString(skFile, source);
@@ -89,7 +89,7 @@ assertTrue(result.success(), "Compilação deve ter sucesso");
         // Modify the .sk file
         Files.writeString(skFile, """
             component Card(String title) {
-              <div class="card"><h2>{title}</h2><p>Atualizado!</p></div>
+              <div class="card"><h2>${title}</h2><p>Atualizado!</p></div>
             }
             """);
 
@@ -122,7 +122,7 @@ assertTrue(result.success(), "Compilação deve ter sucesso");
             package io.demo.ui;
 
             public component Label(String text) {
-              <span>{text}</span>
+              <span>${text}</span>
             }
             """);
 
@@ -152,7 +152,7 @@ assertTrue(result.success(), "Compilação deve ter sucesso");
             package io.demo.ui;
 
             public component Label(String text) {
-              <span>{text}</span>
+              <span>${text}</span>
             }
             """);
         Files.writeString(uiDir.resolve("Field.sk"), """
