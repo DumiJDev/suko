@@ -98,25 +98,31 @@ public final class Args {
                       --help, -h              Show this help
                     """,
             "diff", """
-                    Usage: suko diff [<name>] [options]
+                    Usage: suko diff [<name>...] [options]
 
                     Show the difference between a local file and its upstream source
-                    (after namespace rewriting), for one component or all installed ones.
-
-                    Not implemented yet.
+                    (after namespace rewriting), for one or more components or, with no
+                    name given, every component in suko.lock.json. Exits 0 if nothing
+                    differs, 1 if at least one file does.
 
                     Options:
+                      --registry <path|url>   Registry base (overrides suko.json)
+                      --registry-ref <tag>    Registry tag/ref to use
                       --help, -h              Show this help
                     """,
             "update", """
-                    Usage: suko update [<name>] [options]
+                    Usage: suko update [<name>...] [options]
 
-                    Reapply the reconciliation matrix (spec D7) to one component or all
-                    installed ones, updating files that were not edited locally.
-
-                    Not implemented yet.
+                    Reapply the reconciliation matrix (spec D7) to one or more already
+                    installed components or, with no name given, every "direct" component
+                    in suko.lock.json plus whatever their current dependsOn still
+                    requires. Never installs a component that is not already tracked
+                    (use `suko add` for that), and never performs a three-way merge: a
+                    conflict aborts before writing anything unless --force is given.
 
                     Options:
+                      --registry <path|url>   Registry base (overrides suko.json)
+                      --registry-ref <tag>    Registry tag/ref to use
                       --force                 Overwrite locally-edited files too
                       --dry-run               Show what would happen without writing anything
                       --help, -h              Show this help

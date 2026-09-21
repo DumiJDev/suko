@@ -38,6 +38,26 @@ public final class Hashes {
         return sha256Hex(normalizeLineEndings(content));
     }
 
+    /**
+     * Plain (unnormalized) SHA-256 of {@code content}, matching how
+     * {@code suko-registry-generator} computes {@link
+     * io.suko.registry.ComponentFile#sha256()} — from raw source bytes,
+     * before any namespace rewriting or line-ending normalization.
+     * <p>
+     * Deliberately distinct from {@link #sha256OfNormalized(byte[])}: this
+     * method is for the one place the manifest's own hash is compared
+     * against real bytes — freshly fetched, pre-rewrite content, as part of
+     * verifying it against {@code ComponentFile.sha256()} ({@code
+     * AddCommand}, {@code DiffCommand}, {@code UpdateCommand}, all before
+     * any rewriting happens). It must never be used to compare bytes
+     * already on disk against a stored hash — that comparison is always
+     * {@link #sha256OfNormalized(byte[])}, via {@link Reconciler}.
+     * </p>
+     */
+    public static String sha256OfRaw(byte[] content) {
+        return sha256Hex(content);
+    }
+
     private static byte[] normalizeLineEndings(byte[] content) {
         String text = new String(content, StandardCharsets.UTF_8);
         String normalized = text.replace("\r\n", "\n").replace("\r", "\n");

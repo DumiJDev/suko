@@ -41,15 +41,24 @@ class MainTest {
         assertTrue(out.toString(StandardCharsets.UTF_8).contains("Usage: suko"));
     }
 
+    /**
+     * Task 12: {@code diff} and {@code update} are now real commands, not
+     * stubs — run against an empty project (no {@code suko.lock.json} at
+     * all) they must each surface a clean, readable {@link CliException}
+     * message (never a stack trace) with a non-zero exit code, exactly
+     * like every other command that hits a precondition it cannot satisfy.
+     */
     @Test
-    void notYetImplementedCommandsReturnNonZeroWithAClearMessage(@TempDir Path projectDir) {
+    void diffAndUpdateOnAnEmptyProjectReturnNonZeroWithAClearMessage(@TempDir Path projectDir) {
         for (String command : new String[] { "diff", "update" }) {
             ByteArrayOutputStream err = new ByteArrayOutputStream();
             int exitCode = Main.run(new String[] { command }, emptyStdin(), printStream(new ByteArrayOutputStream()),
                     printStream(err), projectDir);
 
             assertNotEquals(0, exitCode, command + " should not silently succeed");
-            assertTrue(err.toString(StandardCharsets.UTF_8).contains(command), "stderr for " + command);
+            String errText = err.toString(StandardCharsets.UTF_8);
+            assertTrue(errText.contains(Lockfile.FILE_NAME), "stderr for " + command + ": " + errText);
+            assertFalse(errText.contains("Exception"), "should not leak a stack trace: " + errText);
         }
     }
 
