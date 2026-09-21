@@ -8,7 +8,14 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * HTTPS implementation of {@link RegistrySource}. This is the network
@@ -48,11 +55,21 @@ import java.util.Objects;
  *   mirrors {@link FileSystemRegistrySource}'s {@code normalize()} +
  *   {@code startsWith()} check, and runs entirely locally: a
  *   traversal attempt never reaches the server.</li>
- *   <li><b>Bounded resources.</b> A connect timeout, a request timeout, and
- *   a maximum response size are all enforced; a response larger than the
+ *   <li><b>Bounded resources.</b> A connect timeout, a read timeout, and a
+ *   maximum response size are all enforced; a response larger than the
  *   limit is rejected without ever buffering more than
  *   {@code maxResponseBytes + 1} bytes in memory, regardless of how large
- *   the actual response body is.</li>
+ *   the actual response body is. The read timeout bounds the <em>entire</em>
+ *   request, headers and body together: {@code HttpRequest.Builder#timeout}
+ *   only bounds the time until the response headers arrive when the body is
+ *   read as a stream (as it is here), so a server that sends headers
+ *   immediately and then trickles the body arbitrarily slowly would
+ *   otherwise never time out and never hit the size cap either &mdash; a
+ *   real denial-of-service vector against whoever points the CLI at a
+ *   malicious {@code --registry}. {@link #resolve(String)} therefore reads
+ *   the body on a background thread and aborts (by closing the stream) if
+ *   the shared deadline is exceeded, regardless of how many bytes have
+ *   trickled in by then.</li>
  * </ul>
  */
 public final class HttpRegistrySource implements RegistrySource {
@@ -159,6 +176,13 @@ public final class HttpRegistrySource implements RegistrySource {
 
         URI target = resolveWithinBase(relativePath);
 
+        // The deadline covers the whole operation - headers and body - from
+        // here. HttpRequest.Builder#timeout below only bounds the time until
+        // response headers arrive when the body is consumed as a stream; the
+        // body-reading phase enforces the same deadline itself (see
+        // readBoundedBody), which is the fix for the full-body-timeout gap.
+        Instant deadline = Instant.now().plus(readTimeout);
+
         HttpRequest request = HttpRequest.newBuilder(target)
                 .header("User-Agent", USER_AGENT)
                 .timeout(readTimeout)
@@ -185,16 +209,70 @@ public final class HttpRegistrySource implements RegistrySource {
                         "Registry request to " + target + " failed with HTTP status " + status + redirectNote);
             }
 
-            // Bound the number of bytes buffered in memory regardless of how
-            // large the actual response body is: read at most
-            // maxResponseBytes + 1 bytes, so an oversized response is
-            // detected without ever materializing it in full.
-            byte[] content = body.readNBytes((int) (maxResponseBytes + 1));
-            if (content.length > maxResponseBytes) {
-                throw new IOException("Response from " + target + " exceeds the maximum allowed size of "
-                        + maxResponseBytes + " bytes");
+            return readBoundedBody(body, target, deadline);
+        }
+    }
+
+    /**
+     * Reads {@code body} up to {@code maxResponseBytes + 1} bytes (so an
+     * oversized response is detected without ever materializing it in
+     * full), while also enforcing {@code deadline} for the entire read -
+     * not just its start.
+     * <p>
+     * {@link InputStream#read()} has no built-in per-call timeout, so the
+     * read happens on a background thread; the calling thread waits for it
+     * with a bound equal to the time remaining until {@code deadline}. If
+     * that expires while the reader thread is still blocked (e.g. a server
+     * that sent headers immediately and is now trickling the body one byte
+     * at a time, indefinitely), {@code body} is closed from this thread,
+     * which is what actually unblocks the reader thread's pending
+     * {@code read()} call with an {@link IOException} - closing the stream
+     * is the only portable way to abort a synchronous blocking read from
+     * another thread. This is deliberately not "read everything, then check
+     * elapsed time": that would still let a slow-trickle response hold the
+     * connection (and this thread) open indefinitely, which is exactly the
+     * denial-of-service vector this method exists to close.
+     * </p>
+     */
+    private byte[] readBoundedBody(InputStream body, URI target, Instant deadline) throws IOException {
+        ExecutorService reader = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "suko-registry-http-body-reader");
+            t.setDaemon(true);
+            return t;
+        });
+        try {
+            Future<byte[]> read = reader.submit(() -> body.readNBytes((int) (maxResponseBytes + 1)));
+
+            long remainingMillis = Duration.between(Instant.now(), deadline).toMillis();
+            try {
+                byte[] content = read.get(Math.max(remainingMillis, 0), TimeUnit.MILLISECONDS);
+                if (content.length > maxResponseBytes) {
+                    throw new IOException("Response from " + target + " exceeds the maximum allowed size of "
+                            + maxResponseBytes + " bytes");
+                }
+                return content;
+            } catch (TimeoutException e) {
+                try {
+                    body.close();
+                } catch (IOException ignored) {
+                    // Already timing out; the close is only to unblock the
+                    // reader thread, its own failure is not the interesting one.
+                }
+                read.cancel(true);
+                throw new IOException("Timed out reading response body from " + target
+                        + " (the read timeout of " + readTimeout + " elapsed while streaming the body)", e);
+            } catch (ExecutionException e) {
+                Throwable cause = e.getCause();
+                if (cause instanceof IOException ioException) {
+                    throw ioException;
+                }
+                throw new IOException("Failed reading response body from " + target, cause);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IOException("Interrupted while reading response body from " + target, e);
             }
-            return content;
+        } finally {
+            reader.shutdownNow();
         }
     }
 
