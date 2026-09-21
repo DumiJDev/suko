@@ -299,8 +299,8 @@ public class SukoAstBuilder {
             String name = attrCtx.htmlName().getText();
             Expr value = attrCtx.stringLiteral() != null
                 ? buildStringLiteral(attrCtx.stringLiteral())
-                : attrCtx.expression() != null
-                    ? buildExpr(attrCtx.expression())
+                : attrCtx.interpolation() != null
+                    ? buildExpr(attrCtx.interpolation().expression())
                     : new Expr.PrimaryExpr("true", spanOf(attrCtx));
             attributes.add(new Statement.Attribute(name, value, spanOf(attrCtx)));
         }
@@ -362,9 +362,9 @@ public class SukoAstBuilder {
         List<Expr.StringPart> parts = new ArrayList<>();
         StringBuilder literalRun = new StringBuilder();
         for (SukoParser.StringPartContext partCtx : ctx.stringPart()) {
-            if (partCtx.EXPR_INTERP_START() != null) {
+            if (partCtx.interpolation() != null) {
                 flushLiteral(parts, literalRun);
-                parts.add(new Expr.StringPart.Interp(buildExpr(partCtx.expression())));
+                parts.add(new Expr.StringPart.Interp(buildExpr(partCtx.interpolation().expression())));
             } else if (partCtx.SIMPLE_INTERP_START() != null) {
                 flushLiteral(parts, literalRun);
                 // "$nome" — remove o "$" inicial do texto do token.

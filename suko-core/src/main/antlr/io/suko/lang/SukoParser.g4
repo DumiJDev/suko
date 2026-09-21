@@ -112,8 +112,13 @@ templateStatement
 // que exista mesmo uma tag de fecho pendente mais adiante, e a ambiguidade
 // desaparece sem precisar que o predicado seja avaliado durante a
 // predição — ele só entra para validar/confirmar depois da escolha.
+// NOTA (subprojeto 9): EXPR_INTERP_START ("${") também tem de ser
+// excluído. Este closure é guloso e não tem lookahead intermédio — sem a
+// exclusão, "<p>custa ${price} euros</p>" faz o textRun engolir
+// "custa ${price" como texto e o "}" sobra, silenciosamente. É a mesma
+// mecânica das duas limitações já documentadas em ARCHITECTURE.md.
 textRun
-    : ( ~(LBRACE | RBRACE | LT | LTSLASH) )+
+    : ( ~(LBRACE | RBRACE | LT | LTSLASH | EXPR_INTERP_START) )+
     ;
 
 varDecl
@@ -188,13 +193,26 @@ htmlElement
 
 attribute
     : htmlName EQ stringLiteral
-    | htmlName EQ LBRACE expression RBRACE
+    | htmlName EQ interpolation
     | htmlName
     ;
 
-// Interpolação de nível de statement, dentro ou fora de uma tag.
+// Interpolação de uma expressão. UMA regra para as três posições em que
+// a linguagem interpola (subprojeto 9, D1/D2): statement/corpo de tag,
+// valor de atributo sem aspas, e dentro de um literal de string
+// (`stringPart`). A forma legada `{expr}` continua aceite de propósito e
+// é marcada pelo label `legacy` — NÃO é para remover: removê-la da
+// gramática faria o ANTLR recuperar em silêncio nos dois caminhos de
+// parse que removem os error listeners (ProjectIndex e RegistryGenerator,
+// C2 do plano), e no segundo isso é um manifesto gerado a partir de uma
+// árvore truncada. A rejeição é semântica (SemanticChecker), não
+// sintática.
+//
+// Nota (C5): dentro de STRING_MODE nunca existe um token LBRACE
+// (STRING_TEXT cobre `{`), logo a alternativa legada é inalcançável a
+// partir de `stringPart`. É deliberado, não uma ambiguidade por limpar.
 interpolation
-    : LBRACE expression RBRACE
+    : (EXPR_INTERP_START | legacy=LBRACE) expression RBRACE
     ;
 
 // --- Expressões ---
@@ -233,6 +251,6 @@ stringPart
     : STRING_TEXT
     | STRING_ESCAPE
     | SIMPLE_INTERP_START
-    | EXPR_INTERP_START expression RBRACE
+    | interpolation
     | SIMPLE_DOLLAR
     ;
