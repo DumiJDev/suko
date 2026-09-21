@@ -27,10 +27,14 @@ public record LockEntry(String name, String version, String reason, List<FileEnt
      * One file belonging to a {@link LockEntry}, with its two hashes
      * (spec D7 — never conflate these, see {@link Reconciler}).
      *
-     * @param target         path of the written file, relative to the
-     *                       consumer project's root (matches
-     *                       {@code io.suko.registry.ComponentFile#target()}
-     *                       after the source root is prefixed at write time)
+     * @param target         path of the written file, relative to
+     *                       {@code sourceRoot} — i.e.
+     *                       {@code <basePackage as folders>/<manifest target>}
+     *                       (spec C3). Never re-includes {@code sourceRoot}
+     *                       itself: that is already a separate top-level
+     *                       field of {@link Lockfile}, so duplicating it
+     *                       into every file entry would just be redundant
+     *                       data that could drift out of sync.
      * @param upstreamSha256 the {@code files[].sha256} of the manifest this
      *                       file came from — identifies which upstream
      *                       revision is installed. This is <strong>never</strong>
