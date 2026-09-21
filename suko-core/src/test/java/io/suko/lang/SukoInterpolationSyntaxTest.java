@@ -118,9 +118,12 @@ class SukoInterpolationSyntaxTest {
             JteRenderSupport.render(source, "A", Map.of()).trim());
     }
 
-    /** Ponte de migração: a forma legada ainda faz parse (fecha na Task 10). */
+    /** A forma legada continua a fazer PARSE de propósito (C2 do plano): a
+     * rejeição é semântica, não sintática — ver LEGACY_BRACE_INTERPOLATION
+     * em SukoSyntaxDiagnosticsTest. Se um dia isto deixar de fazer parse,
+     * os caminhos sem error listener voltam a recuperar em silêncio. */
     @Test
-    void legacyBraceStillParsesForNow() {
+    void legacyBraceStillParsesButIsRejectedBySemantics() {
         assertEquals(List.of(), parseErrors("component A(String x) { {x} }"));
         assertEquals(List.of(), parseErrors("component A(String x) { <p id={x}>y</p> }"));
     }

@@ -114,4 +114,94 @@ class SukoSyntaxDiagnosticsTest {
             """;
         assertTrue(diagnosticsOf(source).isEmpty(), "sem diagnósticos: " + diagnosticsOf(source));
     }
+
+    @Test
+    void legacyBraceInterpolationIsAnErrorWithTheExactFix() {
+        String source = """
+            component Label(String text) {
+              <label>{text}</label>
+            }
+            """;
+        SukoDiagnostic diag = diagnosticsOf(source).stream()
+                .filter(d -> "LEGACY_BRACE_INTERPOLATION".equals(d.code()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("sem LEGACY_BRACE_INTERPOLATION: " + diagnosticsOf(source)));
+        assertEquals(SukoDiagnostic.Severity.ERROR, diag.severity());
+        assertTrue(diag.message().contains("${text}"), diag.message());
+    }
+
+    @Test
+    void legacyBraceAttributeIsAnErrorWithTheExactFix() {
+        String source = """
+            component Input(String id) {
+              <input id={id} />
+            }
+            """;
+        SukoDiagnostic diag = diagnosticsOf(source).stream()
+                .filter(d -> "LEGACY_BRACE_ATTRIBUTE".equals(d.code()))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("sem LEGACY_BRACE_ATTRIBUTE: " + diagnosticsOf(source)));
+        assertEquals(SukoDiagnostic.Severity.ERROR, diag.severity());
+        assertTrue(diag.message().contains("id=${id}"), diag.message());
+    }
+
+    @Test
+    void legacyBraceIsFoundInsideSwitchCase() {
+        // C3 outra vez: Alert/Badge/Button têm o corpo inteiro num switch.
+        String source = """
+            component Badge(String variant, Component children) {
+              switch (variant) {
+                case "success" -> {
+                  <span class="badge">{children}</span>
+                }
+                default -> {
+                  <span class="badge">${children}</span>
+                }
+              }
+            }
+            """;
+        assertEquals(1, countOf(source, "LEGACY_BRACE_INTERPOLATION"));
+    }
+
+    @Test
+    void legacyBraceIsFoundInsideSlotFillBody() {
+        String source = """
+            component Box(Component header) {
+              <div>${header}</div>
+            }
+
+            component Page(String t) {
+              Box() {
+                header {
+                  <span>{t}</span>
+                }
+              }
+            }
+            """;
+        assertEquals(1, countOf(source, "LEGACY_BRACE_INTERPOLATION"));
+    }
+
+    @Test
+    void modernSyntaxProducesNoLegacyDiagnostic() {
+        String source = """
+            component Input(String id, boolean required) {
+              <input id=${id} required=${required} class="field-${id}" title="ola $id" />
+            }
+            """;
+        assertEquals(0, countOf(source, "LEGACY_BRACE_INTERPOLATION"));
+        assertEquals(0, countOf(source, "LEGACY_BRACE_ATTRIBUTE"));
+    }
+
+    @Test
+    void bareBracesInsideStringAreNotFlaggedAsLegacy() {
+        // C5: chavetas dentro de string nunca foram interpolação e continuam
+        // texto literal — Alpine. O diagnóstico novo não pode tocar nelas.
+        String source = """
+            component Dlg() {
+              <div x-data="{ open: false }">x</div>
+            }
+            """;
+        assertEquals(0, countOf(source, "LEGACY_BRACE_INTERPOLATION"));
+        assertEquals(0, countOf(source, "LEGACY_BRACE_ATTRIBUTE"));
+    }
 }

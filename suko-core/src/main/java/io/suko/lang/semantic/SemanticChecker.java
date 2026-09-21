@@ -193,12 +193,15 @@ public class SemanticChecker {
         switch (statement) {
             case Statement.HtmlElement element -> {
                 for (Statement.Attribute attribute : element.attributes()) {
+                    checkLegacyBraceAttribute(attribute);
                     checkBareBraceInExpr(attribute.value(), paramNames, attribute.span());
                 }
                 checkSyntaxInStatements(element.children(), paramNames);
             }
-            case Statement.Interpolation interpolation ->
+            case Statement.Interpolation interpolation -> {
+                checkLegacyBraceInterpolation(interpolation);
                 checkBareBraceInExpr(interpolation.expr(), paramNames, interpolation.span());
+            }
             case Statement.TextRun textRun -> checkSwallowedVarDecl(textRun);
             case Statement.VarDecl varDecl ->
                 checkBareBraceInExpr(varDecl.value(), paramNames, varDecl.span());
@@ -228,6 +231,52 @@ public class SemanticChecker {
                 }
             }
         }
+    }
+
+    /** Subprojeto 9 (D1/D5): a chaveta nua deixou de interpolar em todas as
+     * posições. A gramática continua a aceitá-la de propósito — removê-la
+     * faria o ANTLR recuperar em silêncio nos caminhos de parse sem error
+     * listener (ProjectIndex, RegistryGenerator), e no segundo isso é um
+     * manifesto gerado a partir de uma árvore truncada. Quem fecha a porta é
+     * este erro, com a correção literal na mensagem. */
+    private void checkLegacyBraceInterpolation(Statement.Interpolation interpolation) {
+        if (!interpolation.legacyBraceForm()) {
+            return;
+        }
+        String shown = shownExprText(interpolation.expr());
+        diagnostics.add(new SukoDiagnostic(
+                SukoDiagnostic.Severity.ERROR,
+                "'{" + shown + "}' já não interpola — escreva '${" + shown + "}'",
+                "LEGACY_BRACE_INTERPOLATION",
+                sourceFile,
+                interpolation.span()
+        ));
+    }
+
+    private void checkLegacyBraceAttribute(Statement.Attribute attribute) {
+        if (!attribute.legacyBraceForm()) {
+            return;
+        }
+        String shown = shownExprText(attribute.value());
+        diagnostics.add(new SukoDiagnostic(
+                SukoDiagnostic.Severity.ERROR,
+                "'" + attribute.name() + "={" + shown + "}' já não interpola — escreva '"
+                        + attribute.name() + "=${" + shown + "}'",
+                "LEGACY_BRACE_ATTRIBUTE",
+                sourceFile,
+                attribute.span()
+        ));
+    }
+
+    /** Texto da expressão para a mensagem. Um identificador simples — que é
+     * a forma de praticamente toda a interpolação real (`{children}`,
+     * `{label}`, `{title}`) — sai literal, o que dá ao autor a linha exata
+     * para escrever. Para uma expressão composta não há representação textual
+     * no AST (só `Expr` tipado), e reconstruí-la aqui seria um segundo
+     * pretty-printer a divergir do JteEmitter: usa-se um marcador genérico,
+     * e o `SourceSpan` do diagnóstico aponta para a posição exata. */
+    private String shownExprText(Expr expr) {
+        return expr instanceof Expr.PrimaryExpr primary ? primary.text() : "expr";
     }
 
     private static final java.util.regex.Pattern SWALLOWED_VAR_DECL =
