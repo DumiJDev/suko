@@ -52,27 +52,35 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
 - **`suko-gradle-plugin/`** — `io.suko.lang.gradle.*`
   (`SukoGradlePlugin`, `SukoCompileTask`, `SukoWatchTask`) extraído do
   antigo módulo raiz sem mudança de comportamento. Depende de
-  `suko-core`. **Lacuna conhecida:** tal como o `suko-maven-plugin` (ver
-  item 4 do roadmap abaixo), este módulo nunca foi aplicado como plugin
-  Gradle com ID descobrível (`gradlePlugin{}`/
-  `META-INF/gradle-plugins/*.properties`) — existe só como classe
-  `Plugin<Project>`, testada diretamente, não via `plugins { id(...) }`.
-  Preservado tal como estava antes desta migração; não corrigido aqui.
+  `suko-core`. Aplica `java-gradle-plugin` e declara
+  `gradlePlugin { plugins { create("suko") { id = "io.suko.lang" } } }`
+  (subprojeto 8, tarefa 4) — `plugins { id("io.suko.lang") }` já resolve,
+  inclusive via TestKit; deixou de existir só como classe `Plugin<Project>`
+  testada diretamente.
 - **`suko-maven-plugin/`** — plugin Maven (`SukoCompileMojo`), depende de
   `suko-core`. Ver a ressalva já documentada no item 4 do roadmap sobre o
-  descritor de plugin Maven não estar completo.
+  descritor de plugin Maven não estar completo — **este lado permanece
+  sem ID descobrível**, ao contrário do `suko-gradle-plugin` acima
+  (assimetria não fechada pelo subprojeto 8, ver item 4 do roadmap).
 - **`suko-registry/`** — modelo de dados do manifesto da biblioteca
   (`RegistryIndex`/`ComponentManifest`/`ComponentFile`/
-  `ExternalRequirement`), leitor/escritor JSON (`RegistryJson`, Gson
+  `ExternalRequirement`) e leitor/escritor JSON (`RegistryJson`, Gson
   2.11.0 pinado — **não** Jackson, para minimizar transitivas no
-  futuro fat-jar da CLI do subprojeto 8) e o gerador do manifesto a
-  partir de `.sk` (`RegistryGenerator`, reusa `ProjectIndex`/
-  `SukoAstBuilder` de `suko-core`, não reimplementa parsing). Depende
-  de `suko-core` via `api` (não `implementation`) porque expõe tipos
-  do compilador — `ComponentDecl`, `SukoFile`, `ProjectIndex` — na
-  própria assinatura pública. **Nunca toca em `suko-core`**: Gson vive
-  exclusivamente aqui, `suko-core` não ganha nenhuma dependência JSON
-  nova (restrição do subprojeto 7).
+  fat-jar da CLI do subprojeto 8). Desde a tarefa 2 do subprojeto 8,
+  este módulo **já não depende de `suko-core`** — é puro modelo de
+  dados + I/O JSON, só Gson. O gerador do manifesto a partir de `.sk`
+  (`RegistryGenerator`, que reusa `ProjectIndex`/`SukoAstBuilder` de
+  `suko-core`) foi extraído para o módulo irmão
+  **`suko-registry-generator`**, que depende de ambos via `api`
+  (`api(project(":suko-registry"))` + `api(project(":suko-core"))`).
+  Esta separação é o que agora torna verdadeiro o racional do Gson
+  logo acima: antes da tarefa 2, `suko-registry` já expunha `api(suko-core)`,
+  o que anulava por completo o benefício de "minimizar transitivas no
+  fat-jar da CLI" — só passou a valer depois do split.
+- **`suko-registry-generator/`** — gera o manifesto (`registry.json` +
+  `components/*.json`) a partir dos fontes `.sk` de `suko-components/`
+  (`RegistryGenerator`). Depende de `suko-registry` e `suko-core` via
+  `api`. Invocado pela task `generateRegistry` de `suko-components`.
 - **`suko-components/`** — biblioteca de componentes (subprojeto 7),
   **conteúdo puro**: sem `src/main/java` e sem nenhuma dependência
   declarada em `main`. Contém `src/main/suko/io/suko/ui/*.sk` (8
@@ -83,6 +91,19 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   se auto-validar — compilar e renderizar a própria biblioteca com o
   motor `gg.jte` real, e falhar se o manifesto commitado divergir dos
   fontes (`RegistryGoldenTest`).
+- **`suko-cli/`** — a ferramenta de linha de comandos `suko` (subprojeto 8):
+  `init`/`list`/`add`/`diff`/`update`. Depende de `suko-registry` (modelo +
+  JSON) e Gson; **nunca depende de `suko-core`** em produção (`testFixtures(suko-core)`
+  e `gg.jte` pinado entram só em `testImplementation`, para o
+  `FullCycleTest` de ponta-a-ponta) — o compilador não faz parte do que a
+  CLI precisa para copiar ficheiros. Empacotada num único fat jar
+  hand-rolled (`Jar` task própria, sem plugin Shadow) e distribuída de três
+  formas: o próprio jar, um alias `jbang` (`jbang-catalog.json` na raiz) e
+  scripts wrapper (`scripts/suko`/`scripts/suko.bat`). Um binário nativo
+  GraalVM é opt-in e exclusivamente do lado do consumidor
+  (`jbang --native --build-dir <dir> suko@<owner>`) — nunca construído nem
+  publicado por este projeto. Ver `suko-cli/README.md` para a referência
+  de comandos e o desenho de duplo hash do `suko.lock.json`.
 - **`suko-website/`** — scaffold vazio para o site de documentação
   (subprojeto 9). **Achado, não corrigido aqui:** o
   `build.gradle.kts` deste módulo continua a declarar
@@ -172,6 +193,21 @@ repositório, fora de qualquer módulo — não é uma unidade de build.
   espaçamento e hífens preservados) é recuperado no AST builder
   pela posição de caractere no fonte, não por concatenação de
   tokens.
+- **Java 21 como piso declarado, uniformemente, via `options.release`
+  (subprojeto 8, tarefa 1, D12).** Todo o monorepo compila para o mesmo
+  nível de bytecode através do bloco `subprojects {}` do `build.gradle.kts`
+  raiz (`tasks.withType<JavaCompile>().configureEach { options.release.set(21) }`),
+  não por um toolchain Gradle por módulo. Motivo: o ambiente de
+  desenvolvimento corre com um JDK 25 sem o `foojay-resolver-convention`
+  configurado em `settings.gradle.kts`, então o auto-provisionamento de
+  toolchain (que precisaria descobrir/descarregar um JDK 21) não era
+  fiável — `options.release` não exige ter um JDK 21 instalado nem
+  acrescentar esse resolver, só recusa em tempo de compilação qualquer
+  API posterior ao 21 e fixa o bytecode em major 65. A uniformidade entre
+  módulos é deliberada: aplicar isto só nalguns evitaria o conflito de
+  resolução de variante Gradle que já existia entre módulos com versões
+  de release diferentes (ver o comentário em
+  `suko-maven-plugin/build.gradle.kts`).
 
 ## Limitações conhecidas (fim do subprojeto 2)
 
@@ -247,20 +283,25 @@ arquitetura):
   antigo bug de `TemplateNotFoundException` em nomes compostos: `gg.jte`
   já lia o ponto de `@template.ui.NavLink(...)` como separador de path,
   só faltava o ficheiro existir nessa subpasta.
-- **Lacuna conhecida: `sukoWatch` não foi migrado para o modelo
-  multi-ficheiro.** `SukoCompileTask` (Gradle) passou a usar o
-  `SukoProjectCompiler` neste subprojeto, mas `SukoWatchTask` continua
-  a chamar o caminho antigo, por ficheiro (`new JteCompiler(...).compile()`
-  com um `Files.list` não recursivo). Consequências: (a) o modo watch
-  escreve output **plano**, sem espelhar pacotes, divergindo do
-  `sukoCompile` na mesma pasta de output; (b) nenhum dos 5 diagnósticos
-  a nível de projeto deste subprojeto (`IMPORT_NOT_FOUND`, `COMPONENT_NOT_VISIBLE`,
-  `AMBIGUOUS_IMPORT`, `PACKAGE_DIRECTORY_MISMATCH`, `DUPLICATE_COMPONENT`) é visto em watch;
-  (c) chamadas cross-ficheiro não resolvem em watch. Deliberadamente
-  **não** corrigido na revisão final do subprojeto 5: a semântica de
-  recompilação incremental em modo watch (que reindexar, quando, e o
-  que fazer quando um ficheiro que outros importam muda) precisa do seu
-  próprio desenho e testes. Fica sinalizado como tarefa futura.
+- **Característica declarada, não limitação escondida: `sukoWatch`
+  recompila o `sourceRoot` inteiro a cada evento do filesystem.**
+  A tarefa 5 do subprojeto 8 fechou o bug real que existia antes
+  (`SukoWatchTask` a usar um caminho antigo, por ficheiro, divergente do
+  `sukoCompile` multi-ficheiro) — `SukoWatchTask` passou a chamar o mesmo
+  `SukoProjectCompiler`/`ProjectIndex` que `sukoCompile` usa, escreve
+  output que espelha pacotes da mesma forma, e vê os mesmos 5
+  diagnósticos a nível de projeto. O que fica, deliberadamente, é uma
+  troca de simplicidade: qualquer evento do `WatchService` dispara uma
+  recompilação completa do `sourceRoot`, não uma recompilação incremental
+  do que mudou. Para o tamanho de projeto que a linguagem tem hoje isto é
+  imperceptível; uma recompilação incremental de verdade (que reindexar,
+  quando, e o que fazer quando um ficheiro que outros importam muda)
+  ficaria para um subprojeto dedicado, se algum dia justificar o esforço.
+  (Uma lacuna real e separada, ainda aberta: `registerRecursively()` só
+  regista subpastas existentes antes do loop de watch arrancar — uma
+  pasta de pacote criada depois de `sukoWatch` já estar a correr, por
+  exemplo por um `suko add` para um pacote novo, nunca é registada no
+  `WatchService` e não dispara recompilação até o watch ser reiniciado.)
 - **Limitação aceite: verificação de slot fills não atravessa
   ficheiros.** A Fase 1 do `ProjectIndex` só indexa a assinatura
   superficial de cada componente (nome, pacote, `public`, nº de
@@ -381,6 +422,35 @@ arquitetura):
   `htmlName` para aceitar estes carateres é trabalho de gramática fora
   do âmbito do subprojeto 7 (regra D5: só a correção da Tarefa 1 estava
   pré-aprovada).
+- **`suko-cli` (subprojeto 8): sem hash nem assinatura sobre os próprios
+  documentos JSON do registry.** `registry.json`/`components/*.json`
+  chegam ao consumidor como texto simples, verificado apenas pelo
+  `sha256` de cada ficheiro de componente **individual** — mas nada
+  assina o índice/manifesto em si. A confiança de que o documento
+  recebido é o que o mantenedor publicou é inteiramente do transporte:
+  `HttpRegistrySource` exige HTTPS e recusa redirects, mas não há
+  verificação criptográfica adicional acima disso. Um registry
+  comprometido (ou um MITM que quebrasse TLS) poderia servir um
+  `registry.json` alterado com hashes de ficheiro internamente
+  consistentes entre si.
+- **`suko-cli`: impossível pinar a versão de um componente
+  independentemente da tag do registry (D5).** Ver `suko-cli/README.md` →
+  "Registry pinning é por tag, não por versão de componente" para a
+  explicação completa; resumindo, `suko add`/`suko update` operam sempre
+  contra **uma** tag/ref do registry de cada vez, porque o manifesto é um
+  único documento JSON atómico por release do registry — não existe hoje
+  um mecanismo de histórico de versões por componente que permita "botão
+  X na versão N, botão Y na versão N+1" na mesma instalação.
+- **`suko-cli`: binário nativo GraalVM é exclusivamente
+  `jbang --native --build-dir ... suko@<owner>` do lado do consumidor,**
+  nunca construído nem publicado por este projeto — não há tarefa Gradle
+  de `native-image`, não há CI a produzir um binário, e não há matriz de
+  plataformas. `--build-dir` não é opcional: sem ele, a primeira
+  compilação nativa de um alias jbang que aponta para um jar já
+  construído (em vez de um script jbang compilado a partir de fonte)
+  falha num bug real e ainda aberto à data desta spec
+  ([jbangdev/jbang#2623](https://github.com/jbangdev/jbang/pull/2623)),
+  na forma como o jbang pré-cria o diretório de cache para esse caso.
 
 ## Validação feita até agora
 
@@ -425,11 +495,14 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    plugin utilizável** (`META-INF/maven/plugin.xml`) — a geração,
    não-funcional, foi removida; ver o comentário em
    `suko-maven-plugin/build.gradle.kts`. Ou seja, `mvn suko:compile` ainda
-   não é executável end-to-end. O mesmo vale para `suko-gradle-plugin`
-   (ver "Estrutura de módulos" acima): existe como classe
-   `Plugin<Project>` testada diretamente, nunca foi aplicado como plugin
-   com ID descobrível em lado nenhum. Ver também a lacuna do `sukoWatch`
-   nas limitações do subprojeto 5, acima.
+   não é executável end-to-end. **Assimetria (fechada só de um lado pelo
+   subprojeto 8, tarefa 4):** o caminho Gradle está hoje suportado de
+   ponta-a-ponta — `suko-gradle-plugin` aplica `java-gradle-plugin` e
+   declara `gradlePlugin { plugins { create("suko") { id = "io.suko.lang" } } }`,
+   com `plugins { id("io.suko.lang") }` a resolver de verdade, inclusive
+   via TestKit (ver "Estrutura de módulos" acima e `FullCycleTest` do
+   subprojeto 8). O caminho Maven **continua sem mudança**: nenhum
+   `plugin.xml` foi produzido, a ressalva acima mantém-se integralmente.
 5. **Projeto multi-ficheiro (resolução de nomes)** — CONCLUÍDO
    (`docs/superpowers/specs/2026-09-19-suko-projeto-multificheiro.md`).
    `package`/`import` resolvidos de verdade via `ProjectIndex` +
@@ -465,9 +538,12 @@ subprojeto 6 para a origem dos itens 7-9):
    pré-aprovado deste subprojeto (`SemanticChecker` passou a descer a
    HTML aninhado — antes, uma chamada de componente dentro de uma tag
    escapava por completo à validação semântica).
-8. **CLI de distribuição** (`suko add`, estilo shadcn/ui) — copia o
+8. **CLI de distribuição** (`suko add`, estilo shadcn/ui) — CONCLUÍDO.
+   Spec formal em `docs/superpowers/specs/2026-09-20-suko-cli-distribuicao.md`,
+   plano em `docs/superpowers/plans/2026-09-20-suko-cli-distribuicao.md`.
+   Módulo novo `suko-cli`: `suko init`/`list`/`add`/`diff`/`update`, copia o
    código-fonte `.sk` para o projeto do consumidor, que passa a possuir
-   e customizar esse código (não é dependência de biblioteca); depende
+   e customizar esse código (não é dependência de biblioteca); dependia
    do 7. **Racional do modelo copy-source, além do consumidor ficar
    dono do código:** `ProjectIndex.build(Path sourceRoot)` e
    `SukoProjectCompiler.compile(Path sourceRoot)` só aceitam **um**
@@ -475,7 +551,13 @@ subprojeto 6 para a origem dos itens 7-9):
    root de biblioteca" no compilador. Uma biblioteca-como-dependência
    real não é implementável sem trabalho de compilador; o modelo
    shadcn não é preferência de estilo, é o único que a arquitetura
-   atual suporta.
+   atual suporta. Distribuição: um único fat jar (`Jar` task própria, sem
+   Shadow), servido por um alias `jbang` e por scripts wrapper; um
+   binário nativo GraalVM é opt-in, exclusivamente compilado pelo
+   consumidor (`jbang --native --build-dir ...`), nunca por este projeto.
+   Ver `suko-cli/README.md` e "Limitações conhecidas" acima para o
+   desenho de duplo hash do lockfile e as lacunas aceites (sem
+   assinatura no JSON do registry, sem pinagem por componente).
 9. **Site de documentação** — preenche `suko-website/`. Inclui
    compilação para HTML estático em build-time (deployável em
    serverless/CDN sem JVM em runtime) como primeiro caso de uso real
