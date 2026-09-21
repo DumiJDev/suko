@@ -171,6 +171,51 @@ class HttpRegistrySourceTest {
         assertTrue(elapsedMillis < 1_500, "the read timeout should fire well before the server's 2s sleep: took " + elapsedMillis + "ms");
     }
 
+    /**
+     * Regression test for a Critical finding from the security review of
+     * this class's first version: a server that sends {@code 200} headers
+     * immediately and then trickles the body a few bytes at a time,
+     * indefinitely, must not let {@link HttpRegistrySource#resolve(String)}
+     * hang forever. {@code HttpRequest.Builder#timeout} only bounds the
+     * time until headers arrive when the body is read as a stream; without
+     * a separate deadline covering the body-read phase itself, this
+     * scenario let {@code resolve()} complete "successfully" after the
+     * server finished writing the whole body (proven empirically in review
+     * to take ~10s against a configured 1s timeout) - a real denial-of-
+     * service vector if {@code --registry} ever points at a malicious host.
+     */
+    @Test
+    void abortsOnSlowBodyTrickleInsteadOfWaitingForCompletion() throws IOException {
+        int totalBytes = 50; // at 200ms/byte, a full read would take 10s
+        HttpServer s = startServer(exchange -> {
+            try {
+                exchange.sendResponseHeaders(200, totalBytes);
+                try (OutputStream out = exchange.getResponseBody()) {
+                    for (int i = 0; i < totalBytes; i++) {
+                        out.write('a');
+                        out.flush();
+                        Thread.sleep(200);
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        });
+
+        HttpRegistrySource source = new HttpRegistrySource(
+                baseUrl(s), true, Duration.ofSeconds(5), Duration.ofSeconds(1), 1024L * 1024);
+
+        long start = System.nanoTime();
+        IOException ex = assertThrows(IOException.class, () -> source.resolve("slow-trickle.json"));
+        long elapsedMillis = (System.nanoTime() - start) / 1_000_000;
+
+        assertTrue(elapsedMillis < 3_000,
+                "the 1s read timeout should abort the body read well before the server's 10s full trickle: took "
+                        + elapsedMillis + "ms");
+        assertTrue(ex.getMessage().toLowerCase().contains("timed out") || ex.getMessage().toLowerCase().contains("timeout"),
+                "message should mention the timeout: " + ex.getMessage());
+    }
+
     @Test
     void oversizedResponseIsRejected() throws IOException {
         byte[] tooLarge = new byte[1024];
