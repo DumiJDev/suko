@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "registryVersion": "0.1.0-test",
+  "basePackage": "io.suko.fixture",
+  "components": [
+    {
+      "name": "a",
+      "version": "0.1.0",
+      "description": "Depends on b, which depends back on a (cycle).",
+      "category": "test",
+      "manifest": "components/a.json"
+    },
+    {
+      "name": "b",
+      "version": "0.1.0",
+      "description": "Depends back on a, closing the cycle.",
+      "category": "test",
+      "manifest": "components/b.json"
+    }
+  ]
+}

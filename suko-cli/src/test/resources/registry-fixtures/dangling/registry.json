@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "registryVersion": "0.1.0-test",
+  "basePackage": "io.suko.fixture",
+  "components": [
+    {
+      "name": "x",
+      "version": "0.1.0",
+      "description": "Declares dependsOn a component absent from this registry's index.",
+      "category": "test",
+      "manifest": "components/x.json"
+    }
+  ]
+}
