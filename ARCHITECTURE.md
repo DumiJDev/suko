@@ -540,8 +540,9 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
 
 Fora destes seis, como subprojeto dedicado e sem data: renderização
 real de componentes genéricos (erasure para tipo-limite); subprojetos
-7-10 do roadmap revisto, que dependem do 5 e do 6 (ver a spec do
-subprojeto 6 para a origem dos itens 7-9):
+7-11 do roadmap revisto, que dependem do 5 e do 6 (ver a spec do
+subprojeto 6 para a origem dos itens 7, 8 e 10; o item 9, interpolação,
+tem origem própria nesta spec):
 
 7. **Registry/biblioteca de componentes** — CONCLUÍDO. Spec formal em
    `docs/superpowers/specs/2026-09-20-suko-registry-componentes.md`,
