@@ -100,15 +100,15 @@ package com.example.ui;
 
 component Card(String title, List<String> items, String emptyLabel = "Sem itens") {
   <div class="card">
-    <h2>{title}</h2>
+    <h2>${title}</h2>
     if (items.size() > 0) {
       <ul>
         for (String item : items) {
-          <li>{item}</li>
+          <li>${item}</li>
         }
       </ul>
     } else {
-      <p>{emptyLabel}</p>
+      <p>${emptyLabel}</p>
     }
   </div>
 }
@@ -127,7 +127,7 @@ component Page(User user) {
       switch (user.role) {
         case "admin" -> { AdminPanel() }
         case "guest" -> { <p>Bem-vindo, visitante</p> }
-        default -> { <p>Bem-vindo, {user.name}</p> }
+        default -> { <p>Bem-vindo, ${user.name}</p> }
       }
     }
   }
@@ -141,10 +141,10 @@ component Page(User user) {
 ```suko
 component Layout(String title, Component sidebar, Component content) {
   <html>
-    <head><title>{title}</title></head>
+    <head><title>${title}</title></head>
     <body>
-      <aside>{sidebar}</aside>
-      <main>{content}</main>
+      <aside>${sidebar}</aside>
+      <main>${content}</main>
     </body>
   </html>
 }
@@ -220,7 +220,8 @@ suko/
 | 6. Component model | ✅ Done | `Component`/`List<Component>`/`Function<T, Component>` replace `slot<T>`, implicit `children`, component-as-value, real string interpolation |
 | 7. Component registry/library | ✅ Done | shadcn/ui-style distribution — depends on 5 and 6, populates `suko-components/` |
 | 8. Distribution CLI (`suko add`) | ✅ Done | `suko-cli` module: `suko init`/`list`/`add`/`diff`/`update`, depends on 7 |
-| 9. Documentation site | Planned | Built in Suko itself, depends on 7 and 8, populates `suko-website/` |
+| 9. Interpolation unification | ✅ Done | `${expr}` is the only interpolation syntax, in all three positions; bare braces never interpolate |
+| 10. Documentation site | Planned | Built in Suko itself, depends on 7 and 8, populates `suko-website/` |
 
 The repository itself was also restructured into a multi-module monorepo, starting with the 5 modules described in `docs/superpowers/specs/2026-09-19-suko-monorepo-migration.md` (`suko-core`/`suko-gradle-plugin`/`suko-maven-plugin`/`suko-components`/`suko-website`) and now at 8 modules total, shown in the tree above (`suko-registry`, `suko-registry-generator`, and `suko-cli` added by subprojetos 7 and 8).
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "alert",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Caixa de aviso com variantes de cor (success, warning, danger) e conteúdo livre.",
   "category": "feedback",
   "basePackage": "io.suko",
@@ -11,7 +11,7 @@
     {
       "path": "src/main/suko/io/suko/ui/Alert.sk",
       "target": "ui/Alert.sk",
-      "sha256": "96285613427a35c7e80ab649431d7b6770dad8624bb741152431d8e7bdaeeecd"
+      "sha256": "c843048de8403c3c2d0c9e18376b9fad6711e83ba9d511d1e021ea865b52b3f2"
     }
   ],
   "dependsOn": [],

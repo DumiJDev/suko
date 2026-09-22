@@ -34,7 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * inteiramente literal (sem partes de interpolação); qualquer outra forma
  * de {@code Expr} nesse atributo — incluindo um {@code Expr} que não é de
  * todo um {@code StringLiteralExpr}, o que acontece quando o valor é
- * escrito sem aspas, ex. {@code class={variant}} — conta como violação.
+ * escrito sem aspas, ex. {@code class=${variant}} — conta como violação.
  * Só o atributo {@code class} é verificado desta forma, para não gerar
  * falsos positivos em atributos como {@code x-data} que também podem
  * conter chaves.
@@ -141,18 +141,18 @@ class LibraryConventionsTest {
      * ({@code class="btn-${variant}"}): {@code SukoAstBuilder.buildAttributes}
      * (suko-core/src/main/java/io/suko/lang/SukoAstBuilder.java:296-308) can
      * also build an attribute value directly from {@code buildExpr(...)} when
-     * it's written without quotes at all (e.g. {@code class={variant}}),
+     * it's written without quotes at all (e.g. {@code class=${variant}}),
      * which produces an {@code Expr} that is never a {@code StringLiteralExpr}
      * — the previous version of this guard only rejected the first shape and
-     * let the second one (found for real in Input.sk's {@code id={id}}/
-     * {@code type={type}} style) through unnoticed, even though it breaks the
+     * let the second one (found for real in Input.sk's {@code id=${id}}/
+     * {@code type=${type}} style) through unnoticed, even though it breaks the
      * Tailwind static scanner exactly the same way.
      */
     private static boolean hasInterpolation(Expr value) {
         if (value instanceof Expr.StringLiteralExpr stringLiteral) {
             return stringLiteral.parts().stream().anyMatch(part -> !(part instanceof Expr.StringPart.Literal));
         }
-        // Any non-string-literal Expr (e.g. an unquoted `class={variant}`)
+        // Any non-string-literal Expr (e.g. an unquoted `class=${variant}`)
         // is, by construction, not a complete static Tailwind class string.
         return true;
     }

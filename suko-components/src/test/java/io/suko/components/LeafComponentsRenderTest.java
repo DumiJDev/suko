@@ -51,7 +51,7 @@ class LeafComponentsRenderTest {
         assertTrue(html.contains("name=\"email\""), () -> "atributo name tem de refletir o parâmetro: " + html);
         assertTrue(html.contains("type=\"text\""), () -> "type por omissão devia ser \"text\": " + html);
         // Achado empírico: para um atributo cujo valor é INTEIRAMENTE uma
-        // interpolação booleana (`required={required}`), o gg.jte trata-o
+        // interpolação booleana (`required=${required}`), o gg.jte trata-o
         // como atributo booleano HTML — omite-o por completo quando falso,
         // em vez de escrever `required="false"`.
         assertFalse(html.contains("required"), () -> "required por omissão (false) não pode aparecer no atributo: " + html);

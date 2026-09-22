@@ -17,7 +17,7 @@ class SukoGradlePluginTest {
     void shouldCompileSkFileUsingJteCompiler() throws Exception {
         String source = """
             component Card(String title) {
-              <div class="card"><h2>{title}</h2></div>
+              <div class="card"><h2>${title}</h2></div>
             }
             """;
         Path sourceDir = Files.createTempDirectory("suko-test-source");

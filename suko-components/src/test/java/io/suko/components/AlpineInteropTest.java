@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  *   <li>(a) {@code x-data="{ open: false }"} sai literal no HTML;</li>
  *   <li>(b) um {@code ${expr}} real, no mesmo componente (o atributo
  *       {@code id="dialog-${id}"}), é de facto interpolado;</li>
- *   <li>(c) conteúdo interpolado ({@code {title}}, corpo HTML) é
+ *   <li>(c) conteúdo interpolado ({@code ${title}}, corpo HTML) é
  *       escapado — payload {@code <script>} não pode sobreviver cru.</li>
  * </ol>
  */
@@ -62,7 +62,7 @@ class AlpineInteropTest {
         assertTrue(html.contains("id=\"dialog-confirm\""),
             () -> "${id} tem de ser interpolado dentro do atributo id: " + html);
 
-        // (c) {title} é interpolação de conteúdo (contexto HTML body) —
+        // (c) ${title} é interpolação de conteúdo (contexto HTML body) —
         // tem de ser escapada, nunca sair como HTML/JS cru.
         assertTrue(html.contains("&lt;script&gt;"),
             () -> "conteúdo interpolado de title tem de ser escapado: " + html);

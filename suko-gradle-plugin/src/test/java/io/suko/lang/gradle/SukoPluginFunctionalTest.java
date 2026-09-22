@@ -39,7 +39,7 @@ class SukoPluginFunctionalTest {
             package io.demo;
 
             component Hello(String name) {
-              <p>{name}</p>
+              <p>${name}</p>
             }
             """);
 

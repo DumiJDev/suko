@@ -1,5 +1,5 @@
 package io.suko.other;
 
 public component Field(String text) {
-  <span>{text}</span>
+  <span>${text}</span>
 }

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "dialog",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Diálogo modal com Alpine.js para abrir/fechar, título e conteúdo livre.",
   "category": "overlay",
   "basePackage": "io.suko",
@@ -11,7 +11,7 @@
     {
       "path": "src/main/suko/io/suko/ui/Dialog.sk",
       "target": "ui/Dialog.sk",
-      "sha256": "f7ed59561bdcbad2a7b72892123415890110890ad51b881d87fd4b02037b17bc"
+      "sha256": "89c62901e8b4c555cd580e068f2d13bb53de5e9476d15799d5fb8e36f0d65e89"
     }
   ],
   "dependsOn": [],

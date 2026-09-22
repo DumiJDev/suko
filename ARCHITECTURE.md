@@ -108,7 +108,7 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   publicado por este projeto. Ver `suko-cli/README.md` para a referência
   de comandos e o desenho de duplo hash do `suko.lock.json`.
 - **`suko-website/`** — scaffold vazio para o site de documentação
-  (subprojeto 9). **Achado, não corrigido aqui:** o
+  (subprojeto 10). **Achado, não corrigido aqui:** o
   `build.gradle.kts` deste módulo continua a declarar
   `implementation(project(":suko-components"))` — uma dependência que
   hoje não compila nada, porque `suko-components` não tem `src/main/java`
@@ -116,7 +116,7 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   sobre `suko-registry` (se `suko-website` vier a listar/renderizar o
   catálogo de componentes) ou nenhuma (se só for consumir os `.sk` via
   `suko add`, como qualquer outro consumidor). Decisão de scoping do
-  subprojeto 9, não deste.
+  subprojeto 10, não deste.
 
 `examples/` (ficheiros `.sk` de referência) permanece na raiz do
 repositório, fora de qualquer módulo — não é uma unidade de build.
@@ -171,12 +171,36 @@ repositório, fora de qualquer módulo — não é uma unidade de build.
   (`Function<T, Component>`), nunca inferida do uso.
 
   Consequências visíveis ao autor de `.sk`: um slot `Component` simples
-  lê-se como `{header}` (sem `.apply(null)`); um slot render-prop
-  (`Function<T, Component>`) precisa de `{header(item)}` ou `{row(item)}`
+  lê-se como `${header}` (sem `.apply(null)`); um slot render-prop
+  (`Function<T, Component>`) precisa de `${header(item)}` ou `${row(item)}`
   para passar o parâmetro — agora porque o tipo declarado o diz, não por
-  inferência. O teste `{slot ?: "fallback"}` continua sem suporte para
+  inferência. O teste `${slot ?: "fallback"}` continua sem suporte para
   AMBOS os casos — `Content` vs `String` continuam sem supertipo comum
   aceite pelo `?:` dessaçucarado, permanecendo como limitação conhecida.
+- **Interpolação é sempre `${...}`, em todas as posições (subprojeto 9).**
+  A regra da linguagem é independente da posição: `${expr}` interpola no
+  corpo de um componente, dentro de uma tag, num valor de atributo sem
+  aspas (`disabled=${disabled}`) e dentro de um literal de string
+  (`id="dialog-${id}"`); uma **chaveta nua nunca interpola, em posição
+  nenhuma**. Antes do subprojeto 9 a regra era o inverso conforme a
+  posição — `{expr}` interpolava fora de strings e era texto literal
+  dentro delas — e era essa inversão, mais do que o número de grafias, o
+  que confundia quem chegava.
+  **Porquê `${}` e não `{}`:** chaveta nua colide com usos reais que a
+  linguagem já aceita e de que a biblioteca de componentes depende —
+  `x-data="{ open: false }"` (Alpine, em `Dialog.sk`), `style="--tw-ring:
+  {0}"`, `onclick="if(x){go()}"`. `${}` não colide com nenhum, é o que o
+  `.jte` gerado já escrevia (o autor passa a ler a mesma grafia no fonte e
+  no artefacto intermédio), e tem precedente em Kotlin, template literals
+  de JS, Groovy e JSP EL.
+  **A forma curta `$ident` dentro de strings mantém-se** (`"ola $name"`) —
+  é um atalho do mesmo sigilo, não uma segunda regra posicional.
+  **A gramática continua a aceitar a chaveta nua**, de propósito: quem a
+  rejeita é o `SemanticChecker` (`LEGACY_BRACE_INTERPOLATION`,
+  `LEGACY_BRACE_ATTRIBUTE`, ambos ERROR, com a correção literal na
+  mensagem). Removê-la do `.g4` faria o ANTLR recuperar em silêncio nos
+  dois caminhos de parse sem error listener — ver o bullet sobre erros de
+  parse em "Limitações conhecidas".
 - **Texto dentro de tags resolvido no parser, não no lexer.** A
   primeira tentativa usava um modo léxico `TEXT` (entrado via ação
   do parser logo após o `>` de uma tag de abertura) para lexar
@@ -257,14 +281,14 @@ arquitetura):
 - **Ler um slot render-prop exige chamá-lo.** Um slot declarado
   `Function<T, Component>` é sempre render-prop (decisão explícita na
   assinatura, subprojeto 6 — já não é heurística de scan do corpo); o
-  `.sk` tem de escrever `{header(item)}` ou `{row(item)}` para passar o
+  `.sk` tem de escrever `${header(item)}` ou `${row(item)}` para passar o
   parâmetro (o emitter traduz um identificador conhecido como slot para
   `.apply(...)`). Consequências: (a) testar "slot não preenchido" é
   `header.apply(null) == null` para render-prop, não `header == null` —
   o valor por omissão de um slot é uma função que devolve `null`, nunca
   a referência `null`; (b) iterar um `List<Function<T, Component>>`
   render-prop obriga o `.sk` a escrever o tipo do item como
-  `Function<T, Content>`; (c) `{slot ?: "fallback"}` não compila (ramos
+  `Function<T, Content>`; (c) `${slot ?: "fallback"}` não compila (ramos
   de tipos incompatíveis). Nada disto é verificado hoje: o erro aparece
   como erro de compilação Java no `.jte` gerado.
 - **Tipos qualificados não fazem parse.** `java.util.List<T>` é
@@ -347,7 +371,13 @@ arquitetura):
   mudar `textRun` na gramática (fora do escopo do subprojeto 6); fica
   registada aqui como convenção de autoria a evitar (escrever slots
   nomeados antes de conteúdo solto num mesmo bloco de chamada) até haver
-  correção de gramática dedicada.
+  correção de gramática dedicada. **Efeito colateral positivo do
+  subprojeto 9:** o `{ "Título" }` que sobra já não é lido em silêncio
+  como interpolação válida — é chaveta nua, logo dispara
+  `LEGACY_BRACE_INTERPOLATION` (ERROR). A limitação em si (o `textRun`
+  engolir o `Identifier` de `header`) não foi corrigida e continua a
+  valer, mas o sintoma deixou de ser HTML corrompido em silêncio e passou
+  a ser um erro de compilação visível.
 - **`List<Component> children` (MANY) também recebe o conteúdo solto**
   (corrigido na revisão final do subprojeto 6: o `SukoAstBuilder`
   sintetiza o fill `children` sem saber a cardinalidade do alvo — isso é
@@ -370,17 +400,34 @@ arquitetura):
   engole `var c = Card() ` como **texto literal**, o `{ "x" }` que sobra
   vira uma `interpolation` comum e o `;` vira mais texto. O `.jte` gerado
   passa a conter literalmente `var c = Card() ${"x"};` no meio do HTML, e
-  qualquer leitura posterior de `{c}` falha a compilar ("cannot find
+  qualquer leitura posterior de `${c}` falha a compilar ("cannot find
   symbol: c") — nunca há `Statement.VarDecl`. Correção real exigiria mudar
   a gramática (fora do escopo do subprojeto 6). Mitigação atual: o
   `SemanticChecker` deteta heuristicamente um `textRun` cujo texto contém
   `var x = Componente(` (com `Componente` a resolver na tabela de símbolos)
-  e emite o aviso `VAR_DECL_NOT_PARSED`.
-- **Erros de parse não param a compilação.** Não há `ErrorListener` em
-  `src/main`: o ANTLR imprime o erro no stderr e o `SukoAstBuilder`
-  continua a percorrer uma árvore com nós de erro, produzindo `.jte`
-  corrompido em silêncio. Diagnóstico de sintaxe é infraestrutura em
-  falta, não coberta por nenhum subprojeto até agora.
+  e emite o aviso `VAR_DECL_NOT_PARSED`. **Efeito colateral positivo do
+  subprojeto 9:** o `{ "x" }` que sobra do `textRun` guloso também passa a
+  disparar `LEGACY_BRACE_INTERPOLATION` (ERROR) em vez de virar
+  interpolação válida em silêncio — o `VAR_DECL_NOT_PARSED` continua a ser
+  a única heurística que aponta para a causa real (chamada de componente
+  como valor com bloco de slot), mas o sintoma imediato deixou de ser HTML
+  corrompido sem aviso.
+- **Erros de parse param a compilação no caminho principal, e só nesse.**
+  `SukoErrorListener` (`io.suko.lang.diagnostic`) existe em `src/main` e é
+  instalado por `JteCompiler.parseAndBuild`, que aborta em
+  `diagnostics.hasErrors()` — um `.sk` sintaticamente inválido compilado
+  por aí dá erro com ficheiro, linha e coluna, não `.jte` corrompido.
+  **Há dois caminhos de parse que removem os error listeners de
+  propósito** e não têm essa proteção: `ProjectIndex.parseQuietly`
+  (invocado por `ProjectIndex.build`, Fase 1 da indexação multi-ficheiro,
+  que só quer a assinatura e delega o diagnóstico à Fase 2) e
+  `RegistryGenerator` (geração do manifesto da biblioteca). Nesses dois,
+  um ficheiro que deixe de fazer parse produz recuperação silenciosa do
+  ANTLR e um AST parcial — no segundo, isso significa um manifesto gerado
+  a partir de uma árvore truncada, que sai commitado em JSON com aspeto
+  normal. É por isso que o subprojeto 9 manteve a produção legada de
+  chaveta nua na gramática e rejeitou a sintaxe antiga no
+  `SemanticChecker`, em vez de a apagar do `.g4`.
 - **`</` literal em texto livre** é erro de parse (consequência aceite
   da desambiguação do `textRun`).
 - **Um literal de string Suko não pode conter `<` nem `>`**
@@ -390,7 +437,7 @@ arquitetura):
   conta como comentário (consequência aceite da desambiguação
   comentário-vs-URL).
 - **Espaço em branco órfão entre dois statements não-textRun irmãos é
-  perdido** (`{x} {y}` emite `${x}${y}`).
+  perdido** (`${x} ${y}` emite `${x}${y}`).
 - **Backtick não escapado dentro de um slot fill corrompe o `.jte`
   gerado** (o conteúdo do fill é escrito dentro de `` @`...` `` sem
   escape). É um bug de fidelidade de output, não de segurança: `.sk` é
@@ -436,6 +483,50 @@ arquitetura):
   comprometido (ou um MITM que quebrasse TLS) poderia servir um
   `registry.json` alterado com hashes de ficheiro internamente
   consistentes entre si.
+- **`$` seguido de identificador dentro de uma string é sempre
+  interpolação Suko — colide com as *magic properties* do Alpine.js.**
+  `x-data="$store.foo"`, `x-on:click="$dispatch('evento')"`, `$el`,
+  `$refs`: o `.jte` gerado tenta resolver um símbolo Java `store`/
+  `dispatch` e o `javac` falha com "cannot find symbol". É o espelho exato
+  do problema que levou a rejeitar `{}` dentro de strings no subprojeto 6.
+  Hoje não morde porque `htmlName` ainda não aceita `:` nem `@` num nome
+  de atributo (limitação separada, acima) — **morde no momento em que
+  essa limitação for levantada**, e o subprojeto que alargar `htmlName`
+  para interop com Alpine tem de resolver as duas em conjunto, não pode
+  assumir que `$` está livre. Mitigação disponível hoje: o escape `\$`
+  (`x-data="\$store.foo"`). Manter `$ident` foi decisão explícita do
+  utilizador no subprojeto 9 (D3 rejeitada), com este custo aceite.
+- **Não há escape para um `${` literal fora de uma string.** Dentro de uma
+  string escreve-se `\$` (`"literal \${x}"` sobrevive intacto ao `gg.jte`
+  real, confirmado por sonda na Task 5); em texto livre não há forma de
+  escrever `${` literal — o que torna JS com template literals dentro de
+  um `<script>` inline não escrevível num `.sk`. Já era verdade para `{`
+  antes do subprojeto 9 (ver a limitação "Espaço em branco órfão" e as
+  duas de gulodice do `textRun` acima); passou a ser verdade também para
+  `${`.
+- **A mensagem de `LEGACY_BRACE_INTERPOLATION`/`LEGACY_BRACE_ATTRIBUTE`
+  só reconstrói a correção literal para um identificador simples.**
+  `{title}` produz a mensagem exata `'{title}' já não interpola — escreva
+  '${title}'` (o `SemanticChecker` lê `Expr.PrimaryExpr.text()` direto do
+  AST); para qualquer expressão composta — `{user.name}`, `{a + b}`,
+  `{items.size()}` — não há representação textual reconstruível a partir
+  do `Expr` tipado sem duplicar o `JteEmitter` como segundo
+  pretty-printer, e a mensagem degrada para o genérico `'{expr}' já não
+  interpola — escreva '${expr}'`, com `expr` literal, não a expressão real
+  do autor. O `SourceSpan` do diagnóstico continua a apontar para a
+  posição exata (linha/coluna corretas num IDE ou na saída de erro), só o
+  texto da mensagem em si não é a correção literal nesses casos. Decisão
+  explícita do controlador do plano do subprojeto 9 depois da revisão da
+  Task 11: aceite como está, não é lacuna a fechar agora.
+- **O manifesto do registry não declara versão mínima de linguagem.**
+  `RegistryIndex`/`ComponentManifest` têm `schemaVersion`,
+  `registryVersion` e `version` por componente, mas nada que diga "este
+  fonte exige um compilador Suko >= X". Um consumidor com compilador
+  antigo (anterior ao subprojeto 9) que faça `suko add --ref main` recebe
+  fonte já migrada para `${expr}` que o seu compilador antigo rejeita como
+  chaveta nua legada. O que o protege por omissão é a tag do registry
+  derivar da versão da CLI (D5 do subprojeto 8); um `--ref` explícito
+  contorna essa proteção.
 - **`suko-cli`: impossível pinar a versão de um componente
   independentemente da tag do registry (D5).** Ver `suko-cli/README.md` →
   "Registry pinning é por tag, não por versão de componente" para a
@@ -522,15 +613,17 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    implícitos via parâmetro reservado `children`; chamada de componente
    como valor de expressão (reusa a gramática `CallExpr` já existente,
    sem nó de AST novo); interpolação real `${expr}`/`$ident` em strings
-   e atributos; auto-`toString` null-safe para identificadores simples
+   e atributos (generalizada a todas as posições pelo subprojeto 9);
+   auto-`toString` null-safe para identificadores simples
    de tipo Java arbitrário não coberto pelos overloads do
    `gg.jte.TemplateOutput`. `examples/layout/LayoutComponents.sk`
    migrado como prova end-to-end.
 
 Fora destes seis, como subprojeto dedicado e sem data: renderização
 real de componentes genéricos (erasure para tipo-limite); subprojetos
-7-10 do roadmap revisto, que dependem do 5 e do 6 (ver a spec do
-subprojeto 6 para a origem dos itens 7-9):
+7-11 do roadmap revisto, que dependem do 5 e do 6 (ver a spec do
+subprojeto 6 para a origem dos itens 7, 8 e 10; o item 9, interpolação,
+tem origem própria nesta spec):
 
 7. **Registry/biblioteca de componentes** — CONCLUÍDO. Spec formal em
    `docs/superpowers/specs/2026-09-20-suko-registry-componentes.md`,
@@ -564,11 +657,20 @@ subprojeto 6 para a origem dos itens 7-9):
    Ver `suko-cli/README.md` e "Limitações conhecidas" acima para o
    desenho de duplo hash do lockfile e as lacunas aceites (sem
    assinatura no JSON do registry, sem pinagem por componente).
-9. **Site de documentação** — preenche `suko-website/`. Inclui
-   compilação para HTML estático em build-time (deployável em
-   serverless/CDN sem JVM em runtime) como primeiro caso de uso real
-   dessa capacidade, antes de generalizá-la no compilador.
-10. **Suporte de IDE** (VSCode + IntelliJ) — language server sobre o
+9. **Unificação da sintaxe de interpolação** — CONCLUÍDO. Spec em
+   `docs/superpowers/specs/2026-09-21-suko-interpolacao-unificada.md`,
+   plano em `docs/superpowers/plans/2026-09-21-suko-interpolacao-unificada.md`.
+   `${expr}` passa a ser a única forma de interpolar, nas três posições
+   (statement/corpo de tag, valor de atributo sem aspas, literal de
+   string); a chaveta nua deixa de interpolar em qualquer posição e passa
+   a erro com a correção literal na mensagem. `$ident` dentro de strings
+   mantém-se (D3 rejeitada). Antecipado à frente do site de documentação
+   por pedido explícito do utilizador.
+10. **Site de documentação** — preenche `suko-website/`. Inclui
+    compilação para HTML estático em build-time (deployável em
+    serverless/CDN sem JVM em runtime) como primeiro caso de uso real
+    dessa capacidade, antes de generalizá-la no compilador.
+11. **Suporte de IDE** (VSCode + IntelliJ) — language server sobre o
     `DiagnosticCollector`/`SemanticChecker` já existentes. Sequenciado
     depois do 7/8 (quer uma superfície de AST/diagnostics estável), mas
     sem dependência bloqueante neles. IntelliJ não fala LSP nativamente

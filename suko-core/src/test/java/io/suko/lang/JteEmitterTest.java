@@ -14,7 +14,7 @@ class JteEmitterTest {
     void rendersStaticParagraphWithInterpolatedParam() throws Exception {
         String source = """
             component Greeting(String name) {
-              <p>Hello, {name}!</p>
+              <p>Hello, ${name}!</p>
             }
             """;
 
@@ -34,7 +34,7 @@ class JteEmitterTest {
         String source = """
             component Greeting(String name) {
               var upper = name.toUpperCase();
-              <p>{upper}</p>
+              <p>${upper}</p>
             }
             """;
 
@@ -53,7 +53,7 @@ class JteEmitterTest {
         // de "World !".
         String source = """
             component Greeting(String name) {
-              <p>{name} !</p>
+              <p>${name} !</p>
             }
             """;
 
@@ -66,9 +66,9 @@ class JteEmitterTest {
     void rendersArithmeticAndComparisonExpressions() throws Exception {
         String source = """
             component Sum(int a, int b) {
-              <p>{a + b}</p>
-              <p>{(a - b) * 2}</p>
-              <p>{a > b}</p>
+              <p>${a + b}</p>
+              <p>${(a - b) * 2}</p>
+              <p>${a > b}</p>
             }
             """;
 
@@ -96,8 +96,8 @@ class JteEmitterTest {
         // anterior tinha exercitado este caminho.
         String source = """
             component Neg(int a, int b) {
-              <p>{-a + b}</p>
-              <p>{a - -b}</p>
+              <p>${-a + b}</p>
+              <p>${a - -b}</p>
             }
             """;
 
@@ -110,7 +110,7 @@ class JteEmitterTest {
     void rendersNullSafeAccessAndElvis() throws Exception {
         String source = """
             component Price(String label) {
-              <p>{label?.length() ?: -1}</p>
+              <p>${label?.length() ?: -1}</p>
             }
             """;
 
@@ -170,7 +170,7 @@ class JteEmitterTest {
             component Items<T>(String[] items) {
               <ul>
               for (String item : items) {
-                <li>{item}</li>
+                <li>${item}</li>
               }
               </ul>
             }
@@ -204,7 +204,7 @@ class JteEmitterTest {
     void rendersComponentComposition() throws Exception {
         String source = """
             component NavLink(String label, String href) {
-              <a href={href}>{label}</a>
+              <a href=${href}>${label}</a>
             }
 
             component Menu(String activeLabel) {
@@ -229,7 +229,7 @@ class JteEmitterTest {
         // "Decisão central: Component substitui slot<T>".
         String source = """
             component Card(Component header) {
-              <div class="card">{header}</div>
+              <div class="card">${header}</div>
             }
 
             component Page() {
@@ -259,10 +259,10 @@ class JteEmitterTest {
               if (title == null) {
                 <div>sem-titulo</div>
               } else {
-                <div>{title}</div>
+                <div>${title}</div>
               }
               for (Content action : actions) {
-                <span>{action}</span>
+                <span>${action}</span>
               }
             }
 
@@ -334,14 +334,14 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
             component ItemList(List<String> items, Function<String, Component> row) {
               <ul>
               for (String item : items) {
-                <li>{row(item)}</li>
+                <li>${row(item)}</li>
               }
               </ul>
             }
 
             component Page() {
               ItemList(items = java.util.List.of("a", "b")) {
-                row { item -> <b>{item}</b> }
+                row { item -> <b>${item}</b> }
               }
             }
             """;
@@ -369,15 +369,15 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
             component RowList(List<Function<String, Component>> rows) {
               <ul>
               for (Function<String, Content> row : rows) {
-                <li>{row.apply("x")}</li>
+                <li>${row.apply("x")}</li>
               }
               </ul>
             }
 
             component Page() {
               RowList() {
-                rows { it -> <b>primeira:{it}</b> }
-                rows { it -> <b>segunda:{it}</b> }
+                rows { it -> <b>primeira:${it}</b> }
+                rows { it -> <b>segunda:${it}</b> }
               }
             }
             """;
@@ -392,7 +392,7 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
     void rendersValueParamDefaultWhenOmittedAtCallSite() throws Exception {
         String source = """
             component Greeting(String name, String punctuation = "!") {
-              <p>{name}{punctuation}</p>
+              <p>${name}${punctuation}</p>
             }
 
             component Page() {
@@ -432,7 +432,7 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
         String html = JteRenderSupport.renderWithDependencies(
             """
             component Card(Component header) {
-              <div>{header}</div>
+              <div>${header}</div>
             }
             component Host() {
               Card() {
@@ -483,11 +483,11 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
         String html = JteRenderSupport.renderWithDependencies(
             """
             component Row(Function<String, Component> label) {
-              <li>{label("x")}</li>
+              <li>${label("x")}</li>
             }
             component Host() {
               Row() {
-                label { it -> <span>valor: {it}</span> }
+                label { it -> <span>valor: ${it}</span> }
               }
             }
             """, "Host", java.util.Map.of());
@@ -500,7 +500,7 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
         String html = JteRenderSupport.renderWithDependencies(
             """
             component Field(Component children) {
-              <div>{children}</div>
+              <div>${children}</div>
             }
             component Host() {
               Field() {
@@ -542,8 +542,8 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
         String html = JteRenderSupport.renderWithDependencies(
             """
             component Layout(Component children, Component header) {
-              <header>{header}</header>
-              <main>{children}</main>
+              <header>${header}</header>
+              <main>${children}</main>
             }
             component Host() {
               Layout() {
@@ -569,7 +569,7 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
             }
             component Host(boolean useA) {
               var c = useA ? CardA() : CardB();
-              <div>{c}</div>
+              <div>${c}</div>
             }
             """, "Host", java.util.Map.of("useA", true));
 
@@ -597,7 +597,7 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
         String html = JteRenderSupport.render(
             """
             component Show(Object id) {
-              <p>{id}</p>
+              <p>${id}</p>
             }
             """, "Show", java.util.Map.of("id", java.util.UUID.fromString("11111111-1111-1111-1111-111111111111")));
 
@@ -625,7 +625,7 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
         String html = JteRenderSupport.renderWithDependencies(
             """
             component Card(Component children) {
-              <div>{children}</div>
+              <div>${children}</div>
             }
             component Host() {
               Card() { "Título" }

@@ -13,22 +13,22 @@ public component Alert(String variant = "info", Component children) {
   switch (variant) {
     case "success" -> {
       <div class="rounded-md bg-green-50 p-4 text-sm text-green-700 ring-1 ring-inset ring-green-600/20">
-        {children}
+        ${children}
       </div>
     }
     case "warning" -> {
       <div class="rounded-md bg-yellow-50 p-4 text-sm text-yellow-800 ring-1 ring-inset ring-yellow-600/20">
-        {children}
+        ${children}
       </div>
     }
     case "danger" -> {
       <div class="rounded-md bg-red-50 p-4 text-sm text-red-700 ring-1 ring-inset ring-red-600/10">
-        {children}
+        ${children}
       </div>
     }
     default -> {
       <div class="rounded-md bg-blue-50 p-4 text-sm text-blue-700 ring-1 ring-inset ring-blue-600/20">
-        {children}
+        ${children}
       </div>
     }
   }

@@ -152,7 +152,7 @@ public class SemanticChecker {
         for (Statement statement : component.body()) {
             checkStatement(statement, declaredSlots);
         }
-        checkBareBraceInStrings(component);
+        checkSyntaxSurface(component);
     }
 
     private static final java.util.regex.Pattern BARE_BRACE_IDENT =
@@ -163,30 +163,120 @@ public class SemanticChecker {
      * certamente o autor queria `${ident}` (interpolação), mas `{...}`
      * dentro de uma string é, por design, texto literal (ver ARCHITECTURE.md:
      * Alpine.js `x-data="{ open: false }"`, custom properties CSS, JS
-     * inline). */
-    private void checkBareBraceInStrings(ComponentDecl component) {
+     * inline). Depois do subprojeto 9 (sintaxe de interpolação unificada), a
+     * chaveta nua não interpola em posição nenhuma — não só dentro de
+     * strings. */
+    /** Diagnósticos de SINTAXE sobre o corpo de um componente
+     * (`BARE_BRACE_IN_STRING`, `VAR_DECL_NOT_PARSED`, e os de forma legada
+     * do subprojeto 9). Renomeado de `checkBareBraceInStrings` quando
+     * deixou de ser só sobre chavetas em strings. */
+    private void checkSyntaxSurface(ComponentDecl component) {
         java.util.Set<String> paramNames = component.params().stream()
                 .map(Param::name).collect(java.util.stream.Collectors.toSet());
-        for (Statement statement : component.body()) {
-            checkBareBraceInStatement(statement, paramNames);
+        checkSyntaxInStatements(component.body(), paramNames);
+    }
+
+    private void checkSyntaxInStatements(List<Statement> statements, java.util.Set<String> paramNames) {
+        for (Statement statement : statements) {
+            checkSyntaxInStatement(statement, paramNames);
         }
     }
 
-    private void checkBareBraceInStatement(Statement statement, java.util.Set<String> paramNames) {
+    // EXAUSTIVO SOBRE AS 8 VARIANTES DE `Statement`, sem `default` — de
+    // propósito. A versão anterior tinha `default -> {}` e não descia a
+    // if/for/switch, e nenhum percurso do checker descia a corpos de slot
+    // fill: Alert.sk, Badge.sk e Button.sk têm o corpo INTEIRO dentro de um
+    // switch, logo o BARE_BRACE_IN_STRING nunca os via. Sem `default`, uma
+    // variante nova de Statement passa a ser erro de compilação aqui, em
+    // vez de um buraco silencioso.
+    private void checkSyntaxInStatement(Statement statement, java.util.Set<String> paramNames) {
         switch (statement) {
             case Statement.HtmlElement element -> {
                 for (Statement.Attribute attribute : element.attributes()) {
+                    checkLegacyBraceAttribute(attribute);
                     checkBareBraceInExpr(attribute.value(), paramNames, attribute.span());
                 }
-                for (Statement child : element.children()) {
-                    checkBareBraceInStatement(child, paramNames);
+                checkSyntaxInStatements(element.children(), paramNames);
+            }
+            case Statement.Interpolation interpolation -> {
+                checkLegacyBraceInterpolation(interpolation);
+                checkBareBraceInExpr(interpolation.expr(), paramNames, interpolation.span());
+            }
+            case Statement.TextRun textRun -> checkSwallowedVarDecl(textRun);
+            case Statement.VarDecl varDecl ->
+                checkBareBraceInExpr(varDecl.value(), paramNames, varDecl.span());
+            case Statement.IfStmt ifStmt -> {
+                checkBareBraceInExpr(ifStmt.condition(), paramNames, ifStmt.span());
+                checkSyntaxInStatements(ifStmt.thenBranch(), paramNames);
+                checkSyntaxInStatements(ifStmt.elseBranch(), paramNames);
+            }
+            case Statement.ForStmt forStmt -> {
+                checkBareBraceInExpr(forStmt.iterable(), paramNames, forStmt.span());
+                checkSyntaxInStatements(forStmt.body(), paramNames);
+            }
+            case Statement.SwitchStmt switchStmt -> {
+                checkBareBraceInExpr(switchStmt.subject(), paramNames, switchStmt.span());
+                for (Statement.SwitchCase switchCase : switchStmt.cases()) {
+                    checkBareBraceInExpr(switchCase.matchValue(), paramNames, switchStmt.span());
+                    checkSyntaxInStatements(switchCase.body(), paramNames);
+                }
+                checkSyntaxInStatements(switchStmt.defaultCase(), paramNames);
+            }
+            case Statement.ComponentCallStmt call -> {
+                for (Statement.Arg arg : call.args()) {
+                    checkBareBraceInExpr(arg.value(), paramNames, call.span());
+                }
+                for (Statement.SlotFill fill : call.slotFills()) {
+                    checkSyntaxInStatements(fill.body(), paramNames);
                 }
             }
-            case Statement.Interpolation interpolation ->
-                checkBareBraceInExpr(interpolation.expr(), paramNames, interpolation.span());
-            case Statement.TextRun textRun -> checkSwallowedVarDecl(textRun);
-            default -> {}
         }
+    }
+
+    /** Subprojeto 9 (D1/D5): a chaveta nua deixou de interpolar em todas as
+     * posições. A gramática continua a aceitá-la de propósito — removê-la
+     * faria o ANTLR recuperar em silêncio nos caminhos de parse sem error
+     * listener (ProjectIndex, RegistryGenerator), e no segundo isso é um
+     * manifesto gerado a partir de uma árvore truncada. Quem fecha a porta é
+     * este erro, com a correção literal na mensagem. */
+    private void checkLegacyBraceInterpolation(Statement.Interpolation interpolation) {
+        if (!interpolation.legacyBraceForm()) {
+            return;
+        }
+        String shown = shownExprText(interpolation.expr());
+        diagnostics.add(new SukoDiagnostic(
+                SukoDiagnostic.Severity.ERROR,
+                "'{" + shown + "}' já não interpola — escreva '${" + shown + "}'",
+                "LEGACY_BRACE_INTERPOLATION",
+                sourceFile,
+                interpolation.span()
+        ));
+    }
+
+    private void checkLegacyBraceAttribute(Statement.Attribute attribute) {
+        if (!attribute.legacyBraceForm()) {
+            return;
+        }
+        String shown = shownExprText(attribute.value());
+        diagnostics.add(new SukoDiagnostic(
+                SukoDiagnostic.Severity.ERROR,
+                "'" + attribute.name() + "={" + shown + "}' já não interpola — escreva '"
+                        + attribute.name() + "=${" + shown + "}'",
+                "LEGACY_BRACE_ATTRIBUTE",
+                sourceFile,
+                attribute.span()
+        ));
+    }
+
+    /** Texto da expressão para a mensagem. Um identificador simples — que é
+     * a forma de praticamente toda a interpolação real (`{children}`,
+     * `{label}`, `{title}`) — sai literal, o que dá ao autor a linha exata
+     * para escrever. Para uma expressão composta não há representação textual
+     * no AST (só `Expr` tipado), e reconstruí-la aqui seria um segundo
+     * pretty-printer a divergir do JteEmitter: usa-se um marcador genérico,
+     * e o `SourceSpan` do diagnóstico aponta para a posição exata. */
+    private String shownExprText(Expr expr) {
+        return expr instanceof Expr.PrimaryExpr primary ? primary.text() : "expr";
     }
 
     private static final java.util.regex.Pattern SWALLOWED_VAR_DECL =
@@ -275,7 +365,7 @@ public class SemanticChecker {
             // escrita dentro de uma tag, COMPONENT_NOT_FOUND /
             // COMPONENT_NOT_VISIBLE / SLOT_NOT_FOUND / CARDINALITY_VIOLATION
             // eram trivialmente contornáveis. Percurso simétrico ao que
-            // checkBareBraceInStatement já fazia ao lado (:174).
+            // checkSyntaxInStatement já fazia ao lado.
             case Statement.HtmlElement element -> {
                 for (Statement.Attribute attribute : element.attributes()) {
                     checkExprForComponentCalls(attribute.value());

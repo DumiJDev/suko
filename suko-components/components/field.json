@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "field",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Label e input emparelhados, compostos a partir dos componentes Label e Input importados.",
   "category": "form",
   "basePackage": "io.suko",

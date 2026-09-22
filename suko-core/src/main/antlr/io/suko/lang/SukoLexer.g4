@@ -136,9 +136,23 @@ BLOCK_COMMENT
     ;
 
 // --- strings com interpolação estilo Kotlin: "$x" e "${expr}" ---
-// Usadas em VALORES (atribuições, argumentos, atributos) — não é
-// o mecanismo de interpolação de conteúdo de tag (esse é resolvido
-// no parser, ver SukoParser.g4 / regra textRun).
+// Subprojeto 9 (D1/D2): "${expr}" deixou de ser exclusivo de VALORES —
+// passa a ser o mesmo mecanismo de interpolação em qualquer posição da
+// linguagem (statement, corpo de tag, valor de atributo, dentro de
+// string). "$identificador" (SIMPLE_INTERP_START) continua exclusivo de
+// dentro de string (D3 rejeitada — ver mode STRING_MODE, abaixo).
+
+// "${ expr }" FORA de string (subprojeto 9, D1/D2): statement, corpo de
+// tag e valor de atributo. Deliberadamente SEM comando de modo — já
+// estamos em DEFAULT_MODE, e empurrar um modo aqui sujaria a pilha que o
+// popMode condicional do RBRACE (acima) consome: um "${" sem fecho faria
+// o "}" seguinte de um templateBlock/if/for dar um pop indevido.
+// O mesmo TIPO de token é reemitido de dentro de STRING_MODE (ver
+// STRING_EXPR_INTERP_START, no fim deste ficheiro), o que permite ao
+// parser ter uma única regra `interpolation` para as três posições.
+EXPR_INTERP_START
+    : '${'
+    ;
 
 STRING_START
     : '"' {canStartStringLiteral()}? -> pushMode(STRING_MODE)
@@ -165,11 +179,15 @@ STRING_ESCAPE
     : '\\' .
     ;
 
-// "${ expr }" — a expressão em si não tem chaves em seu próprio
-// grammar (sem lambdas/blocos), então um único '}' fecha sem
-// ambiguidade de profundidade.
-EXPR_INTERP_START
-    : '${' -> pushMode(DEFAULT_MODE)
+// "${ expr }" dentro de string — a expressão em si não tem chaves no seu
+// próprio grammar (sem lambdas/blocos), então um único '}' fecha sem
+// ambiguidade de profundidade. Re-tipa para EXPR_INTERP_START (declarado
+// em DEFAULT_MODE) de propósito: é a unificação do subprojeto 9 ao nível
+// do token, e é o que permite a `stringPart` reutilizar a mesma regra
+// `interpolation` do parser. O pushMode continua aqui, e SÓ aqui —
+// é esta a única posição que precisa de voltar de modo.
+STRING_EXPR_INTERP_START
+    : '${' -> type(EXPR_INTERP_START), pushMode(DEFAULT_MODE)
     ;
 
 // "$identificador" — forma simples, sem chaves

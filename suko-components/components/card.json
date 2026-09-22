@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "name": "card",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Cartão com cabeçalho e rodapé opcionais, e conteúdo obrigatório.",
   "category": "layout",
   "basePackage": "io.suko",
@@ -11,7 +11,7 @@
     {
       "path": "src/main/suko/io/suko/ui/Card.sk",
       "target": "ui/Card.sk",
-      "sha256": "dc41ae68e671022e9f7224299b4469fc7735f8ff8460222d41cfc6f502b4a2ab"
+      "sha256": "440df583185522c18e0c8e28ddbe9d6297b0af11cc5ff51a15ec857197938e6a"
     }
   ],
   "dependsOn": [],

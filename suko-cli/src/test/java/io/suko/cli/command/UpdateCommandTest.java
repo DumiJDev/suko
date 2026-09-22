@@ -246,7 +246,13 @@ class UpdateCommandTest {
         Lockfile lockfile = Lockfile.load(projectDir).orElseThrow();
         LockEntry.FileEntry entry = labelFileEntry(lockfile);
         assertEquals(Hashes.sha256OfNormalized(content.getBytes(StandardCharsets.UTF_8)), entry.localSha256());
-        assertNotEquals(entry.upstreamSha256(), "74a03dcf4e832ddb09b3e30225dc35dc8d118630b8ccd0198051c19dd8beeca3",
+        // O sha256 do Label.sk upstream ANTES do tamper acima. Tem de ser
+        // atualizado sempre que o Label.sk da biblioteca mudar (mudou no
+        // subprojeto 9, com a migração para `${expr}`): o valor sai de
+        // suko-components/components/label.json. Sem isto o assertNotEquals
+        // passa a ser trivialmente verdadeiro e deixa de provar que o
+        // upstreamSha256 foi mesmo atualizado.
+        assertNotEquals(entry.upstreamSha256(), "daf4d783950df338e2a97ab877e52fb1764a5b925e6dc8706c9f7ee3c87aaeb0",
                 "upstreamSha256 must have been updated to the new manifest hash too");
     }
 

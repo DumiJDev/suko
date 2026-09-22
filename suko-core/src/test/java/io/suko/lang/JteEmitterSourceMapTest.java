@@ -15,7 +15,7 @@ class JteEmitterSourceMapTest {
     void mapsTopLevelStatementsToTheirSukoLine() {
         String source = """
             component Greeting(String name) {
-              <p>Hello, {name}!</p>
+              <p>Hello, ${name}!</p>
               <p>Bye</p>
             }
             """;

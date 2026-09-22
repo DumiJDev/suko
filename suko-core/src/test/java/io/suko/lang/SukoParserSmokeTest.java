@@ -84,7 +84,7 @@ class SukoParserSmokeTest {
     void parsesInterpolatedStringWithTrailingText() {
         String source = """
             component Greeting(String name) {
-              <p>{"Olá ${name}!"}</p>
+              <p>${"Olá ${name}!"}</p>
             }
             """;
         // Só precisa de não lançar exceção de parse — a tradução para AST/Java
@@ -102,7 +102,7 @@ class SukoParserSmokeTest {
     void parsesPublicAndDefaultVisibilityComponentsWithoutErrors() {
         String source = """
             public component NavLink(String href) {
-              <a href="{href}">link</a>
+              <a href="${href}">link</a>
             }
             component Helper() {
               <span>x</span>

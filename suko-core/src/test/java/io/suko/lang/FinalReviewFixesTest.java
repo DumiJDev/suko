@@ -82,7 +82,7 @@ class FinalReviewFixesTest {
     void pureSingleNonStringInterpolationIsUsableWhereStringIsExpected() throws Exception {
         String html = JteRenderSupport.renderWithDependencies("""
             component Label(String text) {
-              <p>{text}</p>
+              <p>${text}</p>
             }
             component Host(int count) {
               Label(text="$count")
@@ -115,7 +115,7 @@ class FinalReviewFixesTest {
             component Stack(List<Component> children) {
               <ul>
                 for (Content c : children) {
-                  <li>{c}</li>
+                  <li>${c}</li>
                 }
               </ul>
             }
@@ -137,7 +137,7 @@ class FinalReviewFixesTest {
             component Stack(List<Component> children) {
               <ul>
                 for (Content c : children) {
-                  <li>{c}</li>
+                  <li>${c}</li>
                 }
               </ul>
             }
@@ -163,11 +163,11 @@ class FinalReviewFixesTest {
     void componentCallAsValueWithSlotBlockIsFlaggedAsUnparsedVarDecl() {
         DiagnosticCollector diagnostics = checkSource("""
             component Card(Component children) {
-              <div>{children}</div>
+              <div>${children}</div>
             }
             component Host() {
               var c = Card() { "x" };
-              <div>{c}</div>
+              <div>${c}</div>
             }
             """, "test.sk");
 
@@ -183,7 +183,7 @@ class FinalReviewFixesTest {
             }
             component Host() {
               var c = CardA();
-              <div>{c}</div>
+              <div>${c}</div>
             }
             """, "test.sk");
 

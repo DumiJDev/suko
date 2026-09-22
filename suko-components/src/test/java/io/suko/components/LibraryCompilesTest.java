@@ -102,13 +102,13 @@ class LibraryCompilesTest {
               Function<String, Component> oneRenderProp,
               List<Function<String, Component>> manyRenderProp
             ) {
-              {one}
+              ${one}
               for (Content c : many) {
-                {c}
+                ${c}
               }
-              {oneRenderProp("x")}
+              ${oneRenderProp("x")}
               for (Function<String, Content> f : manyRenderProp) {
-                {f.apply("y")}
+                ${f.apply("y")}
               }
             }
             """;

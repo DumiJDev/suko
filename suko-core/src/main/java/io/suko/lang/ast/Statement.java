@@ -11,13 +11,21 @@ public sealed interface Statement permits Statement.HtmlElement, Statement.TextR
                         boolean selfClosing, SourceSpan span) implements Statement {
     }
 
-    record Attribute(String name, Expr value, SourceSpan span) {
+    /** `legacyBraceForm` = o valor sem aspas foi escrito `attr={expr}`,
+     * removido pelo subprojeto 9 (D4). Mesma mecânica de Interpolation. */
+    record Attribute(String name, Expr value, boolean legacyBraceForm, SourceSpan span) {
     }
 
     record TextRun(String text, SourceSpan span) implements Statement {
     }
 
-    record Interpolation(Expr expr, SourceSpan span) implements Statement {
+    /** `legacyBraceForm` = a interpolação foi escrita com a chaveta nua
+     * `{expr}`, removida pelo subprojeto 9 (D1). Marcada no AST, e não
+     * rejeitada no parser, porque a gramática tem de continuar a aceitá-la
+     * para não haver recuperação silenciosa nos caminhos de parse sem
+     * error listener (ProjectIndex, RegistryGenerator) — quem a rejeita é
+     * o SemanticChecker. */
+    record Interpolation(Expr expr, boolean legacyBraceForm, SourceSpan span) implements Statement {
     }
 
     record VarDecl(String name, Expr value, SourceSpan span) implements Statement {

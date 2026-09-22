@@ -43,7 +43,7 @@ class SemanticCheckerProjectTest {
             package ui;
 
             %scomponent Badge(String text) {
-              <span>{text}</span>
+              <span>${text}</span>
             }
             """.formatted(isPublic ? "public " : ""));
     }
@@ -172,7 +172,7 @@ class SemanticCheckerProjectTest {
             package other;
 
             public component Badge(String text) {
-              <em>{text}</em>
+              <em>${text}</em>
             }
             """);
 

@@ -1,9 +1,9 @@
 package io.suko.ui;
 
 public component Bad(String text) {
-  <div>{text}</div>
+  <div>${text}</div>
 }
 
 public component AlsoBad(String text) {
-  <span>{text}</span>
+  <span>${text}</span>
 }
