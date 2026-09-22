@@ -11,7 +11,7 @@
     {
       "path": "src/main/suko/io/suko/ui/Card.sk",
       "target": "ui/Card.sk",
-      "sha256": "8086d6b7dde04559d00d04d99a77b93756a2a019563c308fe4efce23b4bd0ed1"
+      "sha256": "440df583185522c18e0c8e28ddbe9d6297b0af11cc5ff51a15ec857197938e6a"
     }
   ],
   "dependsOn": [],

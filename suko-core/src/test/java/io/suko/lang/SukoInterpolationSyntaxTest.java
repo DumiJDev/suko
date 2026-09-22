@@ -19,10 +19,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Subprojeto 9 (D1/D4): `${expr}` interpola nas três posições. Enquanto
- * este subprojeto não fecha a porta (Task 10 do plano), a forma legada
- * `{expr}` continua a fazer parse e a produzir o MESMO .jte — é isso que
- * permite migrar o repositório com a suite verde.
+ * Subprojeto 9 (D1/D4): `${expr}` interpola nas três posições. A forma
+ * legada `{expr}` continua a fazer *parse* de propósito (C2 — para não
+ * haver recuperação silenciosa nos caminhos sem error listener), mas
+ * desde a Task 11 é rejeitada pelo {@code SemanticChecker}. Estes testes
+ * usam {@code compileToJte}/o parser diretamente, que não corre o
+ * {@code SemanticChecker}, por isso continuam válidos e não colidem com
+ * os novos diagnósticos ERROR da forma legada.
  */
 class SukoInterpolationSyntaxTest {
 

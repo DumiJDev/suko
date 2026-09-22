@@ -7,7 +7,7 @@ package io.suko.ui;
 // verificados com `!= null` (mesmo padrão de `Toolbar` em
 // JteEmitterTest: comparação direta do parâmetro `Component`, sem
 // nenhum operador de coalescência — convenção 5 do subprojeto 7, porque
-// `{slot ?: "fallback"}` não compila).
+// `${slot ?: "fallback"}` não compila).
 //
 // Convenção 3: nenhum "${...}" dentro de `class` — nenhum destes
 // atributos depende de `variant`, por isso não há switch aqui.
