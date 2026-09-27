@@ -32,11 +32,16 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Set up Node (for the Tailwind CLI, run via npx)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Generate website
-        run: ./gradlew :suko-website:generateWebsite --console=plain
+        run: ./gradlew :suko-website:generateWebsite :suko-website:buildTailwindCss --console=plain
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

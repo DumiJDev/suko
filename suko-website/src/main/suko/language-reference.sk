@@ -1,9 +1,14 @@
 component LanguageReference() {
-  <div class="h-screen bg-gray-50">
-    <nav class="bg-blue-600 text-white py-6">
-      <div class="max-w-7xl mx-auto px-4">
-        <h1 class="text-3xl font-bold">Suko</h1>
-        <p class="text-blue-100 mt-2">Language Reference</p>
+  <div class="min-h-screen bg-gray-50">
+    <nav class="bg-teal-600 text-white py-6">
+      <div class="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4">
+        <a href="index.html" class="text-2xl font-bold text-white">Suko</a>
+        <div class="flex flex-wrap gap-6 text-sm font-medium text-teal-100">
+          <a href="getting-started.html" class="hover:text-white">Getting Started</a>
+          <a href="language-reference.html" class="text-white underline">Language Reference</a>
+          <a href="components/index.html" class="hover:text-white">Components</a>
+          <a href="roadmap.html" class="hover:text-white">Roadmap</a>
+        </div>
       </div>
     </nav>
 
@@ -55,26 +60,27 @@ component LanguageReference() {
       <section id="slots" class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
         <h3 class="text-2xl font-bold text-gray-900 mb-4">Slots</h3>
         <p class="text-gray-700 mb-4">
-          Slots permitem que componentes recebam conteúdo. O Suko oferece slots implícitos (conteúdo solto) e slots tipados:
+          Não existe um tipo <code>slot&lt;T&gt;</code> dedicado: um parâmetro do tipo <code>Component</code>
+          (ou <code>List&lt;Component&gt;</code> para múltiplos, ou <code>Function&lt;T, Component&gt;</code> para
+          conteúdo parametrizado) é reconhecido como slot pela sua assinatura. Um parâmetro chamado
+          <code>children</code> recebe automaticamente o conteúdo solto passado entre as tags de chamada do
+          componente; qualquer outro nome do tipo <code>Component</code> tem de ser atribuído explicitamente:
         </p>
         <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-4 font-mono text-sm">
-          component Layout() &#123;
-            <main>
-              <header>
-                <h1>Meu Site</h1>
-              </header>
-              <nav>
-                <a href="/">Início</a>
-                <a href="/sobre">Sobre</a>
-              </nav>
-              <footer>
-                <p>© 2026 Meu Site</p>
-              </footer>
-            </main>
+          public component Card(Component children, Component header = null) &#123;
+            <div class="card">
+              if (header != null) &#123;
+                <div class="card-header">&#123;header&#125;</div>
+              &#125;
+              <div class="card-body">&#123;children&#125;</div>
+            </div>
           &#125;
         </p>
         <p class="text-gray-700">
-          O conteúdo solto entre as tags é automaticamente atribuído ao slot implícito do componente.
+          <code>header</code> é opcional (valor por omissão <code>null</code>) e testado com <code>if (header != null)</code> —
+          não há operador de coalescência para valores <code>Component</code>. Veja o componente real em
+          <a href="https://github.com/DumiJDev/suko/blob/main/suko-components/src/main/suko/io/suko/ui/Card.sk"
+             class="text-teal-600">suko-components/.../Card.sk</a>.
         </p>
       </section>
 
@@ -103,9 +109,9 @@ component LanguageReference() {
       <section class="bg-white rounded-lg border border-gray-200 p-8">
         <h3 class="text-2xl font-bold text-gray-900 mb-4">Exemplos</h3>
         <ul class="list-disc pl-6 text-gray-700 space-y-2">
-          <li><a href="components/index.html" class="text-blue-600">Veja a biblioteca de componentes</a></li>
-          <li><a href="getting-started.html" class="text-blue-600">Guia de instalação</a></li>
-          <li><a href="https://github.com/suko-lang/suko" class="text-blue-600">Código-fonte completo</a></li>
+          <li><a href="components/index.html" class="text-teal-600">Veja a biblioteca de componentes</a></li>
+          <li><a href="getting-started.html" class="text-teal-600">Guia de instalação</a></li>
+          <li><a href="https://github.com/DumiJDev/suko" class="text-teal-600">Código-fonte completo</a></li>
         </ul>
       </section>
     </main>

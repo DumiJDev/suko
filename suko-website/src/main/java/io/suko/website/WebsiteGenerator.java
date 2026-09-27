@@ -127,6 +127,10 @@ public final class WebsiteGenerator {
         renderAndWrite(engine, "LanguageReference", Map.of(), "Language Reference · Suko",
             outputDir.resolve("language-reference.html"));
 
+        // Render roadmap page
+        renderAndWrite(engine, "Roadmap", Map.of(), "Roadmap · Suko",
+            outputDir.resolve("roadmap.html"));
+
         // Render component catalog index
         Path componentsOutDir = outputDir.resolve("components");
         Files.createDirectories(componentsOutDir);
@@ -178,11 +182,16 @@ public final class WebsiteGenerator {
         StringBuilder sb = new StringBuilder();
         sb.append("package components;\n\n");
         sb.append("component ").append(componentClassName).append("() {\n");
-        sb.append("  <div class=\"h-screen bg-gray-50\">\n");
-        sb.append("    <nav class=\"bg-blue-600 text-white py-6\">\n");
-        sb.append("      <div class=\"max-w-7xl mx-auto px-4\">\n");
-        sb.append("        <h1 class=\"text-2xl font-bold\"><a href=\"..\" class=\"text-white\">Suko</a></h1>\n");
-        sb.append("        <p class=\"text-blue-100 mt-2\">Component: ").append(componentName).append("</p>\n");
+        sb.append("  <div class=\"min-h-screen bg-gray-50\">\n");
+        sb.append("    <nav class=\"bg-teal-600 text-white py-6\">\n");
+        sb.append("      <div class=\"max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4\">\n");
+        sb.append("        <a href=\"../index.html\" class=\"text-2xl font-bold text-white\">Suko</a>\n");
+        sb.append("        <div class=\"flex flex-wrap gap-6 text-sm font-medium text-teal-100\">\n");
+        sb.append("          <a href=\"../getting-started.html\" class=\"hover:text-white\">Getting Started</a>\n");
+        sb.append("          <a href=\"../language-reference.html\" class=\"hover:text-white\">Language Reference</a>\n");
+        sb.append("          <a href=\"index.html\" class=\"text-white underline\">Components</a>\n");
+        sb.append("          <a href=\"../roadmap.html\" class=\"hover:text-white\">Roadmap</a>\n");
+        sb.append("        </div>\n");
         sb.append("      </div>\n");
         sb.append("    </nav>\n\n");
         sb.append("    <main class=\"max-w-7xl mx-auto px-4 py-12\">\n");
@@ -284,11 +293,16 @@ public final class WebsiteGenerator {
         StringBuilder sb = new StringBuilder();
         sb.append("package components;\n\n");
         sb.append("component Index() {\n");
-        sb.append("  <div class=\"h-screen bg-gray-50\">\n");
-        sb.append("    <nav class=\"bg-blue-600 text-white py-6\">\n");
-        sb.append("      <div class=\"max-w-7xl mx-auto px-4\">\n");
-        sb.append("        <h1 class=\"text-2xl font-bold\"><a href=\"..\" class=\"text-white\">Suko</a></h1>\n");
-        sb.append("        <p class=\"text-blue-100 mt-2\">Component Library</p>\n");
+        sb.append("  <div class=\"min-h-screen bg-gray-50\">\n");
+        sb.append("    <nav class=\"bg-teal-600 text-white py-6\">\n");
+        sb.append("      <div class=\"max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4\">\n");
+        sb.append("        <a href=\"../index.html\" class=\"text-2xl font-bold text-white\">Suko</a>\n");
+        sb.append("        <div class=\"flex flex-wrap gap-6 text-sm font-medium text-teal-100\">\n");
+        sb.append("          <a href=\"../getting-started.html\" class=\"hover:text-white\">Getting Started</a>\n");
+        sb.append("          <a href=\"../language-reference.html\" class=\"hover:text-white\">Language Reference</a>\n");
+        sb.append("          <a href=\".\" class=\"text-white underline\">Components</a>\n");
+        sb.append("          <a href=\"../roadmap.html\" class=\"hover:text-white\">Roadmap</a>\n");
+        sb.append("        </div>\n");
         sb.append("      </div>\n");
         sb.append("    </nav>\n\n");
         sb.append("    <main class=\"max-w-7xl mx-auto px-4 py-12\">\n");
@@ -384,7 +398,9 @@ public final class WebsiteGenerator {
             String title, Path outputFile) {
         TemplateOutput output = new StringOutput();
         engine.render(templateName + ".jte", params, output);
-        String html = wrapDocument(title, output.toString());
+        int depth = outputDir.relativize(outputFile).getNameCount() - 1;
+        String assetsPrefix = "../".repeat(depth) + "assets/";
+        String html = wrapDocument(title, assetsPrefix, output.toString());
         try {
             Files.writeString(outputFile, html, StandardCharsets.UTF_8);
         } catch (IOException e) {
@@ -393,19 +409,26 @@ public final class WebsiteGenerator {
     }
 
     /**
-     * Envolve o fragmento renderizado num documento HTML5 completo, carregando
-     * o Tailwind CSS e o Alpine.js exigidos como externalRequirements pelos
-     * componentes de suko-components (ver Dialog.sk / registry.json) — o
-     * fragmento sozinho não tem <head> nem estes scripts.
+     * Envolve o fragmento renderizado num documento HTML5 completo. O CSS é
+     * pré-compilado pelo Tailwind (tarefa Gradle `buildTailwindCss`, depois
+     * deste programa correr) em vez de servido via CDN/JIT — a própria
+     * Tailwind desaconselha o CDN em produção; o link aqui só assume que
+     * `assets/site.css` vai existir quando essa tarefa correr a seguir.
+     * O Alpine.js continua via CDN (exigido como externalRequirement pelo
+     * Dialog — ver registry.json — e não vale a pena pré-compilar 15KB de JS
+     * estático).
      */
-    private static String wrapDocument(String title, String bodyHtml) {
+    private static String wrapDocument(String title, String assetsPrefix, String bodyHtml) {
         return "<!doctype html>\n"
             + "<html lang=\"pt\">\n"
             + "<head>\n"
             + "<meta charset=\"UTF-8\">\n"
             + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
             + "<title>" + title + "</title>\n"
-            + "<script src=\"https://cdn.tailwindcss.com\"></script>\n"
+            + "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
+            + "<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n"
+            + "<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap\" rel=\"stylesheet\">\n"
+            + "<link rel=\"stylesheet\" href=\"" + assetsPrefix + "site.css\">\n"
             + "<script defer src=\"https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js\"></script>\n"
             + "</head>\n"
             + "<body>\n"

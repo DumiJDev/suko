@@ -584,22 +584,33 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    Validadores de componentes e slots implementados.
 3. **Verificação Java** — CONCLUÍDO. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` compila stubs Java e mapeia erros para `.sk`.
 4. **Integração no build** — CONCLUÍDO. Plugin Gradle (`sukoCompile`, `sukoWatch`), plugin Maven (`suko:compile`), modo watch com `WatchService`, E2E tests.
-   **Ressalva (Tarefa 7 do subprojeto 5):** o módulo `suko-maven-plugin`
-   compila e tem testes unitários, mas **ainda não produz um descritor de
-   plugin utilizável** (`META-INF/maven/plugin.xml`) — a geração,
-   não-funcional, foi removida; ver o comentário em
-   `suko-maven-plugin/build.gradle.kts`. Ou seja, `mvn suko:compile` ainda
-   não é executável end-to-end. **Assimetria (fechada só de um lado pelo
-   subprojeto 8, tarefa 4):** o caminho Gradle está hoje suportado de
-   ponta-a-ponta — `suko-gradle-plugin` aplica `java-gradle-plugin` e
-   declara `gradlePlugin { plugins { create("suko") { id = "io.suko.lang" } } }`,
+   **Ressalva fechada:** o módulo `suko-maven-plugin` agora tem um
+   `META-INF/maven/plugin.xml` completo e correto (goal `compile`,
+   implementation, phase `generate-sources`, os 4 parâmetros com
+   `<configuration>`/`default-value` a espelhar os campos `@Parameter`
+   de `SukoCompileMojo`), mantido à mão em vez de gerado pelo
+   `maven-plugin-plugin` — a tentativa anterior de o gerar via uma tarefa
+   Gradle nunca funcionou (buildscript classpath sem os artefactos do
+   gerador; ver o comentário histórico em
+   `suko-maven-plugin/build.gradle.kts`), e reimplementar a API do gerador
+   fora de um build Maven real seria mais risco do que o hand-maintenance
+   deste ficheiro pequeno e estável. `PluginDescriptorConsistencyTest`
+   garante que os nomes de parâmetro no XML não dessincronizam dos campos
+   da Mojo. Verificado ponta-a-ponta com um `mvn generate-sources` real
+   (goal ligado por `<execution>`, pelo goal totalmente qualificado
+   `io.suko:suko-maven-plugin:<version>:compile`, e pelo atalho
+   `mvn suko:compile` com `io.suko` em `pluginGroups`) contra um projeto
+   consumidor de fora do repositório — `mvn suko:compile` **é executável
+   end-to-end**. **Caminho Gradle** (contexto que se mantém): `suko-gradle-plugin`
+   aplica `java-gradle-plugin` e declara
+   `gradlePlugin { plugins { create("suko") { id = "io.suko.lang" } } }`,
    com `plugins { id("io.suko.lang") }` a resolver de verdade via
    composite build (`includeBuild`) e via TestKit (ver "Estrutura de
    módulos" acima e `FullCycleTest` do subprojeto 8) — mas **sem
    publicação no Gradle Plugin Portal**, então um `plugins { id(...)
    version "..." }` isolado, fora de um composite build, ainda não
-   resolve. O caminho Maven **continua sem mudança**: nenhum
-   `plugin.xml` foi produzido, a ressalva acima mantém-se integralmente.
+   resolve; o mesmo vale para o Maven — nenhum dos dois plugins está
+   publicado num repositório real, só instalável/resolvível localmente.
 5. **Projeto multi-ficheiro (resolução de nomes)** — CONCLUÍDO
    (`docs/superpowers/specs/2026-09-19-suko-projeto-multificheiro.md`).
    `package`/`import` resolvidos de verdade via `ProjectIndex` +

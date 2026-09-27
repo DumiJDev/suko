@@ -87,3 +87,17 @@ tasks.test {
 // para compilar/testar a Mojo — ficam fora de âmbito desta tarefa; podem ser
 // retomadas por um plano futuro que as construa corretamente (buildscript
 // classpath com `maven-plugin-tools-generators`, plugin `maven-publish` aplicado).
+//
+// FECHADO (site/subprojeto 10, fecho do plugin Maven): o descritor
+// `META-INF/maven/plugin.xml` existe agora, mantido à mão em
+// `src/main/resources/` — reimplementar a API de geração do
+// maven-plugin-plugin fora de um build Maven real (MojoScanner,
+// PluginDescriptorFilesGenerator, etc., todos pensados para correr dentro
+// do próprio Maven via Plexus/Sisu) seria mais complexo e mais frágil do
+// que manter à mão um ficheiro pequeno e estável com 1 goal e 4 parâmetros.
+// `PluginDescriptorConsistencyTest` impede que ele dessincronize dos campos
+// `@Parameter` de `SukoCompileMojo`. Verificado com um `mvn generate-sources`
+// real fora deste repositório (ver ARCHITECTURE.md, item 4 do roadmap). A
+// publicação num repositório real continua fora de âmbito — tal como o
+// Gradle Plugin Portal para `suko-gradle-plugin`, nenhum dos dois plugins
+// está publicado; só resolvível localmente (`mvn install`/`gradle publishToMavenLocal`).
