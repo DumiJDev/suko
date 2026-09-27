@@ -57,12 +57,29 @@ public final class WebsiteGenerator {
         this.registryDir = registryDir;
     }
 
+    /**
+     * Ícone mínimo do site: "S" branco sobre um quadrado arredondado teal-600
+     * (mesma cor de marca do nav — ver tailwind/tailwind.config.js). SVG puro,
+     * sem ferramentas de raster: escala para qualquer tamanho de favicon sem
+     * gerar .ico/.png à parte.
+     */
+    private static final String FAVICON_SVG = """
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+          <rect width="32" height="32" rx="7" fill="#0d9488"/>
+          <text x="16" y="23" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="19" fill="#ffffff" text-anchor="middle">S</text>
+        </svg>
+        """;
+
     public void generate() throws IOException {
         // Clean output
         if (Files.exists(outputDir)) {
             deleteRecursively(outputDir);
         }
         Files.createDirectories(outputDir);
+
+        Path assetsDir = outputDir.resolve("assets");
+        Files.createDirectories(assetsDir);
+        Files.writeString(assetsDir.resolve("favicon.svg"), FAVICON_SVG, StandardCharsets.UTF_8);
 
         // Step 1: Read registry data
         RegistryIndex registry = loadRegistry();
@@ -185,7 +202,7 @@ public final class WebsiteGenerator {
         sb.append("  <div class=\"min-h-screen bg-gray-50\">\n");
         sb.append("    <nav class=\"bg-teal-600 text-white py-6\">\n");
         sb.append("      <div class=\"max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4\">\n");
-        sb.append("        <a href=\"../index.html\" class=\"text-2xl font-bold text-white\">Suko</a>\n");
+        sb.append("        <a href=\"../index.html\" class=\"text-2xl font-bold text-white flex items-center gap-2\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 32 32\" class=\"rounded\"><rect width=\"32\" height=\"32\" rx=\"7\" fill=\"white\" /><text x=\"16\" y=\"23\" font-family=\"Arial, Helvetica, sans-serif\" font-weight=\"700\" font-size=\"19\" fill=\"#0d9488\" text-anchor=\"middle\">S</text></svg>Suko</a>\n");
         sb.append("        <div class=\"flex flex-wrap gap-6 text-sm font-medium text-teal-100\">\n");
         sb.append("          <a href=\"../getting-started.html\" class=\"hover:text-white\">Getting Started</a>\n");
         sb.append("          <a href=\"../language-reference.html\" class=\"hover:text-white\">Language Reference</a>\n");
@@ -296,7 +313,7 @@ public final class WebsiteGenerator {
         sb.append("  <div class=\"min-h-screen bg-gray-50\">\n");
         sb.append("    <nav class=\"bg-teal-600 text-white py-6\">\n");
         sb.append("      <div class=\"max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4\">\n");
-        sb.append("        <a href=\"../index.html\" class=\"text-2xl font-bold text-white\">Suko</a>\n");
+        sb.append("        <a href=\"../index.html\" class=\"text-2xl font-bold text-white flex items-center gap-2\"><svg width=\"24\" height=\"24\" viewBox=\"0 0 32 32\" class=\"rounded\"><rect width=\"32\" height=\"32\" rx=\"7\" fill=\"white\" /><text x=\"16\" y=\"23\" font-family=\"Arial, Helvetica, sans-serif\" font-weight=\"700\" font-size=\"19\" fill=\"#0d9488\" text-anchor=\"middle\">S</text></svg>Suko</a>\n");
         sb.append("        <div class=\"flex flex-wrap gap-6 text-sm font-medium text-teal-100\">\n");
         sb.append("          <a href=\"../getting-started.html\" class=\"hover:text-white\">Getting Started</a>\n");
         sb.append("          <a href=\"../language-reference.html\" class=\"hover:text-white\">Language Reference</a>\n");
@@ -425,6 +442,7 @@ public final class WebsiteGenerator {
             + "<meta charset=\"UTF-8\">\n"
             + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
             + "<title>" + title + "</title>\n"
+            + "<link rel=\"icon\" type=\"image/svg+xml\" href=\"" + assetsPrefix + "favicon.svg\">\n"
             + "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
             + "<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n"
             + "<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap\" rel=\"stylesheet\">\n"

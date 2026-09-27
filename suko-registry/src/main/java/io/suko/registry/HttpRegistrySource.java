@@ -82,7 +82,7 @@ public final class HttpRegistrySource implements RegistrySource {
     static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
     static final Duration DEFAULT_READ_TIMEOUT = Duration.ofSeconds(30);
 
-    private static final String USER_AGENT = "suko-registry-http/1 (+https://github.com/suko-lang/suko)";
+    private static final String USER_AGENT = "suko-registry-http/1 (+https://github.com/DumiJDev/suko)";
 
     private final URI base;
     private final HttpClient client;

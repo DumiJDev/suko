@@ -16,7 +16,7 @@ dependency-bundling tool). There are three ways to run it:
 ### 1. jbang (recommended)
 
 ```
-jbang suko@suko-lang --help
+jbang suko@DumiJDev/suko --help
 ```
 
 The alias in the repo root's `jbang-catalog.json` points straight at a
@@ -25,10 +25,11 @@ or any other Maven repository. `jbang` downloads the jar once, caches it,
 and runs it with `java -jar`. See `jbang-catalog.md` for the exact alias
 name and how new releases update it.
 
-The jbang alias and the CLI's default registry base (`suko-lang`, hardcoded
-in `jbang-catalog.json`'s `script-ref` and in `InitCommand`'s default
-registry base template) both only resolve once a real, non-`SNAPSHOT`
-release tag has actually been cut and published. Until then, use
+The jbang alias and the CLI's default registry base (`DumiJDev/suko`,
+hardcoded in `jbang-catalog.json`'s `script-ref` and in `InitCommand`'s
+default registry base template) both only resolve once a real,
+non-`SNAPSHOT` release tag has actually been cut and published. Until then,
+use
 "Building from source" below (`gradle :suko-cli:fatJar` plus
 `scripts/suko`/`scripts/suko.bat`) as the working install path.
 
@@ -55,7 +56,7 @@ one, you compile it yourself, once, locally, with GraalVM (`native-image`)
 already installed:
 
 ```
-jbang --native --build-dir <a-directory-of-your-choice> suko@suko-lang
+jbang --native --build-dir <a-directory-of-your-choice> suko@DumiJDev/suko
 ```
 
 `--build-dir` is **not optional**. Without it, the first native compilation

@@ -35,7 +35,7 @@ public final class InitCommand {
      */
     static final String DEFAULT_REGISTRY_REF = "v" + Version.current();
     static final String DEFAULT_REGISTRY_BASE_TEMPLATE =
-            "https://raw.githubusercontent.com/suko-lang/suko/%s/suko-components/";
+            "https://raw.githubusercontent.com/DumiJDev/suko/%s/suko-components/";
 
     public void run(Args args, InputStream in, PrintStream out, PrintStream err, Path projectDir) {
         Path configFile = projectDir.resolve(ProjectConfig.FILE_NAME);
