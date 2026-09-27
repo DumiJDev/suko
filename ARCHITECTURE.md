@@ -132,6 +132,26 @@ repositório, fora de qualquer módulo — não é uma unidade de build.
   DI etc. continuam exatamente como no ecossistema JTE hoje
   (jte-spring-boot-starter, jte-quarkus, etc.) — o Suko não tenta
   competir nesse espaço, só substitui a sintaxe do `.jte` em si.
+  **Verificado a sério para Spring Boot** (`SukoSpringBootIntegrationTest`,
+  `suko-gradle-plugin`): um projeto Spring Boot descartável, com o
+  plugin `io.suko.lang` real aplicado por ID e `outputDir =
+  "src/main/jte"` (a convenção do `jte-spring-boot-starter`,
+  `gg.jte.developmentMode=true`), sobe a aplicação a sério e um pedido
+  HTTP real a um `@Controller` renderiza corretamente um `.jte`
+  compilado a partir de um `.sk` — zero adaptação, exatamente como a
+  afirmação de design sempre implicou, mas nunca tinha sido testado
+  até agora. Esse mesmo teste apanhou um bug real, independente do
+  Spring: `SukoExtension.getSourceDirAsPath()`/`getOutputDirAsPath()`
+  faziam `Path.of(string)` bruto — relativo ao `user.dir` do processo,
+  não ao diretório do projeto — pelo que qualquer `suko { outputDir =
+  "..." }` explícito no build script do consumidor (não a convenção
+  por omissão, que escapava ao bug por vir pré-resolvida para
+  absoluto) resolvia para o sítio errado. Corrigido para resolver
+  sempre via `ProjectLayout.getProjectDirectory().dir(...)`.
+  Quarkus não foi verificado da mesma forma — o mecanismo
+  (`jte-quarkus` a consumir o mesmo `.jte` puro) é idêntico em
+  princípio, mas fica como lacuna aceite até haver um teste
+  equivalente.
 - **1 componente Suko → 1 template JTE.** Mantém rastreabilidade
   simples: erro de renderização em produção aponta pro `.jte`
   gerado, que por sua vez mapeia 1:1 de volta pro `.sk` de origem

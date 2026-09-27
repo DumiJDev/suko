@@ -21,17 +21,19 @@ public class SukoGradlePlugin implements Plugin<Project> {
         // projetos Suko; é desse default que a CLI (Tarefa 7, `suko init`)
         // depende para propor uma estrutura em vez de perguntar às cegas.
         //
-        // Resolvidas para caminho absoluto (via project.getLayout()) e não
-        // deixadas como a string literal relativa "src/main/suko": a task
-        // (SukoExtension.getSourceDirAsPath()) faz Path.of(string), que é
-        // relativo ao user.dir do processo — não necessariamente o
-        // diretório do projeto (confirmado pelo teste funcional via
-        // TestKit, onde os dois divergem). Resolver aqui, uma vez, evita
-        // esse desalinhamento sem mudar a convenção nominal.
-        extension.getSourceDir().convention(
-            project.getLayout().getProjectDirectory().dir("src/main/suko").getAsFile().getPath());
-        extension.getOutputDir().convention(
-            project.getLayout().getBuildDirectory().dir("generated-src/suko").get().getAsFile().getPath());
+        // Strings relativas simples: SukoExtension.getSourceDirAsPath()/
+        // getOutputDirAsPath() agora resolvem sempre via
+        // ProjectLayout.getProjectDirectory().dir(...), que trata caminhos
+        // relativos E absolutos corretamente — não há razão para pré-resolver
+        // para absoluto aqui. (Antes desta correção, essas duas funções
+        // faziam Path.of(string) bruto — relativo ao user.dir do processo,
+        // não ao diretório do projeto — e só a convenção escapava ao bug por
+        // vir pré-resolvida para absoluto; qualquer `suko { sourceDir = "..." }`
+        // no build script do consumidor, com uma string relativa, quebrava
+        // silenciosamente. Descoberto por um smoke test real de integração
+        // Spring Boot que precisava de outputDir = "src/main/jte".)
+        extension.getSourceDir().convention("src/main/suko");
+        extension.getOutputDir().convention("build/generated-src/suko");
 
         project.getTasks().register("sukoCompile", SukoCompileTask.class, task -> {
             task.setDescription("Compila arquivos .sk para .jte");
