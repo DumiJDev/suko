@@ -1,0 +1,119 @@
+component LanguageReference() {
+  <div class="h-screen bg-gray-50">
+    <nav class="bg-blue-600 text-white py-6">
+      <div class="max-w-7xl mx-auto px-4">
+        <h1 class="text-3xl font-bold">Suko</h1>
+        <p class="text-blue-100 mt-2">Language Reference</p>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-12">
+      <h2 class="text-4xl font-bold text-gray-900 mb-8">Language Reference</h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+        <a href="#components" class="block bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+          <h3 class="text-xl font-bold text-gray-900 mb-2">Components</h3>
+          <p class="text-sm text-gray-600">Declaração e composição de componentes</p>
+        </a>
+        <a href="#slots" class="block bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+          <h3 class="text-xl font-bold text-gray-900 mb-2">Slots</h3>
+          <p class="text-sm text-gray-600">Conteúdo implícito e slots tipados</p>
+        </a>
+        <a href="#expressions" class="block bg-white rounded-lg border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+          <h3 class="text-xl font-bold text-gray-900 mb-2">Expressões</h3>
+          <p class="text-sm text-gray-600">Condicionais, iteração e chamadas</p>
+        </a>
+      </div>
+
+      <section id="components" class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
+        <h3 class="text-2xl font-bold text-gray-900 mb-4">Components</h3>
+        <p class="text-gray-700 mb-4">
+          Componentes são a unidade fundamental do Suko. Cada componente é declarado com um nome e parâmetros tipados:
+        </p>
+        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-4 font-mono text-sm">
+          package components;
+          component Card(String title, List items, String emptyLabel = "Sem itens") &#123;
+            <div class="card">
+              <h2>&#123;title&#125;</h2>
+              if (items.size() &gt; 0) &#123;
+                <ul>
+                  for (String item : items) &#123;
+                    <li>&#123;item&#125;</li>
+                  &#125;
+                </ul>
+              &#125; else &#123;
+                <p>&#123;emptyLabel&#125;</p>
+              &#125;
+            </div>
+          &#125;
+        </p>
+        <p class="text-gray-700">
+          Cada componente compila para um template JTE independente, que pode ser renderizado com parâmetros.
+        </p>
+      </section>
+
+      <section id="slots" class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
+        <h3 class="text-2xl font-bold text-gray-900 mb-4">Slots</h3>
+        <p class="text-gray-700 mb-4">
+          Slots permitem que componentes recebam conteúdo. O Suko oferece slots implícitos (conteúdo solto) e slots tipados:
+        </p>
+        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-4 font-mono text-sm">
+          component Layout() &#123;
+            <main>
+              <header>
+                <h1>Meu Site</h1>
+              </header>
+              <nav>
+                <a href="/">Início</a>
+                <a href="/sobre">Sobre</a>
+              </nav>
+              <footer>
+                <p>© 2026 Meu Site</p>
+              </footer>
+            </main>
+          &#125;
+        </p>
+        <p class="text-gray-700">
+          O conteúdo solto entre as tags é automaticamente atribuído ao slot implícito do componente.
+        </p>
+      </section>
+
+      <section id="expressions" class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
+        <h3 class="text-2xl font-bold text-gray-900 mb-4">Expressões</h3>
+        <p class="text-gray-700 mb-4">
+          Dentro dos componentes, você pode usar expressões Java-like para lógica condicional e iteração:
+        </p>
+        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-4 font-mono text-sm">
+          component UserCard(User user) &#123;
+            <div class="rounded-lg border border-gray-200 p-4">
+              <h2>&#123;user.name&#125;</h2>
+              if (user.isActive) &#123;
+                <span class="text-green-600">Ativo</span>
+              &#125; else &#123;
+                <span class="text-red-500">Inativo</span>
+              &#125;
+              for (String role : user.roles) &#123;
+                <span>&#123;role&#125;</span>
+              &#125;
+            </div>
+          &#125;
+        </p>
+      </section>
+
+      <section class="bg-white rounded-lg border border-gray-200 p-8">
+        <h3 class="text-2xl font-bold text-gray-900 mb-4">Exemplos</h3>
+        <ul class="list-disc pl-6 text-gray-700 space-y-2">
+          <li><a href="components/index.html" class="text-blue-600">Veja a biblioteca de componentes</a></li>
+          <li><a href="getting-started.html" class="text-blue-600">Guia de instalação</a></li>
+          <li><a href="https://github.com/suko-lang/suko" class="text-blue-600">Código-fonte completo</a></li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="border-t border-gray-200 bg-white py-8">
+      <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+        <p>© 2026 Suko. Documentação gerada com Suko.</p>
+      </div>
+    </footer>
+  </div>
+}

@@ -1,0 +1,42 @@
+component Index() {
+  <div class="h-screen bg-gray-50">
+    <nav class="bg-blue-600 text-white py-6">
+      <div class="max-w-7xl mx-auto px-4">
+        <h1 class="text-3xl font-bold">Suko</h1>
+        <p class="text-blue-100 mt-2">Component-oriented template language for Java/Kotlin</p>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-12">
+      <h2 class="text-4xl font-bold text-gray-900 mb-8">Suko</h2>
+
+      <p class="text-xl text-gray-600 mb-12 max-w-3xl">
+        Um linguagem de template orientada a componentes para aplicações Java/Kotlin,
+        que compila para templates JTE (Java Template Engine). O Suko fornece uma
+        sintaxe limpa e baseada em componentes que pode então ser renderizada no
+        tempo de execução usando o motor JTE padrão.
+      </p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+        <a href="getting-started.html" class="block bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Getting Started</h3>
+          <p class="text-gray-600">Instalação e quick start com jbang, Gradle ou Maven.</p>
+        </a>
+        <a href="language-reference.html" class="block bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Language Reference</h3>
+          <p class="text-gray-600">Referência completa da sintaxe: componentes, slots, expressões.</p>
+        </a>
+        <a href="components/index.html" class="block bg-white rounded-lg border border-gray-200 p-8 hover:shadow-lg transition-shadow">
+          <h3 class="text-xl font-bold text-gray-900 mb-3">Components</h3>
+          <p class="text-gray-600">Biblioteca de componentes prontos: Button, Input, Label, Badge, Alert, Card, Field, Dialog.</p>
+        </a>
+      </div>
+    </main>
+
+    <footer class="border-t border-gray-200 bg-white py-8">
+      <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+        <p>Documentation built with Suko &middot; <a href="https://github.com/suko-lang/suko" class="text-blue-600">GitHub</a></p>
+      </div>
+    </footer>
+  </div>
+}

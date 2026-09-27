@@ -9,6 +9,36 @@ public sealed interface Expr permits
 
     SourceSpan span();
 
+    /** Render this expression as a compact, human-readable string for documentation. */
+    default String pretty() {
+        return switch (this) {
+            case PrimaryExpr p -> p.text();
+            case StringLiteralExpr s -> "\"" + pretty(s.parts()) + "\"";
+            case AccessExpr a -> a.target().pretty() + "." + a.memberName();
+            case CallExpr c -> c.callee().pretty() + "(" + String.join(", ", c.args().stream().map(Expr::pretty).toList()) + ")";
+            case NotExpr n -> "!" + n.operand().pretty();
+            case UnaryMinusExpr u -> "-" + u.operand().pretty();
+            case BinaryExpr b -> b.left().pretty() + " " + b.operator() + " " + b.right().pretty();
+            case TernaryExpr t -> t.condition().pretty() + " ? " + t.whenTrue().pretty() + " : " + t.whenFalse().pretty();
+            case ParenExpr p -> "(" + p.inner().pretty() + ")";
+            case SafeAccessExpr s -> s.target().pretty() + "?." + s.memberName();
+            case ElvisExpr e -> e.left().pretty() + " ?: " + e.right().pretty();
+        };
+    }
+
+    /** Render a list of StringParts as a compact, human-readable string. */
+    static String pretty(List<StringPart> parts) {
+        StringBuilder sb = new StringBuilder();
+        for (StringPart p : parts) {
+            switch (p) {
+                case StringPart.Literal l -> sb.append(l.javaEscapedText());
+                case StringPart.Interp i -> sb.append("${").append(i.expr().pretty()).append("}");
+                case StringPart.SimpleInterp s -> sb.append("$").append(s.identifier());
+            }
+        }
+        return sb.toString();
+    }
+
     /** Identificador, inteiro, booleano ou "null" — texto literal recuperado do fonte. */
     record PrimaryExpr(String text, SourceSpan span) implements Expr {
     }

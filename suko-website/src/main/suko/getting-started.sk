@@ -1,0 +1,81 @@
+component GettingStarted() {
+  <div class="h-screen bg-gray-50">
+    <nav class="bg-blue-600 text-white py-6">
+      <div class="max-w-7xl mx-auto px-4">
+        <h1 class="text-3xl font-bold">Suko</h1>
+        <p class="text-blue-100 mt-2">Getting Started</p>
+      </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 py-12">
+      <h2 class="text-4xl font-bold text-gray-900 mb-8">Getting Started</h2>
+
+      <p class="text-xl text-gray-600 mb-8">
+        Comece rapidamente com o Suko em qualquer projeto Java/Kotlin.
+      </p>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
+        <h3 class="text-2xl font-bold text-gray-900 mb-6">1. Instalação</h3>
+
+        <p class="text-gray-700 mb-4">
+          O Suko está disponível como um CLI em jbang, que permite executar sem instalação:
+        </p>
+        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-6 font-mono text-sm">
+          jbang suko@suko-lang init my-project
+        </p>
+
+        <p class="text-gray-700 mb-4">
+          Ou instale via Gradle e use o plugin (o plugin Maven ainda não gera um descritor utilizável):
+        </p>
+        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-6 font-mono text-sm">
+          plugins &#123; id("io.suko.lang") version "0.1.0" &#125;
+          suko &#123; sourceDir = file("src/main/suko") outputDir = file("build/generated-suko") &#125;
+        </p>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
+        <h3 class="text-2xl font-bold text-gray-900 mb-6">2. Escreva o seu primeiro componente</h3>
+
+        <p class="text-gray-700 mb-4">
+          Crie um ficheiro src/main/suko/components/Hello.sk:
+        </p>
+        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-6 font-mono text-sm">
+          package components;
+          component Hello(String name) &#123;
+            <div class="text-2xl font-bold text-blue-600">Olá, &#123;name&#125;!</div>
+          &#125;
+        </p>
+
+        <p class="text-gray-700">
+          O Suko compila isto para um template JTE que pode ser renderizado no seu application Java/Kotlin.
+        </p>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
+        <h3 class="text-2xl font-bold text-gray-900 mb-6">3. Renderize</h3>
+
+        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-6 font-mono text-sm">
+          CodeResolver resolver = new DirectoryCodeResolver(Path.of("build/generated-suko"));
+          TemplateEngine engine = TemplateEngine.create(resolver, ContentType.Html);
+          TemplateOutput output = new StringOutput();
+          engine.render("components/Hello.jte", Map.of("name", "Mundo"), output);
+        </p>
+      </div>
+
+      <div class="bg-white rounded-lg border border-gray-200 p-8">
+        <h3 class="text-2xl font-bold text-gray-900 mb-6">Próximos passos</h3>
+        <ul class="list-disc pl-6 text-gray-700 space-y-2">
+          <li>Leia a <a href="language-reference.html" class="text-blue-600">Language Reference</a></li>
+          <li>Explore a <a href="components/index.html" class="text-blue-600">biblioteca de componentes</a></li>
+          <li>Veja o <a href="https://github.com/suko-lang/suko" class="text-blue-600">código-fonte completo</a></li>
+        </ul>
+      </div>
+    </main>
+
+    <footer class="border-t border-gray-200 bg-white py-8">
+      <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
+        <p>© 2026 Suko. Documentação gerada com Suko.</p>
+      </div>
+    </footer>
+  </div>
+}
