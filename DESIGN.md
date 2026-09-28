@@ -13,6 +13,7 @@ colors:
   code-light: "#f1f5f9"
   teletext-teal: "#5eead4"
   home-field-teal: "#14b8a6"
+  juice-teal: "#2dd4bf"
   line-core: "#0d9488"
   line-core-ink: "#0f766e"
   line-registry: "#d97706"
@@ -148,7 +149,7 @@ The signature motion is the compile: rails draw in stepped increments and the te
 Four saturated line colors on neutral map paper and ink; the lines carry meaning, the neutrals carry everything else.
 
 ### Primary
-- **Core Line Teal** (line-core): the Core stage line. Rails, markers and hover fills on the Language Reference; the brand's default line (logo mark, footer link, fallback for `--line`). Its lighter sibling **Home Field Teal** (home-field-teal) is the full-bleed Persuade field on the home page only.
+- **Core Line Teal** (line-core): the Core stage line. Rails, markers and hover fills on the Language Reference; the brand's default line (logo mark, footer link, fallback for `--line`). Its lighter sibling **Home Field Teal** (home-field-teal) is the full-bleed Persuade field on the home page only. **Juice Teal** (juice-teal) belongs to the logo alone: the Suko mark is "juice over JTE", a Night Ink block (the plain JTE template) with Juice Teal running down over it in right-angle drips (`assets/favicon.svg`, repeated inline in the header). Never redraw the drips rounded, and never use Juice Teal outside the mark.
 - **Core Ink Teal** (line-core-ink): Core teal darkened for text links on map paper.
 
 ### Secondary

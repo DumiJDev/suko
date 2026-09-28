@@ -60,9 +60,9 @@ public final class WebsiteGenerator {
         this.registryDir = registryDir;
     }
 
-    /** Same "line + square station" motif as assets/favicon.svg. */
+    /** The Suko mark ("juice over JTE"), same drawing as assets/favicon.svg. */
     private static final String NAV_LOGO_MARK = """
-        <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#0b1220"/><path d="M8 24 V14 H24" stroke="#2dd4bf" stroke-width="3" fill="none"/><rect x="6" y="22" width="4" height="4" fill="#2dd4bf"/><rect x="22" y="12" width="4" height="4" fill="#2dd4bf"/></svg>""";
+        <svg width="28" height="28" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" fill="#0b1220"/><path d="M0 0H32V8H28V14H23V8H17V22H12V8H7V17H3V8H0Z" fill="#2dd4bf"/></svg>""";
 
     /**
      * Pages mark where the shared nav/footer go with empty placeholder

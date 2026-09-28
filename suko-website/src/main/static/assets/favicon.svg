@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" fill="#0b1220"/>
-  <path d="M8 24 V14 H24" stroke="#2dd4bf" stroke-width="3" fill="none"/>
-  <rect x="6" y="22" width="4" height="4" fill="#2dd4bf"/>
-  <rect x="22" y="12" width="4" height="4" fill="#2dd4bf"/>
+  <!-- Suko: juice over JTE. The ink block is the plain JTE template; the
+       teal juice (Suko) runs over it in right-angle drips. The 1px slate
+       outline keeps the block's edge on dark browser tabs. -->
+  <rect x="0.5" y="0.5" width="31" height="31" fill="#0b1220" stroke="#334155"/>
+  <path d="M0 0H32V8H28V14H23V8H17V22H12V8H7V17H3V8H0Z" fill="#2dd4bf"/>
 </svg>
