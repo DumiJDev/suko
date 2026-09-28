@@ -19,10 +19,11 @@ Análise semântica [subprojeto 2 — CONCLUÍDO]
         │    componente compostos), delegando tipagem Java profunda
         │    ao javac na fase seguinte (subprojeto 3)
         ▼
-  Verificação Java [subprojeto 3 — CONCLUÍDO]
+  Verificação Java [subprojeto 3 — PARCIAL]
         │  - JteCompiler orquestra pipeline completo
-        │  - JavacTask compila stubs Java via javac
-        │  - Mapeia erros de compilação para .sk via source map
+        │  - JavacTask compila stubs Java via javac (existe e é
+        │    testado, mas ainda NÃO está ligado ao pipeline; ver
+        │    roadmap, item 3 — fica para o subprojeto 11c)
         ▼
   JteEmitter (Visitor sobre o AST)
        │  produz: arquivo .jte equivalente, 1:1 por componente
@@ -582,11 +583,12 @@ O subprojeto 2 está concluído: implementado `DiagnosticCollector`,
 componentes são registrados na tabela de símbolos e as chamadas de
 componente validadas (existência, slots obrigatórios, cardinalidade).
 
-O subprojeto 3 está concluído: implementado `JteCompiler` (pipeline
+O subprojeto 3 está parcial: implementado `JteCompiler` (pipeline
 completo de compilação) e `JavacTask` (verificação Java com stubs e
-mapeamento de erros para `.sk`). A compilação de `.jte` via `javac`
-valida a assinatura Java dos componentes e mapeia erros de compilação
-de volta ao `.sk` original usando source maps.
+mapeamento de erros para `.sk`), mas o `JavacTask` só é exercitado pelo
+`JavacTaskTest` — nenhum código de produção o chama, por isso nem o
+`sukoCompile` nem o `suko:compile` verificam hoje os tipos Java das
+expressões (verificado 2026-09-28). Ligá-lo fica para o subprojeto 11c.
 
 Nota sobre `suko-core/src/test/resources/golden/Card.jte`: é um golden de *texto*
 emitido, não um `.jte` que compile — contém `@param java.util.List<T>`
@@ -602,7 +604,7 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
 2. **Verificador Suko** — CONCLUÍDO. `DiagnosticCollector`,
    `SukoErrorListener`, `SymbolTable`, `SemanticChecker`.
    Validadores de componentes e slots implementados.
-3. **Verificação Java** — CONCLUÍDO. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` compila stubs Java e mapeia erros para `.sk`.
+3. **Verificação Java** — PARCIAL. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` (compilar stubs Java e mapear erros para `.sk`) existe e está coberto por `JavacTaskTest`, **mas não está ligado ao pipeline**: nenhum código de produção o chama (verificado 2026-09-28), por isso o `sukoCompile` não verifica os tipos Java das expressões — um `List` cru com `for (String item : items)` passa o build e só falha quando o JTE compila o template. Ligá-lo fica para o subprojeto 11c (inteligência Java em `${...}`), que precisa da mesma análise.
 4. **Integração no build** — CONCLUÍDO. Plugin Gradle (`sukoCompile`, `sukoWatch`), plugin Maven (`suko:compile`), modo watch com `WatchService`, E2E tests.
    **Ressalva fechada:** o módulo `suko-maven-plugin` agora tem um
    `META-INF/maven/plugin.xml` completo e correto (goal `compile`,

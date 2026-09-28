@@ -29,8 +29,8 @@ component Roadmap() {
         </li>
         <li class="line-core">
           <span class="station-marker">3</span>
-          <h2 class="font-display text-xl font-extrabold text-slate-900">Verificação Java <span class="addr-cell align-middle ml-2">feito</span></h2>
-          <p class="text-slate-600 mt-1">JteCompiler orquestra parse, verificação semântica e emissão JTE; o JavacTask mapeia erros de volta para o .sk.</p>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Verificação Java <span class="addr-cell align-middle ml-2">parcial</span></h2>
+          <p class="text-slate-600 mt-1">O JteCompiler orquestra parse, verificação semântica e emissão JTE. O JavacTask, que verifica os tipos Java e mapeia os erros para o .sk, existe e está testado, mas ainda não está ligado ao build: fica para o suporte de IDE.</p>
         </li>
         <li class="line-core">
           <span class="station-marker">4</span>
