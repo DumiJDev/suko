@@ -719,3 +719,17 @@ tem origem própria nesta spec):
     sem dependência bloqueante neles. IntelliJ não fala LSP nativamente
     (LSP4IJ vs. plugin PSI-based próprio) — decisão a tomar no scoping
     deste item.
+12. **Interoperabilidade Java ↔ Suko** — intenção futura registada pelo
+    utilizador em 2026-09-28, sem data nem spec. A ideia: um componente
+    Suko é, na essência, uma função Java que devolve `Component` — e
+    `Component` já é uma interface (no JTE gerado, `gg.jte.Content`, uma
+    interface funcional). Daí duas direções: (a) chamar componentes
+    Suko a partir de código Java como funções normais (ex.: `Hello.of(name)`
+    a devolver `Component`), e (b) importar num `.sk` componentes
+    escritos em Java puro (uma classe/método Java que devolve
+    `Component`), tal como hoje se importa outro `.sk`. Pontos a
+    resolver no scoping: que API Java é gerada por componente (hoje o
+    output é só `.jte`), como o `ProjectIndex`/`SemanticChecker`
+    resolvem um símbolo que vive em Java em vez de `.sk`, e a relação
+    com o item 11c (análise Java dentro de `${...}`) e com a limitação
+    de um único source root.
