@@ -181,7 +181,7 @@
   /* Code on the route: ink block, line-colored rule on top. */
   .code-block {
     @apply bg-slate-950 text-slate-100 p-5 overflow-x-auto font-mono text-sm leading-relaxed;
-    border-top: 4px solid var(--line, #2dd4bf);
+    border-top: 4px solid var(--line, #0d9488);
   }
 
   /* Flat monospace address cells: version, status, coordinates in context.
