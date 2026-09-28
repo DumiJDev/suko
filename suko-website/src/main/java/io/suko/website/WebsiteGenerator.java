@@ -72,6 +72,14 @@ public final class WebsiteGenerator {
      * instead of being copied into every .sk page.
      */
     private static final Pattern NAV_PLACEHOLDER = Pattern.compile("<nav data-nav=\"([a-z-]+)\"></nav>");
+    /**
+     * Cache-busts site.css/site.js: GitHub Pages serves them with
+     * max-age=600 under a fixed URL, so right after a deploy a browser could
+     * pair new HTML with the previous CSS (new classes missing = unstyled
+     * page). A per-build query string makes every deploy fetch fresh assets.
+     */
+    private static final String BUILD_ID = Long.toString(System.currentTimeMillis(), 36);
+
     private static final String FOOTER_PLACEHOLDER = "<footer data-footer=\"true\"></footer>";
 
     public void generate() throws IOException {
@@ -561,8 +569,8 @@ public final class WebsiteGenerator {
             + "<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n"
             + "<link rel=\"preconnect\" href=\"https://fonts.gstatic.com\" crossorigin>\n"
             + "<link href=\"https://fonts.googleapis.com/css2?family=Overpass:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap\" rel=\"stylesheet\">\n"
-            + "<link rel=\"stylesheet\" href=\"" + assetsPrefix + "site.css\">\n"
-            + "<script defer src=\"" + assetsPrefix + "site.js\"></script>\n"
+            + "<link rel=\"stylesheet\" href=\"" + assetsPrefix + "site.css?v=" + BUILD_ID + "\">\n"
+            + "<script defer src=\"" + assetsPrefix + "site.js?v=" + BUILD_ID + "\"></script>\n"
             + "<script defer src=\"https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js\"></script>\n"
             + "</head>\n"
             + "<body>\n"
