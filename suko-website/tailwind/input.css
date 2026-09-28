@@ -12,7 +12,7 @@
   /* True monospace, no programming ligatures: `!=` must read as two
      characters in a language reference, never as `≠`. */
   code, pre, .font-mono {
-    font-family: theme("fontFamily.mono");
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
     font-variant-ligatures: none;
     font-feature-settings: "liga" 0, "calt" 0;
   }
@@ -20,7 +20,7 @@
     overflow-wrap: anywhere;
   }
   h1, h2, h3 {
-    font-family: theme("fontFamily.display");
+    font-family: 'Overpass', ui-sans-serif, system-ui, sans-serif;
   }
   /* The schematic world is right angles only. */
   * {
