@@ -1,77 +1,80 @@
 component Roadmap() {
-  <div class="min-h-screen bg-gray-50">
-    <nav class="bg-teal-600 text-white py-6">
-      <div class="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4">
-        <a href="index.html" class="text-2xl font-bold text-white flex items-center gap-2"><svg width="24" height="24" viewBox="0 0 32 32" class="rounded"><rect width="32" height="32" rx="7" fill="white" /><text x="16" y="23" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="19" fill="#0d9488" text-anchor="middle">S</text></svg>Suko</a>
-        <div class="flex flex-wrap gap-6 text-sm font-medium text-teal-100">
-          <a href="getting-started.html" class="hover:text-white">Getting Started</a>
-          <a href="language-reference.html" class="hover:text-white">Language Reference</a>
-          <a href="components/index.html" class="hover:text-white">Components</a>
-          <a href="roadmap.html" class="text-white underline">Roadmap</a>
-        </div>
-      </div>
-    </nav>
+  <div class="min-h-screen flex flex-col line-site">
+    <nav data-nav="roadmap"></nav>
 
-    <main class="max-w-7xl mx-auto px-4 py-12">
-      <h2 class="text-4xl font-bold text-gray-900 mb-4">Roadmap</h2>
-      <p class="text-xl text-gray-600 mb-12 max-w-3xl">
-        Progresso por subprojeto, tal como documentado em
-        <a href="https://github.com/DumiJDev/suko/blob/main/ARCHITECTURE.md" class="text-teal-600">ARCHITECTURE.md</a>.
-        Cada subprojeto concluído tem uma spec e um plano formais em <code>docs/superpowers/</code>.
+    <main class="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-14">
+      <h1 class="font-display text-5xl font-extrabold text-slate-900 mb-4">Roadmap</h1>
+      <p class="text-xl text-slate-600 mb-6 max-w-2xl">
+        Uma linha, 11 estações, cada uma com a cor da parte do pipeline que constrói.
+        O detalhe de cada subprojeto está em
+        <a href="https://github.com/DumiJDev/suko/blob/main/ARCHITECTURE.md" class="text-link">ARCHITECTURE.md</a>.
+      </p>
+      <p class="flex flex-wrap gap-x-6 gap-y-2 mb-14 text-sm text-slate-700">
+        <span class="flex items-center gap-2 line-core"><span class="w-6 h-1 bg-[var(--line)]"></span>Núcleo</span>
+        <span class="flex items-center gap-2 line-registry"><span class="w-6 h-1 bg-[var(--line)]"></span>Registry</span>
+        <span class="flex items-center gap-2 line-cli"><span class="w-6 h-1 bg-[var(--line)]"></span>CLI</span>
+        <span class="flex items-center gap-2 line-site"><span class="w-6 h-1 bg-[var(--line)]"></span>Site</span>
       </p>
 
-      <ol class="space-y-4">
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">1</span>
-          <div><h3 class="font-bold text-gray-900">Núcleo da linguagem</h3><p class="text-gray-600 text-sm">Gramática, AST, SukoAstBuilder, JteEmitter, source map em memória.</p></div>
+      <ol class="route route-trunk space-y-8">
+        <li class="line-core">
+          <span class="station-marker">1</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Núcleo da linguagem <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">Gramática, AST, SukoAstBuilder, JteEmitter, source map em memória.</p>
         </li>
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">2</span>
-          <div><h3 class="font-bold text-gray-900">Verificador Suko</h3><p class="text-gray-600 text-sm">DiagnosticCollector, SukoErrorListener, SymbolTable, SemanticChecker.</p></div>
+        <li class="line-core">
+          <span class="station-marker">2</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Verificador Suko <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">DiagnosticCollector, SukoErrorListener, SymbolTable, SemanticChecker.</p>
         </li>
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">3</span>
-          <div><h3 class="font-bold text-gray-900">Verificação Java</h3><p class="text-gray-600 text-sm">JteCompiler orquestra parse → semantic check → JTE emit; JavacTask mapeia erros para .sk.</p></div>
+        <li class="line-core">
+          <span class="station-marker">3</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Verificação Java <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">JteCompiler orquestra parse, verificação semântica e emissão JTE; o JavacTask mapeia erros de volta para o .sk.</p>
         </li>
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">4</span>
-          <div><h3 class="font-bold text-gray-900">Integração no build</h3><p class="text-gray-600 text-sm">Plugin Gradle (sukoCompile/sukoWatch) e plugin Maven (suko:compile), ambos executáveis ponta-a-ponta; nenhum publicado num repositório real.</p></div>
+        <li class="line-core">
+          <span class="station-marker">4</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Integração no build <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">Plugin Gradle (sukoCompile, sukoWatch) e plugin Maven (suko:compile), ambos a funcionar ponta-a-ponta. Nenhum está publicado num repositório.</p>
         </li>
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">5</span>
-          <div><h3 class="font-bold text-gray-900">Projeto multi-ficheiro</h3><p class="text-gray-600 text-sm">package/import resolvidos via ProjectIndex + SukoProjectCompiler; visibilidade public/file-private.</p></div>
+        <li class="line-core">
+          <span class="station-marker">5</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Projeto multi-ficheiro <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">package e import resolvidos via ProjectIndex e SukoProjectCompiler; visibilidade public ou privada ao ficheiro.</p>
         </li>
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">6</span>
-          <div><h3 class="font-bold text-gray-900">Modelo de componente</h3><p class="text-gray-600 text-sm">Component substitui slot&lt;T&gt;; children implícito; interpolação real &#36;&#123;expr&#125;/&#36;ident.</p></div>
+        <li class="line-core">
+          <span class="station-marker">6</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Modelo de componente <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">Component substitui slot&lt;T&gt;; children implícito; interpolação &#36;&#123;expr&#125;.</p>
         </li>
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">7</span>
-          <div><h3 class="font-bold text-gray-900">Registry de componentes</h3><p class="text-gray-600 text-sm">suko-components com 8 componentes reais e manifesto gerado (suko-registry).</p></div>
+        <li class="line-registry">
+          <span class="station-marker">7</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Registry de componentes <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">suko-components com 8 componentes reais e manifesto gerado (suko-registry).</p>
         </li>
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">8</span>
-          <div><h3 class="font-bold text-gray-900">CLI de distribuição</h3><p class="text-gray-600 text-sm">suko init/list/add/diff/update, estilo shadcn/ui — copia código-fonte, não é dependência de biblioteca.</p></div>
+        <li class="line-cli">
+          <span class="station-marker">8</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">CLI de distribuição <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">suko init, list, add, diff e update, ao estilo shadcn/ui: copia código-fonte, não é uma dependência.</p>
         </li>
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold flex items-center justify-center">9</span>
-          <div><h3 class="font-bold text-gray-900">Unificação da sintaxe de interpolação</h3><p class="text-gray-600 text-sm">Uma única regra de interpolação em todos os contextos (texto, atributos, strings).</p></div>
+        <li class="line-core">
+          <span class="station-marker">9</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Unificação da interpolação <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">Uma única regra de interpolação em texto, atributos e strings.</p>
         </li>
-        <li class="bg-white rounded-lg border border-teal-300 bg-teal-50 p-6 flex gap-4">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-teal-600 text-white font-bold flex items-center justify-center">10</span>
-          <div><h3 class="font-bold text-gray-900">Site de documentação <span class="text-teal-700 font-normal text-sm">(este site)</span></h3><p class="text-gray-600 text-sm">Compilação para HTML estático em build-time, deployável sem JVM em runtime.</p></div>
+        <li class="line-site">
+          <span class="station-marker">10</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Site de documentação <span class="addr-cell align-middle ml-2">em curso</span></h2>
+          <p class="text-slate-600 mt-1">Este site: compilado de .sk para HTML estático em build-time, sem JVM em runtime.</p>
         </li>
-        <li class="bg-white rounded-lg border border-gray-200 p-6 flex gap-4 opacity-60">
-          <span class="shrink-0 w-8 h-8 rounded-full bg-gray-200 text-gray-600 font-bold flex items-center justify-center">11</span>
-          <div><h3 class="font-bold text-gray-900">Suporte de IDE</h3><p class="text-gray-600 text-sm">Language server (VSCode + IntelliJ) sobre o DiagnosticCollector/SemanticChecker. Por fazer.</p></div>
+        <li>
+          <span class="station-marker station-marker-hollow">11</span>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Suporte de IDE <span class="addr-cell align-middle ml-2">por fazer</span></h2>
+          <p class="text-slate-600 mt-1">Ainda não há extensão para VSCode nem plugin IntelliJ. O plano é um language server sobre o DiagnosticCollector e o SemanticChecker.</p>
         </li>
       </ol>
     </main>
 
-    <footer class="border-t border-gray-200 bg-white py-8">
-      <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
-        <p>© 2026 Suko. Documentação gerada com Suko.</p>
-      </div>
-    </footer>
+    <footer data-footer="true"></footer>
   </div>
 }

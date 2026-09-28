@@ -1,87 +1,103 @@
 component GettingStarted() {
-  <div class="min-h-screen bg-gray-50">
-    <nav class="bg-teal-600 text-white py-6">
-      <div class="max-w-7xl mx-auto px-4 flex flex-wrap items-center justify-between gap-4">
-        <a href="index.html" class="text-2xl font-bold text-white flex items-center gap-2"><svg width="24" height="24" viewBox="0 0 32 32" class="rounded"><rect width="32" height="32" rx="7" fill="white" /><text x="16" y="23" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="19" fill="#0d9488" text-anchor="middle">S</text></svg>Suko</a>
-        <div class="flex flex-wrap gap-6 text-sm font-medium text-teal-100">
-          <a href="getting-started.html" class="text-white underline">Getting Started</a>
-          <a href="language-reference.html" class="hover:text-white">Language Reference</a>
-          <a href="components/index.html" class="hover:text-white">Components</a>
-          <a href="roadmap.html" class="hover:text-white">Roadmap</a>
-        </div>
-      </div>
-    </nav>
+  <div class="min-h-screen flex flex-col line-cli">
+    <nav data-nav="getting-started"></nav>
 
-    <main class="max-w-7xl mx-auto px-4 py-12">
-      <h2 class="text-4xl font-bold text-gray-900 mb-8">Getting Started</h2>
-
-      <p class="text-xl text-gray-600 mb-8">
-        Comece rapidamente com o Suko em qualquer projeto Java/Kotlin.
+    <main class="flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-14">
+      <h1 class="font-display text-5xl font-extrabold text-slate-900 mb-4">Getting Started</h1>
+      <p class="text-xl text-slate-600 mb-8 max-w-2xl">
+        Três estações: instalar, escrever um componente, renderizar. Todos os comandos abaixo foram
+        corridos num projeto limpo.
       </p>
 
-      <div class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
-        <h3 class="text-2xl font-bold text-gray-900 mb-6">1. Instalação</h3>
-
-        <p class="text-gray-700 mb-4">
-          O Suko está disponível como um CLI em jbang, que permite executar sem instalação:
-        </p>
-        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-6 font-mono text-sm">
-          jbang suko@suko-lang init my-project
-        </p>
-
-        <p class="text-gray-700 mb-4">
-          Ou instale via Gradle e use o plugin (o plugin Maven ainda não gera um descritor utilizável):
-        </p>
-        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-6 font-mono text-sm">
-          plugins &#123; id("io.suko.lang") version "0.1.0" &#125;
-          suko &#123; sourceDir = file("src/main/suko") outputDir = file("build/generated-suko") &#125;
+      <div class="panel p-5 mb-16 max-w-3xl">
+        <p>
+          <strong class="font-display">Pré-release.</strong> Ainda não há versão publicada: nada no Maven Central nem
+          no Gradle Plugin Portal, e ainda sem suporte de IDE (VSCode, IntelliJ). Por agora, o Suko usa-se a partir
+          do código-fonte.
         </p>
       </div>
 
-      <div class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
-        <h3 class="text-2xl font-bold text-gray-900 mb-6">2. Escreva o seu primeiro componente</h3>
+      <ol class="route">
+        <li>
+          <h2 class="station-heading"><span class="station-marker">01</span>Instalar</h2>
+          <p class="text-slate-700 mb-3 max-w-2xl">Clone o repositório ao lado do seu projeto:</p>
+          <pre class="code-block mb-6">git clone https:&#47;&#47;github.com&#47;DumiJDev&#47;suko.git</pre>
 
-        <p class="text-gray-700 mb-4">
-          Crie um ficheiro src/main/suko/components/Hello.sk:
-        </p>
-        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-6 font-mono text-sm">
-          package components;
-          component Hello(String name) &#123;
-            <div class="text-2xl font-bold text-teal-600">Olá, &#123;name&#125;!</div>
-          &#125;
-        </p>
+          <p class="text-slate-700 mb-3 max-w-2xl">
+            No <code>settings.gradle.kts</code> do seu projeto, inclua o build do Suko como composite build:
+          </p>
+          <pre class="code-block mb-6">pluginManagement &#123;
+  includeBuild("../suko")
+&#125;</pre>
 
-        <p class="text-gray-700">
-          O Suko compila isto para um template JTE que pode ser renderizado no seu application Java/Kotlin.
-        </p>
-      </div>
+          <p class="text-slate-700 mb-3 max-w-2xl">
+            No <code>build.gradle.kts</code>, aplique o plugin. Não leva versão, porque vem do composite build:
+          </p>
+          <pre class="code-block mb-6">plugins &#123;
+  id("io.suko.lang")
+&#125;</pre>
 
-      <div class="bg-white rounded-lg border border-gray-200 p-8 mb-8">
-        <h3 class="text-2xl font-bold text-gray-900 mb-6">3. Renderize</h3>
+          <p class="text-slate-700 mb-3 max-w-2xl">
+            Para copiar componentes do registry, gere a CLI e corra-a na raiz do seu projeto.
+            <code>init</code> configura o diretório atual; até haver uma release, aponte o registry para o clone:
+          </p>
+          <pre class="code-block mb-6">(cd ../suko &amp;&amp; ./gradlew :suko-cli:fatJar)
+../suko/scripts/suko init --base-package components --registry ../suko/suko-components --yes
+../suko/scripts/suko list
+../suko/scripts/suko add button</pre>
 
-        <p class="bg-gray-900 text-gray-100 p-6 rounded-lg overflow-x-auto mb-6 font-mono text-sm">
-          CodeResolver resolver = new DirectoryCodeResolver(Path.of("build/generated-suko"));
-          TemplateEngine engine = TemplateEngine.create(resolver, ContentType.Html);
-          TemplateOutput output = new StringOutput();
-          engine.render("components/Hello.jte", Map.of("name", "Mundo"), output);
-        </p>
-      </div>
+          <p class="text-slate-600 text-sm max-w-2xl">
+            Maven: o plugin (<code>mvn suko:compile</code>) funciona ponta-a-ponta nos testes do repositório,
+            mas ainda não há forma publicada de o instalar. Depois da primeira release, a CLI fica disponível com
+            <code>jbang suko&#64;DumiJDev/suko</code>.
+          </p>
+        </li>
 
-      <div class="bg-white rounded-lg border border-gray-200 p-8">
-        <h3 class="text-2xl font-bold text-gray-900 mb-6">Próximos passos</h3>
-        <ul class="list-disc pl-6 text-gray-700 space-y-2">
-          <li>Leia a <a href="language-reference.html" class="text-teal-600">Language Reference</a></li>
-          <li>Explore a <a href="components/index.html" class="text-teal-600">biblioteca de componentes</a></li>
-          <li>Veja o <a href="roadmap.html" class="text-teal-600">roadmap do projeto</a></li>
-          <li>Veja o <a href="https://github.com/DumiJDev/suko" class="text-teal-600">código-fonte completo</a></li>
-        </ul>
-      </div>
+        <li>
+          <h2 class="station-heading"><span class="station-marker">02</span>Escrever um componente</h2>
+          <p class="text-slate-700 mb-3 max-w-2xl">Crie <code>src&#47;main&#47;suko&#47;components&#47;Hello.sk</code>:</p>
+          <pre class="code-block mb-6">package components;
+
+component Hello(String name) &#123;
+  &lt;div class="greeting"&gt;Olá, &#36;&#123;name&#125;!&lt;/div&gt;
+&#125;</pre>
+          <p class="text-slate-700 mb-3 max-w-2xl">
+            Compile. O plugin lê <code>src&#47;main&#47;suko</code> e escreve templates JTE em
+            <code>build&#47;generated-src&#47;suko</code>:
+          </p>
+          <pre class="code-block">./gradlew sukoCompile
+Compiled: components/Hello.jte</pre>
+        </li>
+
+        <li>
+          <h2 class="station-heading"><span class="station-marker">03</span>Renderizar</h2>
+          <p class="text-slate-700 mb-3 max-w-2xl">
+            O resultado é um <code>.jte</code> normal. Renderiza-se com o motor <code>gg.jte</code>
+            (<code>gg.jte:jte:3.1.12</code>), sem nada do Suko em runtime:
+          </p>
+          <pre class="code-block mb-6">CodeResolver resolver = new DirectoryCodeResolver(Path.of("build/generated-src/suko"));
+TemplateEngine engine = TemplateEngine.create(resolver, ContentType.Html);
+TemplateOutput output = new StringOutput();
+engine.render("components/Hello.jte", Map.of("name", "Mundo"), output);</pre>
+          <p class="text-slate-700 mb-3 max-w-2xl">O resultado:</p>
+          <pre class="code-block mb-6">&lt;div class="greeting"&gt;Olá, Mundo!&lt;/div&gt;</pre>
+          <p class="text-slate-700 max-w-2xl">
+            Em Spring Boot, o <code>jte-spring-boot-starter</code> serve estes templates sem adaptação; está coberto por
+            um teste de integração no repositório. O Quarkus ainda não foi testado.
+          </p>
+        </li>
+
+        <li>
+          <h2 class="station-heading"><span class="station-marker station-marker-hollow">04</span>Continuar</h2>
+          <p class="text-slate-700 max-w-2xl">
+            A <a href="language-reference.html" class="text-link">Language Reference</a> cobre slots, lógica e as regras do
+            compilador. A <a href="components/index.html" class="text-link">Component Library</a> tem os 8 componentes prontos a
+            copiar. O que falta está no <a href="roadmap.html" class="text-link">Roadmap</a>.
+          </p>
+        </li>
+      </ol>
     </main>
 
-    <footer class="border-t border-gray-200 bg-white py-8">
-      <div class="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
-        <p>© 2026 Suko. Documentação gerada com Suko.</p>
-      </div>
-    </footer>
+    <footer data-footer="true"></footer>
   </div>
 }

@@ -79,6 +79,7 @@ val generateWebsite = tasks.register<JavaExec>("generateWebsite") {
     )
 
     inputs.dir(layout.projectDirectory.dir("src/main/suko"))
+    inputs.dir(layout.projectDirectory.dir("src/main/static"))
     outputs.dir(layout.buildDirectory.dir("website"))
 }
 

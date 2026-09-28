@@ -7,9 +7,217 @@
     scroll-behavior: smooth;
   }
   body {
-    font-family: theme("fontFamily.sans");
+    @apply font-sans text-slate-900 bg-stone-50;
   }
-  code, pre {
+  /* True monospace, no programming ligatures: `!=` must read as two
+     characters in a language reference, never as `≠`. */
+  code, pre, .font-mono {
     font-family: theme("fontFamily.mono");
+    font-variant-ligatures: none;
+    font-feature-settings: "liga" 0, "calt" 0;
+  }
+  p code, li code {
+    overflow-wrap: anywhere;
+  }
+  h1, h2, h3 {
+    font-family: theme("fontFamily.display");
+  }
+  /* The schematic world is right angles only. */
+  * {
+    border-radius: 0 !important;
   }
 }
+
+@layer components {
+  /* Line colors. Each pipeline stage owns one line; a page takes the color
+     of the stage it documents. `--line` fills markers and rails,
+     `--line-ink` is the same hue dark enough for text on map paper. */
+  .line-core     { --line: #0d9488; --line-ink: #0f766e; }
+  .line-registry { --line: #d97706; --line-ink: #b45309; }
+  .line-cli      { --line: #65a30d; --line-ink: #4d7c0f; }
+  .line-site     { --line: #e11d48; --line-ink: #be123c; }
+
+  /* Flat drawn surfaces: a 2px ink outline, no shadow, no lift. Links
+     answer hover by taking their line color on the outline. */
+  .panel {
+    @apply bg-white border-2 border-slate-900;
+  }
+  a.panel:hover, a.panel:focus-visible {
+    border-color: var(--line, #0f172a);
+  }
+
+  /* --- Site nav: the line map. Four stops on one drawn line. --- */
+  .navline {
+    @apply relative grid grid-cols-4 w-full;
+  }
+  .navline::before {
+    content: "";
+    position: absolute;
+    left: 12.5%;
+    right: 12.5%;
+    top: 9px;
+    height: 4px;
+    background: #0f172a;
+  }
+  .navstop {
+    @apply relative flex flex-col items-center gap-2 px-1 text-center font-mono text-[11px] uppercase leading-tight text-slate-600;
+    letter-spacing: 0.06em;
+  }
+  .navstop:hover, .navstop:focus-visible {
+    @apply text-slate-900;
+  }
+  .navstop-marker {
+    @apply block w-[22px] h-[22px] bg-white shrink-0;
+    border: 4px solid var(--line);
+  }
+  .navstop:hover .navstop-marker, .navstop:focus-visible .navstop-marker {
+    background: var(--line);
+  }
+  .navstop[aria-current="page"] {
+    @apply text-slate-900 font-medium;
+  }
+  .navstop[aria-current="page"] .navstop-marker {
+    background: var(--line);
+    outline: 2px solid #0f172a;
+    outline-offset: 2px;
+  }
+
+  /* --- Home: the main line, four literal stops. Vertical on phones,
+     horizontal from md up. --- */
+  .stopline {
+    @apply relative grid gap-10 ml-3;
+    padding-left: calc(2rem + 6px);
+  }
+  .stopline::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 6px;
+    background: #0f172a;
+  }
+  .stop {
+    @apply relative flex flex-col gap-1;
+  }
+  .stop-marker {
+    @apply absolute block w-7 h-7 bg-white;
+    left: calc(-2rem - 17px);
+    top: 0;
+    border: 5px solid var(--line);
+  }
+  .stop:hover .stop-marker, .stop:focus-visible .stop-marker {
+    background: var(--line);
+  }
+  .stop-name {
+    @apply font-display text-xl font-extrabold text-slate-900 leading-7 underline decoration-2 underline-offset-4 decoration-transparent;
+  }
+  .stop:hover .stop-name, .stop:focus-visible .stop-name {
+    text-decoration-color: var(--line);
+  }
+  .stop-desc {
+    @apply text-sm text-slate-600;
+  }
+  @media (min-width: 768px) {
+    .stopline {
+      @apply grid-cols-4 gap-6 ml-0 pl-0;
+    }
+    .stopline::before {
+      right: 0;
+      top: 11px;
+      bottom: auto;
+      width: auto;
+      height: 6px;
+    }
+    .stop {
+      @apply pt-12;
+    }
+    .stop-marker {
+      left: 0;
+    }
+  }
+
+  /* --- Read pages: sections are stations on one vertical route. --- */
+  /* The drawn line itself (not a card accent): a 4px rail in the page's
+     line color, stations sitting on it. */
+  .route {
+    @apply relative ml-4 space-y-14;
+    padding-left: calc(2.5rem + 4px);
+  }
+  .route::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--line, #0f172a);
+  }
+  .route > li, .route > section {
+    @apply relative;
+  }
+  /* The roadmap is the trunk every line runs along: ink, with each
+     station still marked in its own stage color. */
+  .route-trunk::before {
+    background: #0f172a;
+  }
+  .station-heading {
+    @apply flex items-center font-display text-2xl font-extrabold text-slate-900 mb-5 min-h-8;
+  }
+  .station-marker {
+    @apply absolute flex items-center justify-center w-8 h-8 border-2 border-slate-900 font-mono text-xs font-bold text-slate-950;
+    left: calc(-2.5rem - 18px);
+    top: 0;
+    background: var(--line, #0f172a);
+  }
+  /* Rose is too dark for ink numerals (4.3:1); white clears 4.5:1. */
+  .line-site > .station-marker {
+    @apply text-white;
+  }
+  .station-marker-hollow {
+    @apply bg-white text-slate-500;
+  }
+
+  /* Code on the route: ink block, line-colored rule on top. */
+  .code-block {
+    @apply bg-slate-950 text-slate-100 p-5 overflow-x-auto font-mono text-sm leading-relaxed;
+    border-top: 4px solid var(--line, #2dd4bf);
+  }
+
+  /* Flat monospace address cells: version, status, coordinates in context.
+     The teletext raise; never an eyebrow above a heading. */
+  .addr-cell {
+    @apply inline-flex items-center gap-1 bg-slate-950 text-teal-300 font-mono text-xs px-2 py-1;
+  }
+
+  .text-link {
+    @apply underline underline-offset-4 decoration-2;
+    color: var(--line-ink, #0f766e);
+  }
+  .text-link:hover {
+    @apply text-slate-900;
+  }
+}
+
+/* Hero pipeline motion (assets/site.js). Deliberately outside @layer: these
+   classes are only ever added by JS, so Tailwind's content scan never sees
+   them and would purge layered rules. Without JS, or with reduced motion,
+   none of this applies and everything renders in its final state.
+   Mobile draws the connector vertically between stacked stations; from lg
+   up it runs horizontally between them. */
+.js-anim .rail { transform: scaleY(0); transform-origin: top; }
+.js-anim .rail-label { opacity: 0; }
+.js-anim .station-arrive { background-color: #ffffff; }
+.js-anim.is-running .rail { animation: rail-y 420ms steps(12, end) forwards; }
+.js-anim.is-running .rail-2 { animation-delay: 560ms; }
+.js-anim.is-running .rail-label { animation: rail-fade 160ms 440ms forwards; }
+.js-anim.is-done .rail { transform: none; }
+.js-anim.is-done .rail-label { opacity: 1; }
+.js-anim.is-done .station-arrive { background-color: #0b1220; transition: background-color 120ms; }
+@media (min-width: 1024px) {
+  .js-anim .rail { transform: scaleX(0); transform-origin: left; }
+  .js-anim.is-running .rail { animation-name: rail-x; }
+}
+@keyframes rail-x { to { transform: scaleX(1); } }
+@keyframes rail-y { to { transform: scaleY(1); } }
+@keyframes rail-fade { to { opacity: 1; } }

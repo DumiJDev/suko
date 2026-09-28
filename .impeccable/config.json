@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "suko-website/tailwind/input.css"
+        ],
+        "createdAt": "2026-09-28T08:49:30.232Z",
+        "reason": "Claude: .route::before is the drawn transit line stations sit on (core device of the line-map direction in .impeccable/surfaces/suko-website.md, approved on the roadmap by the finish reviewer), not a card accent"
+      }
+    ]
+  }
+}

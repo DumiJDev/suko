@@ -4,8 +4,14 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+        display: ["'Overpass'", "ui-sans-serif", "system-ui", "sans-serif"],
+        sans: ["'IBM Plex Sans'", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["'JetBrains Mono'", "ui-monospace", "SFMono-Regular", "monospace"],
+      },
+      colors: {
+        ink: {
+          950: "#0b1220",
+        },
       },
     },
   },

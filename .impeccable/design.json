@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-28T12:00:00Z",
+  "title": "Design System: Suko",
+  "extensions": {
+    "colorMeta": {
+      "line-core": { "role": "primary", "displayName": "Core Line Teal", "canonical": "#0d9488", "tonalRamp": ["#042f2e", "#134e4a", "#115e59", "#0f766e", "#0d9488", "#14b8a6", "#5eead4", "#ccfbf1"] },
+      "line-core-ink": { "role": "primary", "displayName": "Core Ink Teal", "canonical": "#0f766e", "tonalRamp": ["#042f2e", "#134e4a", "#115e59", "#0f766e", "#0d9488", "#14b8a6", "#5eead4", "#ccfbf1"] },
+      "home-field-teal": { "role": "primary", "displayName": "Home Field Teal", "canonical": "#14b8a6", "tonalRamp": ["#042f2e", "#134e4a", "#115e59", "#0f766e", "#0d9488", "#14b8a6", "#5eead4", "#ccfbf1"] },
+      "teletext-teal": { "role": "primary", "displayName": "Teletext Teal", "canonical": "#5eead4", "tonalRamp": ["#042f2e", "#134e4a", "#115e59", "#0f766e", "#0d9488", "#14b8a6", "#5eead4", "#ccfbf1"] },
+      "line-registry": { "role": "secondary", "displayName": "Registry Line Amber", "canonical": "#d97706", "tonalRamp": ["#451a03", "#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fcd34d", "#fef3c7"] },
+      "line-registry-ink": { "role": "secondary", "displayName": "Registry Ink Amber", "canonical": "#b45309", "tonalRamp": ["#451a03", "#78350f", "#92400e", "#b45309", "#d97706", "#f59e0b", "#fcd34d", "#fef3c7"] },
+      "line-cli": { "role": "secondary", "displayName": "CLI Line Lime", "canonical": "#65a30d", "tonalRamp": ["#1a2e05", "#365314", "#3f6212", "#4d7c0f", "#65a30d", "#84cc16", "#bef264", "#ecfccb"] },
+      "line-cli-ink": { "role": "secondary", "displayName": "CLI Ink Lime", "canonical": "#4d7c0f", "tonalRamp": ["#1a2e05", "#365314", "#3f6212", "#4d7c0f", "#65a30d", "#84cc16", "#bef264", "#ecfccb"] },
+      "line-site": { "role": "tertiary", "displayName": "Website Line Rose", "canonical": "#e11d48", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#f43f5e", "#fda4af", "#ffe4e6"] },
+      "line-site-ink": { "role": "tertiary", "displayName": "Website Ink Rose", "canonical": "#be123c", "tonalRamp": ["#4c0519", "#881337", "#9f1239", "#be123c", "#e11d48", "#f43f5e", "#fda4af", "#ffe4e6"] },
+      "map-paper": { "role": "neutral", "displayName": "Map Paper", "canonical": "#fafaf9", "tonalRamp": ["#1c1917", "#292524", "#44403c", "#57534e", "#78716c", "#d6d3d1", "#f5f5f4", "#fafaf9"] },
+      "station-white": { "role": "neutral", "displayName": "Station White", "canonical": "#ffffff", "tonalRamp": ["#020617", "#0f172a", "#334155", "#475569", "#64748b", "#cbd5e1", "#f1f5f9", "#ffffff"] },
+      "line-ink": { "role": "neutral", "displayName": "Line Ink", "canonical": "#0f172a", "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#cbd5e1", "#f1f5f9"] },
+      "night-ink": { "role": "neutral", "displayName": "Night Ink", "canonical": "#0b1220", "tonalRamp": ["#020617", "#0b1220", "#1e293b", "#334155", "#475569", "#64748b", "#cbd5e1", "#f1f5f9"] },
+      "tunnel-black": { "role": "neutral", "displayName": "Tunnel Black", "canonical": "#020617", "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#cbd5e1", "#f1f5f9"] },
+      "body-slate": { "role": "neutral", "displayName": "Body Slate", "canonical": "#334155", "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#cbd5e1", "#f1f5f9"] },
+      "secondary-slate": { "role": "neutral", "displayName": "Secondary Slate", "canonical": "#475569", "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#cbd5e1", "#f1f5f9"] },
+      "muted-slate": { "role": "neutral", "displayName": "Muted Slate", "canonical": "#64748b", "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#cbd5e1", "#f1f5f9"] },
+      "code-light": { "role": "neutral", "displayName": "Code Light", "canonical": "#f1f5f9", "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#cbd5e1", "#f1f5f9"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "One per page: the page title, or the home hero claim (2.25rem to 3rem at 1.05)." },
+      "headline": { "displayName": "Headline", "purpose": "Station headings on the route." },
+      "title": { "displayName": "Title", "purpose": "Home stop names, roadmap station titles, definition-list terms." },
+      "lead": { "displayName": "Lead", "purpose": "The single paragraph under a page title, secondary slate, max 42rem." },
+      "body": { "displayName": "Body", "purpose": "Running prose, capped at 42rem." },
+      "code": { "displayName": "Code", "purpose": "Code blocks and hero stations; ligatures off." },
+      "label": { "displayName": "Label", "purpose": "Mono uppercase chrome: nav stops, buttons, captions, address cells. Never an eyebrow above a heading." }
+    },
+    "shadows": [],
+    "motion": [
+      { "name": "rail-draw", "value": "420ms steps(12, end)", "purpose": "Hero rails draw like a line being plotted; second rail delayed 560ms. scaleY on phones, scaleX from 1024px." },
+      { "name": "rail-label-fade", "value": "160ms linear, 440ms delay", "purpose": "The 'compila para' label appears once the first rail lands." },
+      { "name": "split-flap-settle", "value": "14ms per-character stagger, 280ms cycle per character", "purpose": "The .jte station's characters cycle through A-Z0-9<>{}$@/= then settle on the real compiler output." },
+      { "name": "station-arrive", "value": "background-color 120ms", "purpose": "The arrival station square fills night-ink when the compile finishes." },
+      { "name": "state-change", "value": "instant (no transition)", "purpose": "Hover and focus swap colors immediately; nothing lifts or eases." }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Main call to action: night-ink block, mono uppercase, inverts on hover.",
+      "html": "<a href=\"#\" class=\"ds-btn-primary\">Começar</a>",
+      "css": ".ds-btn-primary { display: inline-block; padding: 12px 20px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; text-transform: uppercase; text-decoration: none; background: #0b1220; color: #ffffff; border: 2px solid #0b1220; border-radius: 0; } .ds-btn-primary:hover, .ds-btn-primary:focus-visible { background: #ffffff; color: #0b1220; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Second action beside the primary: white block with night-ink outline, inverts on hover.",
+      "html": "<a href=\"#\" class=\"ds-btn-secondary\">Ver componentes</a>",
+      "css": ".ds-btn-secondary { display: inline-block; padding: 12px 20px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; text-transform: uppercase; text-decoration: none; background: #ffffff; color: #0b1220; border: 2px solid #0b1220; border-radius: 0; } .ds-btn-secondary:hover, .ds-btn-secondary:focus-visible { background: #0b1220; color: #ffffff; }"
+    },
+    {
+      "name": "Line-Map Nav",
+      "kind": "nav",
+      "description": "The site nav: four stops on one drawn line, each marker in its stage color; current stop filled and outlined.",
+      "html": "<ol class=\"ds-navline\"><li><a href=\"#\" class=\"ds-navstop\" style=\"--line:#65a30d\"><span class=\"ds-navstop-marker\"></span>Getting Started</a></li><li><a href=\"#\" class=\"ds-navstop\" style=\"--line:#0d9488\" aria-current=\"page\"><span class=\"ds-navstop-marker\"></span>Language Reference</a></li><li><a href=\"#\" class=\"ds-navstop\" style=\"--line:#d97706\"><span class=\"ds-navstop-marker\"></span>Components</a></li><li><a href=\"#\" class=\"ds-navstop\" style=\"--line:#e11d48\"><span class=\"ds-navstop-marker\"></span>Roadmap</a></li></ol>",
+      "css": ".ds-navline { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); width: 36rem; max-width: 100%; list-style: none; margin: 0; padding: 0; } .ds-navline::before { content: ''; position: absolute; left: 12.5%; right: 12.5%; top: 9px; height: 4px; background: #0f172a; } .ds-navstop { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 0 4px; text-align: center; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 11px; line-height: 1.25; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; color: #475569; } .ds-navstop-marker { display: block; width: 22px; height: 22px; background: #ffffff; border: 4px solid var(--line); box-sizing: border-box; } .ds-navstop:hover, .ds-navstop:focus-visible { color: #0f172a; } .ds-navstop:hover .ds-navstop-marker, .ds-navstop:focus-visible .ds-navstop-marker { background: var(--line); } .ds-navstop[aria-current='page'] { color: #0f172a; font-weight: 500; } .ds-navstop[aria-current='page'] .ds-navstop-marker { background: var(--line); outline: 2px solid #0f172a; outline-offset: 2px; }"
+    },
+    {
+      "name": "Route Station",
+      "kind": "custom",
+      "description": "Read-page section as a station on the page's rail; numbered only where order means something.",
+      "html": "<ol class=\"ds-route\" style=\"--line:#65a30d\"><li><h2 class=\"ds-station-heading\"><span class=\"ds-station-marker\">01</span>Instalar</h2><p class=\"ds-station-body\">Clone o repositório ao lado do seu projeto.</p></li><li><h2 class=\"ds-station-heading\"><span class=\"ds-station-marker ds-station-marker-hollow\"></span>Requisitos</h2><p class=\"ds-station-body\">Dependências e o que a sua app precisa.</p></li></ol>",
+      "css": ".ds-route { position: relative; list-style: none; margin: 0 0 0 16px; padding: 0 0 0 calc(2.5rem + 4px); } .ds-route > li { position: relative; } .ds-route > li + li { margin-top: 56px; } .ds-route::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--line, #0f172a); } .ds-station-heading { display: flex; align-items: center; min-height: 32px; margin: 0 0 20px; font-family: 'Overpass', ui-sans-serif, sans-serif; font-size: 1.5rem; line-height: 2rem; font-weight: 800; color: #0f172a; } .ds-station-marker { position: absolute; left: calc(-2.5rem - 18px); top: 0; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; box-sizing: border-box; border: 2px solid #0f172a; background: var(--line, #0f172a); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; font-weight: 700; color: #020617; } .ds-station-marker-hollow { background: #ffffff; color: #64748b; } .ds-station-body { margin: 0; font-family: 'IBM Plex Sans', ui-sans-serif, sans-serif; color: #334155; max-width: 42rem; }"
+    },
+    {
+      "name": "Code Block",
+      "kind": "card",
+      "refersTo": "code-block",
+      "description": "Ink code block with a 4px rule on top in the page's line color.",
+      "html": "<pre class=\"ds-code-block\" style=\"--line:#0d9488\">component Hello(String name) {\n  &lt;p&gt;Olá, ${name}!&lt;/p&gt;\n}</pre>",
+      "css": ".ds-code-block { margin: 0; padding: 20px; overflow-x: auto; background: #020617; color: #f1f5f9; border-top: 4px solid var(--line, #2dd4bf); border-radius: 0; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; line-height: 1.625; font-variant-ligatures: none; font-feature-settings: 'liga' 0, 'calt' 0; }"
+    },
+    {
+      "name": "Address Cell",
+      "kind": "chip",
+      "refersTo": "addr-cell",
+      "description": "Teletext cell for in-context version, status or command chrome. Never an eyebrow.",
+      "html": "<span class=\"ds-addr-cell\">v0.1.0</span> <span class=\"ds-addr-cell\">em curso</span>",
+      "css": ".ds-addr-cell { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; background: #020617; color: #5eead4; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; line-height: 16px; border-radius: 0; }"
+    },
+    {
+      "name": "Source Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "Flat white panel with 2px ink outline and a mono caption strip; hero stations use it.",
+      "html": "<figure class=\"ds-panel\"><figcaption class=\"ds-panel-caption\"><span>greeting/Hello.jte</span><span class=\"ds-panel-verb\">o build gera</span></figcaption><pre class=\"ds-panel-body\">@param String name\n\n&lt;p&gt;Olá, ${name}!&lt;/p&gt;</pre></figure>",
+      "css": ".ds-panel { margin: 0; background: #ffffff; border: 2px solid #0f172a; border-radius: 0; } .ds-panel:hover { border-color: var(--line, #0f172a); } .ds-panel-caption { display: flex; justify-content: space-between; gap: 16px; padding: 8px 16px; border-bottom: 2px solid #0f172a; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; font-weight: 500; color: #0f172a; } .ds-panel-verb { font-weight: 400; color: #64748b; } .ds-panel-body { margin: 0; padding: 16px; font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 14px; line-height: 1.625; color: #0f172a; font-variant-ligatures: none; }"
+    },
+    {
+      "name": "Text Link",
+      "kind": "custom",
+      "description": "Underlined link in the line's ink variant; turns ink on hover.",
+      "html": "<p class=\"ds-prose\">O <a href=\"#\" class=\"ds-text-link\" style=\"--line-ink:#be123c\">roadmap</a> mostra o que falta.</p>",
+      "css": ".ds-prose { font-family: 'IBM Plex Sans', ui-sans-serif, sans-serif; color: #334155; } .ds-text-link { color: var(--line-ink, #0f766e); text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; } .ds-text-link:hover, .ds-text-link:focus-visible { color: #0f172a; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Line Map",
+    "overview": "Suko's documentation is drawn as a transit schematic of its own compiler pipeline. Every pipeline stage is a line with its own color, every page is a station on the line it documents, and the site navigation is literally four stops on one drawn line. The geometry is the schematic's: right angles only, flat 2px ink outlines, square station markers, straight rails. Nothing floats, nothing is rounded, nothing casts a shadow.\n\nTwo densities share the world. The home page is the one Persuade surface: a full-bleed teal field that shows the real `.sk` source station, a drawn rail, and the real `.jte` output station before any prose, then the main line of four stops beneath it. Every other page is a Read page on off-white map paper, where sections are stations sitting on a vertical rail in the page's line color. Code sits in ink blocks with a line-colored rule on top; version and status chrome renders as flat monospace address cells, the teletext raise.\n\nThe signature motion is the compile: rails draw in stepped increments and the template's characters settle split-flap style onto the real compiler output. Motion only ever adds to a page that is already complete; without JavaScript or under reduced motion, the final state is what renders.",
+    "keyCharacteristics": [
+      "Right angles only; global corner radius is zero.",
+      "Flat 2px ink outlines; no shadows, no lift.",
+      "One color per pipeline stage; a page takes the color of the stage it documents.",
+      "Sections are stations on a drawn rail; the nav is a line map.",
+      "Grotesk display, humanist sans body, true monospace code with ligatures off.",
+      "Real compiler output as the hero, never an illustration."
+    ],
+    "rules": [
+      { "name": "The One Line Per Stage Rule", "body": "Each pipeline stage owns exactly one line color: CLI lime, Core teal, Registry amber, Website rose. A page sets its stage's line on its root (`--line` for fills and rails, `--line-ink` for text) and every marker, rail, code rule and link on it inherits. A new surface picks the stage it documents; it does not invent a fifth hue.", "section": "colors" },
+      { "name": "The No Violet Rule", "body": "Violet was a line color and was removed after the detector flagged it as the AI-palette tell. Don't reintroduce violet or purple for any stage.", "section": "colors" },
+      { "name": "The Destination Color Rule", "body": "A link that leaves the page for another stage's page may take the destination's line (the home page's roadmap link is rose); otherwise links take the ambient page line.", "section": "colors" },
+      { "name": "The Two Characters Rule", "body": "Code never uses programming ligatures: `!=` renders as two characters in a language reference. `font-variant-ligatures: none` and `liga`/`calt` off apply to all code and mono text.", "section": "typography" },
+      { "name": "The Extrabold Signage Rule", "body": "Display type is always Overpass at 800. Headings do not step down to lighter weights; hierarchy comes from size.", "section": "typography" },
+      { "name": "The Drawn Not Lifted Rule", "body": "A surface is distinguished by a 2px ink outline or by an ink fill. If something needs to feel raised, draw it; don't shadow it.", "section": "elevation" },
+      { "name": "The Right Angle Rule", "body": "Nothing is rounded: no pills, no rounded cards, no circular markers. A marker is a square; a line is a straight segment that turns at 90 degrees.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do set the page's stage line on the page root (`line-cli`, `line-core`, `line-registry`, `line-site`) and let markers, rails, code rules and links inherit it.",
+      "Do draw sections as stations on a rail; number markers only where order is meaning, and leave them as empty squares elsewhere.",
+      "Do show real compiler input and output in place of illustrations.",
+      "Do use address cells for version, status and command chrome that sits in context beside what it describes.",
+      "Do put state in color: hover moves the line color into an outline, a marker fill or an underline.",
+      "Do keep every animated element fully rendered without JavaScript and under reduced motion.",
+      "Do escape page text in `.sk` sources: `${`, `{`, `}`, `$`, `@` (JTE directives) and `//` as HTML entities, and a bare `=` directly after a tag's `>`; keep HTML entities out of static attribute values."
+    ],
+    "donts": [
+      "Don't round anything or add a shadow; the world is flat right angles with 2px ink outlines.",
+      "Don't add a fifth line color, and don't bring back violet.",
+      "Don't put an address cell, kicker or mono label above a heading as an eyebrow.",
+      "Don't lay content out as a grid of cards; use stations on a route or ruled definition rows.",
+      "Don't use glyph or emoji icons; markers are drawn squares and the only mark is the SVG logo.",
+      "Don't use programming ligatures in code.",
+      "Don't use a line color as a generic accent or warning; each hue means its stage."
+    ]
+  }
+}
