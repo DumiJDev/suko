@@ -64,8 +64,8 @@ component Roadmap() {
         </li>
         <li class="line-site">
           <span class="station-marker">10</span>
-          <h2 class="font-display text-xl font-extrabold text-slate-900">Site de documentação <span class="addr-cell align-middle ml-2">em curso</span></h2>
-          <p class="text-slate-600 mt-1">Este site: compilado de .sk para HTML estático em build-time, sem JVM em runtime.</p>
+          <h2 class="font-display text-xl font-extrabold text-slate-900">Site de documentação <span class="addr-cell align-middle ml-2">feito</span></h2>
+          <p class="text-slate-600 mt-1">Este site: compilado de .sk para HTML estático em build-time e publicado no GitHub Pages, sem JVM em runtime.</p>
         </li>
         <li>
           <span class="station-marker station-marker-hollow">11</span>

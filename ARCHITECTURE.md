@@ -697,10 +697,20 @@ tem origem própria nesta spec):
    a erro com a correção literal na mensagem. `$ident` dentro de strings
    mantém-se (D3 rejeitada). Antecipado à frente do site de documentação
    por pedido explícito do utilizador.
-10. **Site de documentação** — preenche `suko-website/`. Inclui
-    compilação para HTML estático em build-time (deployável em
-    serverless/CDN sem JVM em runtime) como primeiro caso de uso real
-    dessa capacidade, antes de generalizá-la no compilador.
+10. **Site de documentação** — CONCLUÍDO. `suko-website/` compila as
+    suas próprias páginas `.sk` para HTML estático em build-time
+    (`WebsiteGenerator`: `.sk` → `.jte` → HTML via gg.jte, Tailwind
+    purgado pela tarefa `buildTailwindCss`), publicado no GitHub Pages
+    (`.github/workflows/deploy-website.yml`, https://dumijdev.github.io/suko/)
+    sem JVM em runtime — o primeiro caso de uso real dessa capacidade;
+    generalizá-la no compilador continua por fazer. As páginas de
+    componentes são geradas a partir do registry real (código-fonte,
+    parâmetros e requisitos lidos dos manifestos), e todos os exemplos
+    da Language Reference e do Getting Started foram compilados pelo
+    plugin Gradle e renderizados pelo gg.jte num projeto limpo. Desenho
+    visual registado em `DESIGN.md`/`PRODUCT.md`. Lacuna documentada no
+    próprio site: o `sukoCompile` não verifica os tipos Java das
+    expressões (um `List` cru passa o build e só falha no JTE).
 11. **Suporte de IDE** (VSCode + IntelliJ) — language server sobre o
     `DiagnosticCollector`/`SemanticChecker` já existentes. Sequenciado
     depois do 7/8 (quer uma superfície de AST/diagnostics estável), mas
