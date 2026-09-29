@@ -10,16 +10,12 @@ import io.suko.lang.ast.SukoFile;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
  * Fase 1 (indexação) do SukoProjectCompiler: varre um sourceRoot
@@ -63,24 +59,17 @@ public class ProjectIndex {
     }
 
     public static ProjectIndex build(Path sourceRoot) {
+        return build(SukoSources.fromDirectory(sourceRoot));
+    }
+
+    /** Fase 1 sobre um snapshot em memória — {@link #build(Path)} delega aqui. */
+    public static ProjectIndex build(SukoSources sources) {
         ProjectIndex index = new ProjectIndex();
+        Path sourceRoot = sources.root();
 
-        List<Path> skFiles;
-        try (Stream<Path> walk = Files.walk(sourceRoot)) {
-            skFiles = walk.filter(Files::isRegularFile)
-                .filter(p -> p.toString().endsWith(".sk"))
-                .toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-
-        for (Path skFile : skFiles) {
-            String source;
-            try {
-                source = Files.readString(skFile);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+        for (Map.Entry<Path, String> sourceEntry : sources.files().entrySet()) {
+            Path skFile = sources.absolute(sourceEntry.getKey());
+            String source = sourceEntry.getValue();
 
             SukoFile file = parseQuietly(source);
             if (file == null) {

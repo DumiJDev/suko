@@ -47,9 +47,9 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] Teste: `SukoSources.fromDirectory(root)` devolve mapa imutável caminho-relativo → texto só de `.sk`; `withOverlay(Map<Path,String>)` sobrepõe/acrescenta sem mutar o original; overlay com `null`/remoção não suportada (documentar).
 - [ ] Teste de paridade (`ProjectParityTest`): para `suko-core/src/test/resources` de projetos multi-ficheiro existentes **e** para `suko-components/src/main/suko`, `SukoProjectCompiler.compile(Path)` e `compile(SukoSources.fromDirectory(...))` produzem os mesmos `.jte` e os mesmos diagnósticos (código, ficheiro, span).
-- [ ] Implementar `ProjectIndex.build(SukoSources)` (lógica atual; caminhos passam a relativos ao root) e `SukoProjectCompiler.compile(SukoSources)`; as versões `Path` delegam via `fromDirectory`. `ProjectIndexEntry.sourceFile()` continua a ser `Path` — decisão: **relativo ao root** dentro do índice; ajustar `SukoProjectCompiler` (que hoje faz `sourceRoot.relativize(...)`) e o `DuplicateComponent`.
+- [ ] Implementar `ProjectIndex.build(SukoSources)` (lógica atual; caminhos passam a relativos ao root) e `SukoProjectCompiler.compile(SukoSources)`; as versões `Path` delegam via `fromDirectory`. **Decisão tomada na implementação (difere do rascunho):** `SukoSources` guarda também o `root` real e o índice continua a expor caminhos **absolutos** (`root.resolve(relativo)`), porque `RegistryGenerator` e `ProjectIndexTest` dependem disso e o server precisa de URIs absolutos. Sem mudança de comportamento nos consumidores.
 - [ ] Implementar `SukoProjectCompiler.analyze(SukoSources)` → `ProjectAnalysis` (`Map<Path, FileAnalysis>` com `SukoFile` (nullable em erro de parse), `DiagnosticCollector`), **sem** `JteEmitter`. `compile(...)` passa a ser `analyze` + emissão para não haver dois caminhos que divirjam.
-- [ ] `./gradlew :suko-core:test` verde; commit `feat(core): SukoSources e entrada só de verificação`.
+- [x] `./gradlew build` verde (exceto `SukoSpringBootIntegrationTest`, bloqueado por HTTP 429 do Maven Central no sandbox, não por código); commit `feat(core): SukoSources e entrada só de verificação`. Nota: `JteCompiler` ganhou `analyze(ProjectIndex, Path)` (parse + semântica sem emissão), partilhado por `compile` e `SukoProjectCompiler.analyze`.
 
 ### Task 2: Spans para navegação
 
