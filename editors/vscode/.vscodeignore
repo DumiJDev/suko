@@ -3,8 +3,5 @@
 !README.md
 !language-configuration.json
 !syntaxes/**
-!out/**
+!dist/extension.js
 !server/suko-lsp.jar
-!node_modules/vscode-languageclient/**
-out/test/**
-**/*.map

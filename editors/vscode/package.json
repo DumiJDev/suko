@@ -22,7 +22,7 @@
     "templates",
     "java"
   ],
-  "main": "./out/extension.js",
+  "main": "./dist/extension.js",
   "activationEvents": [],
   "contributes": {
     "languages": [
@@ -84,12 +84,14 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "copy-server": "node scripts/copy-server.mjs",
-    "test:unit": "npm run compile && node --test out/test/unit",
+    "test:unit": "npm run compile && node --test \"out/test/unit/*.test.js\"",
     "test:grammar": "vscode-tmgrammar-snap -g syntaxes/suko.tmLanguage.json \"test/grammar/*.sk\"",
     "test:electron": "npm run compile && node out/test/electron/runTest.js",
-    "test": "npm run test:unit && npm run test:grammar",
-    "package": "npm run copy-server && npm run compile && vsce package --no-dependencies",
-    "test:grammar:update": "vscode-tmgrammar-snap -g syntaxes/suko.tmLanguage.json --updateSnapshot \"test/grammar/*.sk\""
+    "test": "npm run test:unit && npm run test:server && npm run test:grammar",
+    "package": "npm run copy-server && npm run compile && npm run bundle && vsce package --no-dependencies",
+    "test:grammar:update": "vscode-tmgrammar-snap -g syntaxes/suko.tmLanguage.json --updateSnapshot \"test/grammar/*.sk\"",
+    "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --sourcemap --outfile=dist/extension.js",
+    "test:server": "npm run compile && node --test \"out/test/integration/*.test.js\""
   },
   "dependencies": {
     "vscode-languageclient": "^10.1.2"
@@ -100,6 +102,8 @@
     "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "typescript": "^5.9.3",
-    "vscode-tmgrammar-test": "^0.1.3"
+    "vscode-tmgrammar-test": "^0.1.3",
+    "esbuild": "^0.28.2",
+    "vscode-languageserver-protocol": "3.18.4"
   }
 }

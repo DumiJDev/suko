@@ -165,7 +165,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] `src/extension.ts`: `java -jar server/suko-lsp.jar` por stdio; Java por `suko.java.home` → `JAVA_HOME` → `java` no PATH; verificar 21+ antes de arrancar (função pura testável com testes unitários: parse de `java -version`); mensagem com a versão encontrada e botão que abre a setting; comando "Suko: Restart Language Server"; canal de output.
 - [ ] `scripts/copy-server.*`: copia o jar de `./gradlew :suko-lsp:fatJar` para `editors/vscode/server/`; `npm run package` gera o `.vsix`.
-- [ ] Commit.
+- [x] Commit `feat(vscode): cliente LSP, descoberta de Java e empacotamento`. **Achado:** `vsce package --no-dependencies` deixa `node_modules` de fora e a extensão rebentaria ao ativar (`vscode-languageclient` em falta) — passou a empacotar-se com **esbuild** num único `dist/extension.js`. `vscode-languageclient` 10 exige `LogOutputChannel`. Testes: unitários da descoberta de Java (12) e de integração que falam com o `server/suko-lsp.jar` real por JSON-RPC com a biblioteca de referência do VS Code (`vscode-languageserver-protocol`), cobrindo diagnósticos, limpeza e go-to-definition sem precisar de um VS Code.
 
 ### Task 18: Teste de fumo e CI
 
