@@ -1,7 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import * as path from 'node:path';
-import { candidates, findJava, parseJavaMajor, Probe } from '../../java';
+import { candidates, findJava, parseJavaMajor, Probe, resolveOnPath } from '../../java';
 
 const OPENJDK_21 = 'openjdk version "21.0.2" 2024-01-16\nOpenJDK Runtime Environment (build 21.0.2+13)\n';
 const JAVA_17 = 'openjdk version "17.0.9" 2023-10-17\n';
@@ -94,5 +94,23 @@ describe('findJava', () => {
     const result = await findJava('', {}, 'linux', probeWith({ java: 'wrapper script says hi' }));
     assert.ok(!result.ok);
     assert.match(result.message, /Não consegui ler a versão/);
+  });
+});
+
+describe('resolveOnPath', () => {
+  const on = (...files: string[]) => (file: string) => files.includes(file);
+
+  it('devolve o primeiro caminho absoluto que existe', () => {
+    const found = resolveOnPath('java', { PATH: '/nope:/usr/bin:/opt/bin' }, 'linux', on('/opt/bin/java', '/usr/bin/java'));
+    assert.equal(found, path.join('/usr/bin', 'java'));
+  });
+
+  it('ignora entradas vazias e relativas do PATH (a pasta actual não conta)', () => {
+    const exists = on('java', './java', path.join('bin', 'java'));
+    assert.equal(resolveOnPath('java', { PATH: ':.:bin:' }, 'linux', exists), undefined);
+  });
+
+  it('não encontra o que não existe', () => {
+    assert.equal(resolveOnPath('java', { PATH: '/usr/bin' }, 'linux', on()), undefined);
   });
 });

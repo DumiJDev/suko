@@ -145,4 +145,30 @@ class DiagnosticsTest {
         t.scheduler.fire();
         assertTrue(t.client.published.isEmpty());
     }
+
+    /** O URI do cliente (%28 %29) e o do Path (parênteses crus) descrevem o mesmo ficheiro:
+     * abrir/fechar outro ficheiro não pode limpar os erros deste. */
+    @Test
+    void openingAnotherFileNeverClearsTheErrorsOfAFileWhoseUriIsSpelledDifferently(@TempDir Path base) throws Exception {
+        Path folder = java.nio.file.Files.createDirectories(base.resolve("a(b) c"));
+        TestSupport t = new TestSupport(folder);
+        Path aPath = t.write("A.sk", BROKEN);
+        String clientUri = aPath.toUri().toString().replace("(", "%28").replace(")", "%29");
+        assertNotEquals(aPath.toUri().toString(), clientUri);
+
+        t.server.getTextDocumentService().didOpen(new org.eclipse.lsp4j.DidOpenTextDocumentParams(
+            new org.eclipse.lsp4j.TextDocumentItem(clientUri, "suko", 1, BROKEN)));
+        t.scheduler.fire();
+        t.open("B.sk", "component B() { <p>x</p> }\n");
+        t.scheduler.fire();
+        t.close("B.sk");
+        t.scheduler.fire();
+
+        for (PublishDiagnosticsParams p : t.client.published) {
+            if (Workspace.pathOf(p.getUri()).equals(aPath.toAbsolutePath().normalize()) && p.getDiagnostics().isEmpty()) {
+                fail("os diagnósticos de A.sk foram limpos por " + p.getUri());
+            }
+        }
+        assertFalse(t.client.lastFor(clientUri).getDiagnostics().isEmpty());
+    }
 }

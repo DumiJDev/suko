@@ -54,7 +54,8 @@
         "suko.java.home": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Pasta de um JDK/JRE **21 ou superior** usado para correr o language server. Se vazio, usa `JAVA_HOME` e depois o `java` do `PATH`."
+          "markdownDescription": "Pasta de um JDK/JRE **21 ou superior** usado para correr o language server. Se vazio, usa `JAVA_HOME` e depois o `java` do `PATH`.",
+          "scope": "machine"
         },
         "suko.sourceRoot": {
           "type": "string",
@@ -87,7 +88,7 @@
     "test:unit": "npm run compile && node --test \"out/test/unit/*.test.js\"",
     "test:grammar": "vscode-tmgrammar-snap -g syntaxes/suko.tmLanguage.json \"test/grammar/*.sk\"",
     "test:electron": "npm run compile && npm run bundle && node out/test/electron/runTest.js",
-    "test": "npm run test:unit && npm run test:server && npm run test:grammar",
+    "test": "npm run copy-server && npm run test:unit && npm run test:server && npm run test:grammar",
     "package": "npm run copy-server && npm run compile && npm run bundle && vsce package --no-dependencies",
     "test:grammar:update": "vscode-tmgrammar-snap -g syntaxes/suko.tmLanguage.json --updateSnapshot \"test/grammar/*.sk\"",
     "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --target=node20 --external:vscode --sourcemap --outfile=dist/extension.js",
@@ -105,5 +106,15 @@
     "vscode-tmgrammar-test": "^0.1.3",
     "esbuild": "^0.28.2",
     "vscode-languageserver-protocol": "3.18.4"
+  },
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Num workspace não confiável o language server não arranca: a extensão executaria o Java indicado pelas settings do workspace.",
+      "restrictedConfigurations": [
+        "suko.java.home",
+        "suko.sourceRoot"
+      ]
+    }
   }
 }

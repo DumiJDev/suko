@@ -28,7 +28,11 @@ import { findJava, probeJava } from '../../java';
  */
 const jar = path.resolve(__dirname, '..', '..', '..', 'server', 'suko-lsp.jar');
 
-describe('suko-lsp.jar por stdio', { skip: !fs.existsSync(jar) && 'server/suko-lsp.jar não existe (corra npm run copy-server)' }, () => {
+// Fora do CI, sem jar o teste salta (desenvolvimento local sem Gradle); no CI é uma falha —
+// um teste de integração verde por ter sido saltado não prova nada.
+const skip = !fs.existsSync(jar) && !process.env.CI && 'server/suko-lsp.jar não existe (corra npm run copy-server)';
+
+describe('suko-lsp.jar por stdio', { skip }, () => {
   let workspace: string;
   let child: ChildProcess;
   let connection: ProtocolConnection;
@@ -55,6 +59,7 @@ describe('suko-lsp.jar por stdio', { skip: !fs.existsSync(jar) && 'server/suko-l
   }
 
   before(async () => {
+    assert.ok(fs.existsSync(jar), `server/suko-lsp.jar não existe (${jar})`);
     const java = await findJava('', process.env, process.platform, probeJava);
     assert.ok(java.ok, java.ok ? '' : java.message);
 

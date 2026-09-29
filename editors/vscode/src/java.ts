@@ -1,4 +1,5 @@
 import { execFile } from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 
 /** O language server corre em Java 21+ (o piso do monorepo, `options.release = 21`). */
@@ -113,3 +114,34 @@ export const probeJava: Probe = (command) =>
       resolve(error ? undefined : `${stderr}\n${stdout}`);
     });
   });
+
+/**
+ * Caminho absoluto de `name` no PATH, ignorando entradas vazias/relativas (que, no Windows, poderiam
+ * apontar para a pasta actual): um `java.exe` plantado na raiz de um repositório nunca é o escolhido.
+ */
+export function resolveOnPath(
+  name: string,
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+  exists: (file: string) => boolean = (file) => fs.existsSync(file) && fs.statSync(file).isFile(),
+): string | undefined {
+  const separator = platform === 'win32' ? ';' : ':';
+  const extensions = platform === 'win32' ? (env.PATHEXT ?? '.EXE;.CMD;.BAT').split(';').filter(Boolean) : [''];
+  for (const entry of (env.PATH ?? env.Path ?? '').split(separator)) {
+    const directory = entry.trim().replace(/^"|"$/g, '');
+    if (!directory || !path.isAbsolute(directory)) {
+      continue;
+    }
+    for (const extension of extensions) {
+      const file = path.join(directory, name + extension.toLowerCase());
+      const upper = path.join(directory, name + extension);
+      if (exists(file)) {
+        return file;
+      }
+      if (upper !== file && exists(upper)) {
+        return upper;
+      }
+    }
+  }
+  return undefined;
+}

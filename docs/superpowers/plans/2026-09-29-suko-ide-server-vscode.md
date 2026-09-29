@@ -179,10 +179,10 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 ### Task 19: Documentação e revisão final
 
-- [x] `ARCHITECTURE.md`: módulos `suko-lsp` e `editors/vscode`; terceiro caminho de parse (tolerante, nunca reporta diagnósticos); validação entre ficheiros (remover a limitação "verificação de slot fills não atravessa ficheiros" e a nota do `ProjectIndex`); `PARAM_NOT_FOUND`; item 11a CONCLUÍDO no roadmap.
+- [x] `ARCHITECTURE.md`: módulos `suko-lsp` e `editors/vscode`; terceiro caminho de parse (tolerante, nunca reporta diagnósticos); validação entre ficheiros (remover a limitação "verificação de slot fills não atravessa ficheiros" e a nota do `ProjectIndex`); `PARAM_NOT_FOUND`; item 11a no roadmap como IMPLEMENTADO, verificação manual pendente (não CONCLUÍDO: o teste Electron e o workflow ainda não correram).
 - [x] `suko-lsp/README.md` e `editors/vscode/README.md` (instalação do `.vsix`, requisitos Java 21+, settings).
 - [x] `./gradlew build` verde a nível da raiz (2026-09-29).
-- [ ] Despachar `architect` para a revisão final da branch inteira; corrigir achados.
+- [x] `architect` reviu a branch inteira: aprovado com condições. Corrigidas: (1) diagnósticos chaveados pelo `Path` e não pela string do URI (no Windows / caminhos com `( ) +` abrir um ficheiro limpava os erros de outro); (2) o CI corria `npm test` antes de haver jar e o teste de integração saltava em verde — agora copia o jar e falha se `CI` estiver definido; (3) `untrustedWorkspaces: limited`, `suko.java.home` com `scope: machine`, Java do PATH resolvido para caminho absoluto (ignorando entradas relativas) e `cwd` fora do workspace. Seguimentos (desempenho, rediscover, limites de `sourceRoot`, avisos que o build descarta) registados no `ARCHITECTURE.md`.
 - [ ] **Verificação manual pelo utilizador** (critério da spec): `.vsix` instalado num VSCode real, projeto criado com `suko init` — highlighting, erros ao escrever, go-to-definition, hover, completion com auto-import. Esta tarefa não fecha sem essa confirmação.
 
 ## Riscos e pontos de decisão

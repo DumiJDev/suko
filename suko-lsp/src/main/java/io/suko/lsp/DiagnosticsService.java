@@ -33,8 +33,16 @@ final class DiagnosticsService {
     private final long debounceMillis;
 
     private final Map<Project, Scheduler.Cancellable> pending = new IdentityHashMap<>();
-    /** Último conjunto publicado por projecto: URI → diagnósticos (para não repetir e para limpar). */
-    private final Map<Project, Map<String, List<Diagnostic>>> published = new IdentityHashMap<>();
+    /**
+     * Último conjunto publicado por projecto, chaveado pelo {@code Path} normalizado e não pela
+     * string do URI: o mesmo ficheiro alterna entre o URI do cliente (aberto) e o do {@code Path}
+     * (fechado), que só diferem na escrita (`c%3A` vs `C:`, `%28` vs `(`) — com o URI como chave,
+     * abrir um ficheiro limpava os diagnósticos do outro.
+     */
+    private final Map<Project, Map<Path, Published>> published = new IdentityHashMap<>();
+
+    private record Published(String uri, List<Diagnostic> diagnostics) {
+    }
     private int runs;
 
     DiagnosticsService(Supplier<LanguageClient> client, Scheduler scheduler, DocumentUris uris, long debounceMillis) {
@@ -65,7 +73,7 @@ final class DiagnosticsService {
         }
         try {
             publish(project);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | StackOverflowError e) {
             // Uma verificação que falha não pode derrubar o server; os diagnósticos
             // anteriores ficam como estavam até à próxima alteração.
             Requests.log("verificação de " + project.root(), e);
@@ -78,27 +86,30 @@ final class DiagnosticsService {
             return;
         }
         Project.Snapshot snapshot = project.snapshot();
-        Map<String, List<Diagnostic>> next = convert(project, snapshot);
+        Map<Path, Published> next = convert(project, snapshot);
 
-        Map<String, List<Diagnostic>> previous;
+        Map<Path, Published> previous;
         synchronized (this) {
             previous = published.getOrDefault(project, Map.of());
             published.put(project, next);
         }
-        for (Map.Entry<String, List<Diagnostic>> entry : next.entrySet()) {
+        for (Map.Entry<Path, Published> entry : next.entrySet()) {
             if (!entry.getValue().equals(previous.get(entry.getKey()))) {
-                target.publishDiagnostics(new PublishDiagnosticsParams(entry.getKey(), entry.getValue()));
+                target.publishDiagnostics(new PublishDiagnosticsParams(
+                    entry.getValue().uri(), entry.getValue().diagnostics()));
             }
         }
-        for (String uri : previous.keySet()) {
-            if (!next.containsKey(uri)) {
-                target.publishDiagnostics(new PublishDiagnosticsParams(uri, List.of()));
+        // Só se limpa o que deixou de existir: um path que continua em `next` nunca leva `[]`
+        // para o URI antigo (o cliente normalizaria os dois para o mesmo recurso).
+        for (Map.Entry<Path, Published> entry : previous.entrySet()) {
+            if (!next.containsKey(entry.getKey())) {
+                target.publishDiagnostics(new PublishDiagnosticsParams(entry.getValue().uri(), List.of()));
             }
         }
     }
 
-    private Map<String, List<Diagnostic>> convert(Project project, Project.Snapshot snapshot) {
-        Map<String, List<Diagnostic>> result = new HashMap<>();
+    private Map<Path, Published> convert(Project project, Project.Snapshot snapshot) {
+        Map<Path, Published> result = new HashMap<>();
         ProjectAnalysis analysis = snapshot.analysis();
         for (Map.Entry<Path, ProjectAnalysis.FileAnalysis> file : analysis.files().entrySet()) {
             Path relative = file.getKey();
@@ -107,7 +118,8 @@ final class DiagnosticsService {
             for (SukoDiagnostic d : file.getValue().diagnostics().getDiagnostics()) {
                 diagnostics.add(toLsp(d, mapper));
             }
-            result.put(uris.uriOf(project.root().resolve(relative)), diagnostics);
+            Path absolute = project.root().resolve(relative).toAbsolutePath().normalize();
+            result.put(absolute, new Published(uris.uriOf(absolute), diagnostics));
         }
         return result;
     }

@@ -59,6 +59,10 @@ jobs:
         run: npm ci
 
       - name: Unit, server-integration and grammar tests
+        env:
+          # o jar já foi construído no passo do Gradle; `npm test` copia-o para server/
+          # (e, com CI definido, o teste de integração falha em vez de saltar se faltar)
+          SUKO_SKIP_GRADLE: "1"
         run: npm test
 
       - name: Package the .vsix

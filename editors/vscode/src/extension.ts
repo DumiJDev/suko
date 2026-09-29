@@ -1,7 +1,8 @@
 import * as fs from 'fs';
+import * as os from 'os';
 import * as vscode from 'vscode';
 import { LanguageClient, LanguageClientOptions, ServerOptions, State } from 'vscode-languageclient/node';
-import { findJava, probeJava } from './java';
+import { findJava, probeJava, resolveOnPath } from './java';
 
 /** Toda a lógica da linguagem vive no server Java (para o cliente IntelliJ a reutilizar); isto é só o arranque. */
 let client: LanguageClient | undefined;
@@ -55,7 +56,9 @@ async function stop(): Promise<void> {
 async function start(context: vscode.ExtensionContext): Promise<void> {
   const config = vscode.workspace.getConfiguration('suko');
 
-  const java = await findJava(config.get<string>('java.home', ''), process.env, process.platform, probeJava);
+  const java = await findJava(config.get<string>('java.home', ''), process.env, process.platform, (command) =>
+    // `java` do PATH resolve-se para um caminho absoluto antes de ser executado
+    probeJava(command === 'java' ? resolveOnPath('java', process.env, process.platform) ?? command : command));
   if (!java.ok) {
     output.appendLine(java.message);
     const openSettings = 'Abrir definições';
@@ -76,7 +79,11 @@ async function start(context: vscode.ExtensionContext): Promise<void> {
     return;
   }
 
-  const serverOptions: ServerOptions = { command: java.java.command, args: ['-jar', serverJar] };
+  const command = java.java.command === 'java'
+    ? resolveOnPath('java', process.env, process.platform) ?? java.java.command
+    : java.java.command;
+  // cwd fora do workspace: nada do que lá esteja é encontrado em vez do Java
+  const serverOptions: ServerOptions = { command, args: ['-jar', serverJar], options: { cwd: os.homedir() } };
   const clientOptions: LanguageClientOptions = {
     documentSelector: [{ scheme: 'file', language: 'suko' }],
     outputChannel: output,

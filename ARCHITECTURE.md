@@ -763,13 +763,39 @@ tem origem própria nesta spec):
       completion com auto-import; core ganhou `SukoSources`,
       `SukoProjectCompiler.analyze`, `CallResolver`, spans de nome, D3
       (ver acima) e o `TolerantParser`. Verificado: suites Gradle, testes de
-      integração que falam com o jar real por JSON-RPC com o cliente de
-      referência do VS Code, testes unitários e de gramática. **Não
+      integração que falam com o jar real por JSON-RPC com a biblioteca de
+      protocolo do VS Code (`vscode-languageserver-protocol`; não exercita a
+      conversão de URIs do `vscode-languageclient`), testes unitários e de gramática. **Não
       verificado:** o teste Electron (`@vscode/test-electron`) nunca correu —
       o sandbox de desenvolvimento não descarrega o VS Code — e o workflow
       `build-vscode-extension.yml` ainda não correu; falta a verificação manual
       pedida na spec (`.vsix` instalado num projeto criado com `suko init`).
       Não publicado no Marketplace/Open VSX (D4).
+    - **Contratos que o 11b/11c vão herdar:** `SourceSpan` conta **code
+      points** (não UTF-16) e `endIndex` é inclusivo; `SukoSources`,
+      `SukoProjectCompiler.analyze`/`ProjectAnalysis`, `CallResolver` e
+      `TolerantParser` são superfície pública usada pelo `suko-lsp`;
+      `ProjectIndexEntry` trocou `paramCount` por `params`/`declarationSpan`/
+      `nameSpan` (quebra de compatibilidade de fonte, menor). `SukoSources` e
+      `ProjectIndex` iteram por ordem de `Path.compareTo` (antes, a do
+      `Files.walk`), logo "o primeiro" de dois `DUPLICATE_COMPONENT` é
+      determinístico por sistema operativo (no Windows ignora maiúsculas). A
+      correção do `textOf` muda o `.jte` gerado para fontes com caracteres fora
+      do BMP (antes truncado). Os diagnósticos do editor são os do
+      `sukoCompile` **mais** os avisos, que o build ainda descarta
+      (`JteCompiler.CompileResult.success` não os leva): bug antigo, à vista.
+    - **Seguimento do 11a, por fazer (revisão final):** (a) desempenho — cada
+      `didChange` invalida a cache e completion/hover/definition recompilam
+      o root inteiro de forma síncrona na thread do LSP4J, e a thread do debounce
+      segura o monitor do `Project` durante a compilação: os pedidos deviam usar
+      a última análise concluída, com o `analyze` fora do lock, contador de
+      geração e cache de parse por texto — medir com `suko-components` e o site
+      antes da release; (b) quando um `Project` sai no `rediscover` (`sourceRoot`
+      mudado no `suko.json`) os seus diagnósticos não são limpos e os buffers
+      abertos antes de existir projeto perdem-se; (c) `sourceRoot` não é limitado
+      ao workspace (`"../../.."` faz `Files.walk` enorme) e cada gravação relê o
+      root inteiro em vez do ficheiro alterado; (d) o ANTLR 4.13.1 está fixado em
+      dois sítios (`suko-core` tool, `suko-lsp` runtime) — manter iguais.
     - 11b e 11c: por fazer. IntelliJ não fala LSP nativamente (LSP4IJ vs.
       plugin PSI-based próprio) — decisão a tomar no scoping do 11b.
 12. **Interoperabilidade Java ↔ Suko** — intenção futura registada pelo

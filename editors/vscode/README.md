@@ -26,11 +26,13 @@ O source root (a pasta dos `.sk`) é descoberto por pasta do workspace: a chave 
 | `suko.sourceRoot` | Pasta dos `.sk`, relativa ao workspace, quando não há `suko.json` nem `src/main/suko`. |
 | `suko.trace.server` | `off`, `messages` ou `verbose`: regista o tráfego LSP no canal "Suko Language Server (trace)". |
 
+**Workspaces não confiáveis:** o server não arranca (a extensão executaria o Java indicado pelas settings do workspace); `suko.java.home` só vale nas settings de utilizador/máquina.
+
 Comando: **Suko: Restart Language Server**. Os logs do server estão no canal de output "Suko Language Server".
 
 ## Instalar o `.vsix`
 
-O CI gera o `.vsix` como artefacto de cada execução (ainda não está publicado no Marketplace nem no Open VSX):
+O workflow `build-vscode-extension.yml` gera o `.vsix` como artefacto (ainda não está publicado no Marketplace nem no Open VSX):
 
 ```sh
 code --install-extension suko-vscode-<versão>.vsix
@@ -41,7 +43,7 @@ code --install-extension suko-vscode-<versão>.vsix
 ```sh
 cd editors/vscode
 npm ci
-npm test               # testes unitários (Java discovery) + snapshots da gramática TextMate
+npm test               # copia o jar; testes unitários, de integração com o server real e snapshots da gramática
 npm run package        # ./gradlew :suko-lsp:fatJar, copia o jar para server/ e gera o .vsix
 npm run test:electron  # teste de fumo num VS Code real (descarrega o VS Code)
 ```

@@ -11,7 +11,7 @@ java -jar suko-lsp-<versão>-all.jar   # fala LSP por stdin/stdout (Java 21+)
 
 | Pedido | Comportamento |
 |---|---|
-| Diagnósticos | Reverifica o source root inteiro 250 ms depois da última alteração e publica, por ficheiro, exatamente os diagnósticos do `sukoCompile` (mesmos códigos, mensagens e severidades). Buffers abertos sobrepõem-se ao disco sem serem gravados. |
+| Diagnósticos | Reverifica o source root inteiro 250 ms depois da última alteração e publica, por ficheiro, os diagnósticos do `sukoCompile` (mesmos códigos, mensagens e severidades), mais os avisos que o build ainda não mostra. Buffers abertos sobrepõem-se ao disco sem serem gravados. |
 | `definition` | Componente (chamada, valor ou `import`) → nome na declaração; argumento ou slot → o parâmetro. Usa o mesmo `CallResolver` do compilador. |
 | `hover` | Assinatura, slots e cardinalidade, visibilidade, package e ficheiro. |
 | `completion` | Por tokens do lexer (não depende do AST): após `import`, componentes e keywords no corpo (com `import` automático para `public` não importados), parâmetros ainda não passados dentro de `Nome(...)`, slots dentro de `Nome() { ... }`. |
