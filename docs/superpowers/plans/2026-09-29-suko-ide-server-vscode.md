@@ -73,7 +73,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] Teste: dado um `SukoFile` + `ProjectIndex`, `CallResolver.resolve(name)` devolve `Resolved.Local(ComponentDecl)`, `Resolved.Project(ProjectIndexEntry)`, `Resolved.NotVisible(entry)` ou `Resolved.NotFound` — casos: mesmo ficheiro, importado (com alias), nome qualificado, privado noutro ficheiro, inexistente.
 - [ ] Extrair a lógica de `resolveViaProject`/`currentImportedByShortName`/`nonVisibleImportedNames` do `SemanticChecker` para `CallResolver`; o `SemanticChecker` passa a usá-lo (comportamento e mensagens idênticos — a suite `SemanticChecker*Test` é a guarda, sem editar as suas asserções).
-- [ ] Commit `refactor(core): resolver público de chamadas, partilhado com o checker`.
+- [x] Commit `refactor(core): resolver público de chamadas, partilhado com o checker`.
 
 ### Task 5: Validação de parâmetros e slots (D3 + `PARAM_NOT_FOUND`)
 

@@ -3,6 +3,7 @@ package io.suko.lang.semantic;
 import io.suko.lang.ast.*;
 import io.suko.lang.diagnostic.DiagnosticCollector;
 import io.suko.lang.diagnostic.SukoDiagnostic;
+import io.suko.lang.project.CallResolver;
 import io.suko.lang.project.ProjectIndex;
 import io.suko.lang.project.ProjectIndexEntry;
 import io.suko.lang.symbol.SymbolTable;
@@ -26,11 +27,9 @@ public class SemanticChecker {
     private final String sourceFile;
     private final ProjectIndex projectIndex;
     private final Path fileRelativePath;
-    private Map<String, ProjectIndexEntry> currentImportedByShortName = Map.of();
-    /** Nomes curtos cujo import resolveu para um componente NÃO public: o
-     * COMPONENT_NOT_VISIBLE já foi reportado na linha do import, por isso as
-     * chamadas a estes nomes não reportam nada (revisão final, achado G). */
-    private final Set<String> nonVisibleImportedNames = new HashSet<>();
+    /** Resolve chamadas com as regras do compilador (ver {@link CallResolver}),
+     * partilhado com o language server; reconstruído a cada {@link #check}. */
+    private CallResolver resolver;
 
     public SemanticChecker(SymbolTable symbolTable, DiagnosticCollector diagnostics, String sourceFile) {
         this(symbolTable, diagnostics, sourceFile, null, null);
@@ -48,8 +47,8 @@ public class SemanticChecker {
     /** Executa a verificação semântica completa em um SukoFile. */
     public void check(SukoFile sukoFile) {
         registerComponents(sukoFile);
-        nonVisibleImportedNames.clear();
-        currentImportedByShortName = projectIndex == null ? Map.of() : checkImportsAndBuildAliasMap(sukoFile);
+        resolver = new CallResolver(symbolTable::lookup, projectIndex, sukoFile.imports());
+        reportImportProblems();
         if (projectIndex != null) {
             checkPackageDirectoryMismatch(sukoFile);
         }
@@ -58,53 +57,41 @@ public class SemanticChecker {
         }
     }
 
-    private Map<String, ProjectIndexEntry> checkImportsAndBuildAliasMap(SukoFile sukoFile) {
-        Map<String, ProjectIndexEntry> byShortName = new HashMap<>();
-        for (ImportDecl imp : sukoFile.imports()) {
-            var found = projectIndex.resolveQualified(imp.qualifiedName());
-            if (found.isEmpty()) {
-                diagnostics.add(new SukoDiagnostic(
+    private void reportImportProblems() {
+        for (CallResolver.ImportStatus status : resolver.imports()) {
+            ImportDecl imp = status.decl();
+            switch (status.kind()) {
+                case OK -> {
+                }
+                case NOT_FOUND -> diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
                         "Import não encontrado: '" + imp.qualifiedName() + "'",
                         "IMPORT_NOT_FOUND",
                         sourceFile,
                         imp.span()
                 ));
-                continue;
-            }
-            ProjectIndexEntry entry = found.get();
-            if (!entry.isPublic()) {
-                diagnostics.add(new SukoDiagnostic(
+                // REVISÃO FINAL (achado G): o resolver não põe a entrada não-public
+                // no mapa de aliases. O COMPONENT_NOT_VISIBLE é reportado aqui, na
+                // linha do import, e as chamadas a esse nome não o repetem
+                // (Resolution.NotVisible.reportedAtImport): exatamente um
+                // diagnóstico por problema real.
+                case NOT_VISIBLE -> diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
                         "Componente '" + imp.qualifiedName() + "' não é public — não pode ser importado",
                         "COMPONENT_NOT_VISIBLE",
                         sourceFile,
                         imp.span()
                 ));
-                // REVISÃO FINAL (achado G): não inserir a entrada não-public no
-                // mapa de aliases. Já reportámos COMPONENT_NOT_VISIBLE aqui, na
-                // linha do import — deixá-la no mapa fazia o mesmo problema
-                // disparar OUTRA VEZ em cada chamada. O nome curto fica
-                // registado em `nonVisibleImportedNames` para que a chamada
-                // também não caia num COMPONENT_NOT_FOUND espúrio: exatamente
-                // um diagnóstico por problema real.
-                nonVisibleImportedNames.add(imp.alias().orElse(entry.simpleName()));
-                continue;
-            }
-            String key = imp.alias().orElse(entry.simpleName());
-            if (imp.alias().isEmpty() && byShortName.containsKey(key)) {
-                diagnostics.add(new SukoDiagnostic(
+                case AMBIGUOUS -> diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
-                        "Import ambíguo: '" + key + "' já foi importado de outro pacote — use 'as' para desambiguar",
+                        "Import ambíguo: '" + imp.alias().orElse(status.entry().simpleName())
+                                + "' já foi importado de outro pacote — use 'as' para desambiguar",
                         "AMBIGUOUS_IMPORT",
                         sourceFile,
                         imp.span()
                 ));
-            } else {
-                byShortName.put(key, entry);
             }
         }
-        return byShortName;
     }
 
     private void checkPackageDirectoryMismatch(SukoFile sukoFile) {
@@ -382,30 +369,31 @@ public class SemanticChecker {
     private void checkExprForComponentCalls(Expr expr) {
         switch (expr) {
             case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p -> {
-                ComponentDecl target = symbolTable.lookup(p.text());
-                if (target == null) {
-                    ProjectIndexEntry resolved = resolveViaProject(p.text());
-                    // `nonVisibleImportedNames`: COMPONENT_NOT_VISIBLE já foi
-                    // reportado na linha do import (achado G) — não repetir,
-                    // nem trocar por um COMPONENT_NOT_FOUND espúrio.
-                    if (resolved == null && !nonVisibleImportedNames.contains(p.text())
-                            && looksLikeComponentName(p.text())) {
-                        diagnostics.add(new SukoDiagnostic(
-                                SukoDiagnostic.Severity.ERROR,
-                                "Componente '" + p.text() + "' não encontrado",
-                                "COMPONENT_NOT_FOUND",
-                                sourceFile,
-                                call.span()
-                        ));
-                    } else if (resolved != null && !resolved.isPublic()) {
-                        diagnostics.add(new SukoDiagnostic(
-                                SukoDiagnostic.Severity.ERROR,
-                                "Componente '" + p.text() + "' não é public",
-                                "COMPONENT_NOT_VISIBLE",
-                                sourceFile,
-                                call.span()
-                        ));
+                switch (resolver.resolve(p.text())) {
+                    case CallResolver.Resolution.NotFound notFound -> {
+                        if (looksLikeComponentName(p.text())) {
+                            diagnostics.add(new SukoDiagnostic(
+                                    SukoDiagnostic.Severity.ERROR,
+                                    "Componente '" + p.text() + "' não encontrado",
+                                    "COMPONENT_NOT_FOUND",
+                                    sourceFile,
+                                    call.span()
+                            ));
+                        }
                     }
+                    case CallResolver.Resolution.NotVisible notVisible -> {
+                        if (!notVisible.reportedAtImport()) {
+                            diagnostics.add(new SukoDiagnostic(
+                                    SukoDiagnostic.Severity.ERROR,
+                                    "Componente '" + p.text() + "' não é public",
+                                    "COMPONENT_NOT_VISIBLE",
+                                    sourceFile,
+                                    call.span()
+                            ));
+                        }
+                    }
+                    case CallResolver.Resolution.Local local -> { }
+                    case CallResolver.Resolution.Project project -> { }
                 }
             }
             case Expr.TernaryExpr ternary -> {
@@ -432,25 +420,11 @@ public class SemanticChecker {
         }
     }
 
-    private ProjectIndexEntry resolveViaProject(String name) {
-        if (projectIndex == null) {
-            return null;
-        }
-        if (name.contains(".")) {
-            return projectIndex.resolveQualified(name).orElse(null);
-        }
-        return currentImportedByShortName.get(name);
-    }
-
     private void checkComponentCall(Statement.ComponentCallStmt call, Map<String, Param.SlotParam> currentScopeSlots) {
-        ComponentDecl calledComponent = symbolTable.lookup(call.componentName());
-        if (calledComponent == null) {
-            ProjectIndexEntry resolved = resolveViaProject(call.componentName());
-            if (resolved == null && nonVisibleImportedNames.contains(call.componentName())) {
-                // COMPONENT_NOT_VISIBLE já reportado na linha do import (achado G)
-                return;
-            }
-            if (resolved == null) {
+        ComponentDecl calledComponent;
+        switch (resolver.resolve(call.componentName())) {
+            case CallResolver.Resolution.Local local -> calledComponent = local.decl();
+            case CallResolver.Resolution.NotFound notFound -> {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
                         "Componente '" + call.componentName() + "' não encontrado",
@@ -460,19 +434,24 @@ public class SemanticChecker {
                 ));
                 return;
             }
-            if (!resolved.isPublic()) {
-                diagnostics.add(new SukoDiagnostic(
-                        SukoDiagnostic.Severity.ERROR,
-                        "Componente '" + call.componentName() + "' não é public",
-                        "COMPONENT_NOT_VISIBLE",
-                        sourceFile,
-                        call.span()
-                ));
+            case CallResolver.Resolution.NotVisible notVisible -> {
+                if (!notVisible.reportedAtImport()) {
+                    diagnostics.add(new SukoDiagnostic(
+                            SukoDiagnostic.Severity.ERROR,
+                            "Componente '" + call.componentName() + "' não é public",
+                            "COMPONENT_NOT_VISIBLE",
+                            sourceFile,
+                            call.span()
+                    ));
+                }
+                return;
             }
-            // Resolvido via projeto: a Fase 1 só indexa a assinatura (ver
-            // ProjectIndex), não os slots — verificação de slot fills
-            // cross-ficheiro não é feita aqui (limitação aceite, Tarefa 9).
-            return;
+            case CallResolver.Resolution.Project project -> {
+                // Resolvido via projeto: a Fase 1 só indexa a assinatura (ver
+                // ProjectIndex), não os slots — verificação de slot fills
+                // cross-ficheiro não é feita aqui (limitação aceite, Tarefa 9).
+                return;
+            }
         }
 
         Map<String, Param.SlotParam> calledSlots = new HashMap<>();
