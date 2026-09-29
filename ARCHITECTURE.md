@@ -733,3 +733,39 @@ tem origem própria nesta spec):
     resolvem um símbolo que vive em Java em vez de `.sk`, e a relação
     com o item 11c (análise Java dentro de `${...}`) e com a limitação
     de um único source root.
+13. **Transpilação para UIs de desktop/terminal (Swing, JavaFX,
+    TamboUI)** — intenção futura registada pelo utilizador em
+    2026-09-29, sem data nem spec. A ideia: o mesmo fonte `.sk` (componentes,
+    slots, `if`/`for`/`switch`, interpolação) passar a poder ser
+    transpilado, além do `.jte`, para código Java que constrói árvores de
+    widgets de três toolkits: **Swing** (`JComponent`), **JavaFX**
+    (`Node`) e **TamboUI** (TUI em Java, widgets de terminal). Hoje o
+    pipeline tem um único backend (`JteEmitter`); esta intenção implica
+    um segundo eixo de variação — o *alvo* — sem tocar na gramática nem
+    no verificador na medida do possível. Pontos a resolver no scoping:
+    (a) **abstração de backend** — extrair de `JteEmitter` uma interface
+    de emitter sobre o mesmo AST, com o `.jte` como uma implementação
+    entre outras, e decidir onde se escolhe o alvo (opção em
+    `suko.json`/no plugin Gradle/Maven, por ficheiro ou por projeto);
+    (b) **modelo de elementos** — as tags de hoje são HTML
+    (o `SemanticChecker` valida estrutura HTML e URLs perigosas); é
+    preciso decidir se os alvos nativos usam um vocabulário próprio de
+    widgets (`<Button>`, `<VBox>`, ...), um vocabulário comum mapeado
+    para cada toolkit, ou tags HTML mapeadas para widgets, e como o
+    verificador passa a saber qual o vocabulário válido por alvo;
+    (c) **`Component`** — no backend JTE é `gg.jte.Content` (uma
+    interface funcional que escreve texto); nos alvos nativos seria um
+    tipo de widget/fábrica (`Supplier<Node>`, `JComponent`, ...), o que
+    muda a forma dos slots `Function<T, Component>` e dos children
+    implícitos; (d) **modelo de renderização** — JTE é *render uma vez,
+    para texto*; Swing/JavaFX/TamboUI são retidos e reativos (estado,
+    eventos, re-render). Sem uma história para estado e handlers
+    (`onClick`, etc.), a transpilação só cobriria UIs estáticas — a
+    decisão de escopo é se o Suko cresce além da "camada de view" de
+    servidor definida em "Decisões de design"; (e) **relação com o item
+    12** (interoperabilidade Java ↔ Suko), que é o mecanismo natural
+    para ligar handlers e estado escritos em Java a componentes Suko; e
+    com o item 11 (o suporte de IDE terá de conhecer o vocabulário por
+    alvo). Ordem sugerida para o scoping, do mais barato ao mais caro:
+    Swing e JavaFX partilham o modelo (árvore retida de widgets), TamboUI
+    acrescenta o layout de terminal.
