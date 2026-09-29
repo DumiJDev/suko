@@ -3,6 +3,9 @@ package io.suko.lsp;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
+import org.eclipse.lsp4j.CompletionItem;
+import org.eclipse.lsp4j.CompletionList;
+import org.eclipse.lsp4j.CompletionParams;
 import org.eclipse.lsp4j.DefinitionParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
 import org.eclipse.lsp4j.Hover;
@@ -80,6 +83,15 @@ final class SukoTextDocumentService implements TextDocumentService {
                 .map(ctx -> HoverService.hover(ctx, params.getPosition()))
                 .orElse(null));
         return CompletableFuture.completedFuture(result);
+    }
+
+    @Override
+    public CompletableFuture<Either<List<CompletionItem>, CompletionList>> completion(CompletionParams params) {
+        List<CompletionItem> items = Requests.guarded("completion", List.of(), () ->
+            DocumentContext.of(workspace, uris, params.getTextDocument().getUri())
+                .map(ctx -> CompletionService.complete(ctx, params.getPosition()))
+                .orElse(List.of()));
+        return CompletableFuture.completedFuture(Either.forRight(new CompletionList(false, items)));
     }
 
     private void update(String uri, String text) {

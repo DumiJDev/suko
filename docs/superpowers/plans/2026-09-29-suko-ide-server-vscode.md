@@ -144,7 +144,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] Testes por contexto (lexer, não AST — o `A(` engolido como `textRun` prova porquê): após `import` → qualificados `public`; corpo → visíveis + keywords (`if else for switch case default`); componentes `public` não importados com `additionalTextEdits` de `import` (posição correta com/sem `package` e imports existentes); dentro de `Nome(...)` → parâmetros ainda não passados como `nome = `; dentro de `Nome() { }` → slots como `header { }`.
 - [ ] Contexto determinado por tokens do lexer até ao cursor, tolerante a fonte incompleto.
-- [ ] Commit.
+- [x] Commit `feat(lsp): completion por tokens` (`CompletionContext` decide o contexto pelos tokens do lexer, `CompletionService` sugere; auto-import como `additionalTextEdits`). Decisões: keywords em texto simples (sem snippets, para não fixar sintaxe de `switch`/`case`); posição de valor de argumento (`x = |`) e `${...}` dão vazio (11c); slots preenchidos não são filtrados no bloco da chamada.
 
 ### Task 15: Robustez e logging
 

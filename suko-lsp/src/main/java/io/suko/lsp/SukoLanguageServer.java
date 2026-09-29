@@ -59,6 +59,7 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
         capabilities.setDefinitionProvider(true);
         capabilities.setHoverProvider(true);
+        capabilities.setCompletionProvider(new org.eclipse.lsp4j.CompletionOptions(false, List.of(".")));
         return CompletableFuture.completedFuture(
             new InitializeResult(capabilities, new ServerInfo("suko-lsp", Version.get())));
     }
