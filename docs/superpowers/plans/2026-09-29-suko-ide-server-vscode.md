@@ -113,7 +113,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] Testes: linhas com acentos, emojis fora do BMP (par de surrogates), CRLF e LF; ida-e-volta offset ↔ posição LSP; diagnóstico `PARSE_ERROR` com índices `-1` usa linha/coluna (ANTLR: 1-based, colunas em code points → LSP 0-based, UTF-16).
 - [ ] Tabela de linhas por documento; um único ponto de conversão usado por todas as features.
-- [ ] Commit.
+- [x] Commit `feat(lsp): PositionMapper`. Convenções documentadas na classe: linhas delimitadas por `\n` (como o lexer); `(0,0,0,0)` = sem posição.
 
 ### Task 10: Descoberta de projeto e sincronização
 
