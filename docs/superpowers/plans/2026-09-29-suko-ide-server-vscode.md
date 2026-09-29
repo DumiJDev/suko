@@ -83,7 +83,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 - [ ] Generalizar `checkComponentCall` para trabalhar sobre uma lista de `ParamInfo` (construída a partir do `ComponentDecl` local ou do `ProjectIndexEntry`), eliminando o ramo "resolvido via projeto: não verificar". Regras do slot `children` implícito preservadas (subprojeto 6).
 - [ ] `PARAM_NOT_FOUND` só para `Arg` com nome; argumentos posicionais fora do âmbito.
 - [ ] **Guarda D3:** `./gradlew :suko-components:test :suko-website:build` — os 8 componentes e as páginas do site têm de continuar sem erros. Qualquer falha é um erro real: corrigir o `.sk`, registar no commit e em "Limitações" do `ARCHITECTURE.md`. Correr também `suko-gradle-plugin` (`SukoSpringBootIntegrationTest`) e `suko-cli` (`FullCycleTest`).
-- [ ] Commit `feat(core): validação de parâmetros e slots entre ficheiros (D3) e PARAM_NOT_FOUND`.
+- [x] Commit `feat(core): validação de parâmetros e slots entre ficheiros (D3) e PARAM_NOT_FOUND`. Guarda executada: `suko-components` (8 componentes), `suko-website`, `suko-cli`, `suko-registry-generator` e `suko-gradle-plugin` (incl. Spring Boot) — nenhum erro real novo revelado.
 
 ### Task 6: Modo tolerante do `SukoAstBuilder`
 

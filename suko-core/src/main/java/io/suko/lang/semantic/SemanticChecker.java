@@ -4,6 +4,7 @@ import io.suko.lang.ast.*;
 import io.suko.lang.diagnostic.DiagnosticCollector;
 import io.suko.lang.diagnostic.SukoDiagnostic;
 import io.suko.lang.project.CallResolver;
+import io.suko.lang.project.ParamInfo;
 import io.suko.lang.project.ProjectIndex;
 import io.suko.lang.project.ProjectIndexEntry;
 import io.suko.lang.symbol.SymbolTable;
@@ -421,9 +422,10 @@ public class SemanticChecker {
     }
 
     private void checkComponentCall(Statement.ComponentCallStmt call, Map<String, Param.SlotParam> currentScopeSlots) {
-        ComponentDecl calledComponent;
+        List<ParamInfo> calledParams;
         switch (resolver.resolve(call.componentName())) {
-            case CallResolver.Resolution.Local local -> calledComponent = local.decl();
+            case CallResolver.Resolution.Local local ->
+                calledParams = local.decl().params().stream().map(ParamInfo::of).toList();
             case CallResolver.Resolution.NotFound notFound -> {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
@@ -446,22 +448,48 @@ public class SemanticChecker {
                 }
                 return;
             }
-            case CallResolver.Resolution.Project project -> {
-                // Resolvido via projeto: a Fase 1 só indexa a assinatura (ver
-                // ProjectIndex), não os slots — verificação de slot fills
-                // cross-ficheiro não é feita aqui (limitação aceite, Tarefa 9).
-                return;
+            // D3 (subprojeto 11a): o índice do projeto já guarda os parâmetros,
+            // por isso as mesmas regras de slots/parâmetros valem para
+            // componentes de outros ficheiros.
+            case CallResolver.Resolution.Project project -> calledParams = project.entry().params();
+        }
+
+        checkArgumentNames(call, calledParams);
+        checkSlotFills(call, calledParams);
+    }
+
+    /** PARAM_NOT_FOUND: um argumento com nome que não é parâmetro do componente
+     * chamado. Antes do 11a isto só falhava quando o gg.jte compilava o template. */
+    private void checkArgumentNames(Statement.ComponentCallStmt call, List<ParamInfo> calledParams) {
+        Set<String> paramNames = new LinkedHashSet<>();
+        calledParams.forEach(p -> paramNames.add(p.name()));
+        for (Statement.Arg arg : call.args()) {
+            if (arg.name().isEmpty() || paramNames.contains(arg.name().get())) {
+                continue;
+            }
+            boolean hasOwnSpan = arg.span().startLine() != 0;
+            diagnostics.add(new SukoDiagnostic(
+                    SukoDiagnostic.Severity.ERROR,
+                    "Parâmetro '" + arg.name().get() + "' não existe no componente '" + call.componentName()
+                            + "'" + (paramNames.isEmpty()
+                                ? " (não tem parâmetros)"
+                                : " — parâmetros: " + String.join(", ", paramNames)),
+                    "PARAM_NOT_FOUND",
+                    sourceFile,
+                    hasOwnSpan ? arg.span() : call.span()
+            ));
+        }
+    }
+
+    private void checkSlotFills(Statement.ComponentCallStmt call, List<ParamInfo> calledParams) {
+        Map<String, ParamInfo> calledSlots = new LinkedHashMap<>();
+        for (ParamInfo param : calledParams) {
+            if (param.slot()) {
+                calledSlots.put(param.name(), param);
             }
         }
 
-        Map<String, Param.SlotParam> calledSlots = new HashMap<>();
-        for (Param param : calledComponent.params()) {
-            if (param instanceof Param.SlotParam slotParam) {
-                calledSlots.put(slotParam.name(), slotParam);
-            }
-        }
-
-        Map<String, List<Statement.SlotFill>> fillsBySlot = new HashMap<>();
+        Map<String, List<Statement.SlotFill>> fillsBySlot = new LinkedHashMap<>();
         for (Statement.SlotFill fill : call.slotFills()) {
             fillsBySlot.computeIfAbsent(fill.paramName(), k -> new ArrayList<>()).add(fill);
         }
@@ -470,7 +498,7 @@ public class SemanticChecker {
             String slotName = entry.getKey();
             List<Statement.SlotFill> fills = entry.getValue();
 
-            Param.SlotParam declaredSlot = calledSlots.get(slotName);
+            ParamInfo declaredSlot = calledSlots.get(slotName);
             if (declaredSlot == null) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
@@ -482,7 +510,7 @@ public class SemanticChecker {
                 continue;
             }
 
-            if (declaredSlot.cardinality() == Cardinality.ONE && fills.size() > 1) {
+            if (declaredSlot.cardinality().orElse(Cardinality.ONE) == Cardinality.ONE && fills.size() > 1) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
                         "Slot '" + slotName + "' é obrigatório (cardinality ONE) mas recebeu " + fills.size() + " fills",
@@ -493,19 +521,11 @@ public class SemanticChecker {
             }
         }
 
-        for (Map.Entry<String, Param.SlotParam> entry : calledSlots.entrySet()) {
-            String slotName = entry.getKey();
-            Param.SlotParam slotParam = entry.getValue();
-
-            boolean hasFills = fillsBySlot.containsKey(slotName);
-            int fillCount = hasFills ? fillsBySlot.get(slotName).size() : 0;
-
-            boolean isRequired = !slotParam.defaultValue().isPresent() && slotParam.cardinality() == Cardinality.ONE;
-
-            if (isRequired && fillCount == 0) {
+        for (ParamInfo slot : calledSlots.values()) {
+            if (slot.requiredSlot() && !fillsBySlot.containsKey(slot.name())) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
-                        "Slot obrigatório '" + slotName + "' não foi preenchido no componente '" + call.componentName() + "'",
+                        "Slot obrigatório '" + slot.name() + "' não foi preenchido no componente '" + call.componentName() + "'",
                         "REQUIRED_SLOT_MISSING",
                         sourceFile,
                         call.span()
