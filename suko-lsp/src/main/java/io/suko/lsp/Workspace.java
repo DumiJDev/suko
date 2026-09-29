@@ -59,6 +59,15 @@ final class Workspace {
         return Optional.ofNullable(best);
     }
 
+    /** Só documentos {@code file:}; {@code untitled:} e afins (ficheiros por gravar) não pertencem a nenhum source root. */
+    static Optional<Path> tryPathOf(String uri) {
+        try {
+            return Optional.of(pathOf(uri));
+        } catch (RuntimeException e) {
+            return Optional.empty();
+        }
+    }
+
     static Path pathOf(String uri) {
         return Path.of(URI.create(uri)).toAbsolutePath().normalize();
     }

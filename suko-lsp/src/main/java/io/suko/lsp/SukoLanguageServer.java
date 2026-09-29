@@ -89,6 +89,7 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
     @Override
     public void connect(LanguageClient client) {
         this.client = client;
+        Requests.logTo(client);
     }
 
     Workspace workspace() {
@@ -109,11 +110,11 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
         List<WorkspaceFolder> given = params.getWorkspaceFolders();
         if (given != null) {
             for (WorkspaceFolder folder : given) {
-                result.add(Workspace.pathOf(folder.getUri()));
+                Workspace.tryPathOf(folder.getUri()).ifPresent(result::add);
             }
         }
         if (result.isEmpty() && params.getRootUri() != null) {
-            result.add(Workspace.pathOf(params.getRootUri()));
+            Workspace.tryPathOf(params.getRootUri()).ifPresent(result::add);
         }
         return result;
     }

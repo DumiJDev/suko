@@ -25,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
 /** Server + cliente em memória, sem processo nem relógio real. */
 final class TestSupport {
 
-    static final class RecordingClient implements LanguageClient {
+    static class RecordingClient implements LanguageClient {
         final List<PublishDiagnosticsParams> published = new ArrayList<>();
 
         @Override

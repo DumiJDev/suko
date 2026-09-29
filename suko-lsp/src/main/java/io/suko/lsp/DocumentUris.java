@@ -15,11 +15,11 @@ final class DocumentUris {
     private final Map<Path, String> openUris = new ConcurrentHashMap<>();
 
     void opened(String uri) {
-        openUris.put(Workspace.pathOf(uri), uri);
+        Workspace.tryPathOf(uri).ifPresent(path -> openUris.put(path, uri));
     }
 
     void closed(String uri) {
-        openUris.remove(Workspace.pathOf(uri));
+        Workspace.tryPathOf(uri).ifPresent(openUris::remove);
     }
 
     String uriOf(Path absolutePath) {

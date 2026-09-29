@@ -68,7 +68,7 @@ final class DiagnosticsService {
         } catch (RuntimeException e) {
             // Uma verificação que falha não pode derrubar o server; os diagnósticos
             // anteriores ficam como estavam até à próxima alteração.
-            System.err.println("suko-lsp: falha ao verificar " + project.root() + ": " + e);
+            Requests.log("verificação de " + project.root(), e);
         }
     }
 

@@ -149,7 +149,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 ### Task 15: Robustez e logging
 
 - [ ] Teste: um pedido cujo handler lança devolve vazio/log, o server continua vivo e responde ao pedido seguinte. Envolver cada handler num isolador único; logs por `window/logMessage` e stderr.
-- [ ] Commit.
+- [x] Commit `feat(lsp): isolamento de pedidos e log para o cliente`. Achado: o VSCode envia `untitled:...` para ficheiros por gravar, que rebentava `Path.of(URI)`; `Workspace.tryPathOf` ignora tudo o que não é `file:`. Todos os handlers passam por `Requests.guarded*`; falhas vão para o stderr e para `window/logMessage`.
 
 ---
 

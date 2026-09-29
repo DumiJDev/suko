@@ -46,7 +46,11 @@ final class DocumentContext {
 
     /** Vazio se o documento não pertence a nenhum source root ou não é conhecido. */
     static Optional<DocumentContext> of(Workspace workspace, DocumentUris uris, String uri) {
-        Path file = Workspace.pathOf(uri);
+        Optional<Path> filePath = Workspace.tryPathOf(uri);
+        if (filePath.isEmpty()) {
+            return Optional.empty();
+        }
+        Path file = filePath.get();
         Optional<Project> project = workspace.projectFor(file);
         if (project.isEmpty()) {
             return Optional.empty();

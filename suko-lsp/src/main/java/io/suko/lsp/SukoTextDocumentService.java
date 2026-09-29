@@ -35,30 +35,35 @@ final class SukoTextDocumentService implements TextDocumentService {
 
     @Override
     public void didOpen(DidOpenTextDocumentParams params) {
-        String uri = params.getTextDocument().getUri();
-        uris.opened(uri);
-        update(uri, params.getTextDocument().getText());
+        Requests.guardedRun("didOpen", () -> {
+            String uri = params.getTextDocument().getUri();
+            uris.opened(uri);
+            update(uri, params.getTextDocument().getText());
+        });
     }
 
     @Override
     public void didChange(DidChangeTextDocumentParams params) {
-        List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
-        if (changes.isEmpty()) {
-            return;
-        }
-        // Full: a última alteração é o documento inteiro.
-        update(params.getTextDocument().getUri(), changes.get(changes.size() - 1).getText());
+        Requests.guardedRun("didChange", () -> {
+            List<TextDocumentContentChangeEvent> changes = params.getContentChanges();
+            if (changes.isEmpty()) {
+                return;
+            }
+            // Full: a última alteração é o documento inteiro.
+            update(params.getTextDocument().getUri(), changes.get(changes.size() - 1).getText());
+        });
     }
 
     @Override
     public void didClose(DidCloseTextDocumentParams params) {
-        String uri = params.getTextDocument().getUri();
-        Path file = Workspace.pathOf(uri);
-        workspace.projectFor(file).ifPresent(project -> {
-            project.close(project.root().relativize(file));
-            diagnostics.request(project);
+        Requests.guardedRun("didClose", () -> {
+            String uri = params.getTextDocument().getUri();
+            Workspace.tryPathOf(uri).flatMap(workspace::projectFor).ifPresent(project -> {
+                project.close(project.root().relativize(Workspace.pathOf(uri)));
+                diagnostics.request(project);
+            });
+            uris.closed(uri);
         });
-        uris.closed(uri);
     }
 
     @Override
@@ -95,9 +100,8 @@ final class SukoTextDocumentService implements TextDocumentService {
     }
 
     private void update(String uri, String text) {
-        Path file = Workspace.pathOf(uri);
-        workspace.projectFor(file).ifPresent(project -> {
-            project.put(project.root().relativize(file), text);
+        Workspace.tryPathOf(uri).flatMap(workspace::projectFor).ifPresent(project -> {
+            project.put(project.root().relativize(Workspace.pathOf(uri)), text);
             diagnostics.request(project);
         });
     }

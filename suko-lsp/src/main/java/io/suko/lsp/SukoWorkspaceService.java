@@ -31,10 +31,17 @@ final class SukoWorkspaceService implements WorkspaceService {
 
     @Override
     public void didChangeWatchedFiles(DidChangeWatchedFilesParams params) {
+        Requests.guardedRun("didChangeWatchedFiles", () -> handleWatchedFiles(params));
+    }
+
+    private void handleWatchedFiles(DidChangeWatchedFilesParams params) {
         boolean configChanged = false;
         Set<Project> touched = new LinkedHashSet<>();
         for (FileEvent event : params.getChanges()) {
-            Path file = Workspace.pathOf(event.getUri());
+            Path file = Workspace.tryPathOf(event.getUri()).orElse(null);
+            if (file == null) {
+                continue;
+            }
             if (file.getFileName() != null && ProjectLocator.CONFIG_FILE.equals(file.getFileName().toString())) {
                 configChanged = true;
                 continue;
@@ -53,11 +60,13 @@ final class SukoWorkspaceService implements WorkspaceService {
 
     @Override
     public void didChangeConfiguration(DidChangeConfigurationParams params) {
-        String sourceRoot = sourceRootFrom(params.getSettings());
-        if (sourceRoot != null) {
-            onSourceRootSetting.accept(sourceRoot);
-            workspace.projects().forEach(diagnostics::request);
-        }
+        Requests.guardedRun("didChangeConfiguration", () -> {
+            String sourceRoot = sourceRootFrom(params.getSettings());
+            if (sourceRoot != null) {
+                onSourceRootSetting.accept(sourceRoot);
+                workspace.projects().forEach(diagnostics::request);
+            }
+        });
     }
 
     /** Aceita {@code {"suko":{"sourceRoot":"..."}}} e {@code {"sourceRoot":"..."}}. */
