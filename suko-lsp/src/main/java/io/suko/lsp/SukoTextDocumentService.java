@@ -3,12 +3,17 @@ package io.suko.lsp;
 import org.eclipse.lsp4j.DidChangeTextDocumentParams;
 import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
+import org.eclipse.lsp4j.DefinitionParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
+import org.eclipse.lsp4j.Location;
+import org.eclipse.lsp4j.LocationLink;
+import org.eclipse.lsp4j.jsonrpc.messages.Either;
 import org.eclipse.lsp4j.TextDocumentContentChangeEvent;
 import org.eclipse.lsp4j.services.TextDocumentService;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /** Sincronização Full: cada alteração traz o texto inteiro e vira o buffer do documento. */
 final class SukoTextDocumentService implements TextDocumentService {
@@ -54,6 +59,16 @@ final class SukoTextDocumentService implements TextDocumentService {
     @Override
     public void didSave(DidSaveTextDocumentParams params) {
         // O disco só é relido por didChangeWatchedFiles; o buffer aberto já é a verdade.
+    }
+
+    @Override
+    public CompletableFuture<Either<List<? extends Location>, List<? extends LocationLink>>> definition(
+            DefinitionParams params) {
+        List<Location> result = Requests.guarded("definition", List.of(), () ->
+            DocumentContext.of(workspace, uris, params.getTextDocument().getUri())
+                .map(ctx -> DefinitionService.definition(ctx, params.getPosition()))
+                .orElse(List.of()));
+        return CompletableFuture.completedFuture(Either.forLeft(result));
     }
 
     private void update(String uri, String text) {

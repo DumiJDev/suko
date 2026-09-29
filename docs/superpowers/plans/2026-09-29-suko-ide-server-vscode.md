@@ -133,7 +133,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] Testes: nome de componente numa chamada (mesmo ficheiro e outro), num `import`; nome de argumento → parâmetro; nome de slot (`header { }`) → parâmetro. Nada → resposta vazia.
 - [ ] Usa `CallResolver` (mesma resolução do compilador) e os `nameSpan`s; localização por posição sobre o AST **estrito** do último parse bom (fallback: tolerante).
-- [ ] Commit.
+- [x] Commit `feat(lsp): go-to-definition`. Estrutura reutilizada por hover/completion: `DocumentContext` (projecto + snapshot + AST tolerante + `CallResolver`), `AstQuery` (o que está sob o cursor), `Requests.guarded` (isolamento, base da Task 15). Nota: `Project.tolerantAst` usa sempre o `TolerantParser` (igual ao AST estrito num ficheiro válido).
 
 ### Task 13: Hover
 

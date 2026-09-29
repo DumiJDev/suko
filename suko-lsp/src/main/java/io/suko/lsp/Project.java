@@ -1,5 +1,7 @@
 package io.suko.lsp;
 
+import io.suko.lang.TolerantParser;
+import io.suko.lang.ast.SukoFile;
 import io.suko.lang.project.ProjectAnalysis;
 import io.suko.lang.project.SukoProjectCompiler;
 import io.suko.lang.project.SukoSources;
@@ -21,6 +23,7 @@ final class Project {
     private SukoSources disk;
     private ProjectAnalysis cached;
     private SukoSources cachedSources;
+    private final Map<Path, SukoFile> tolerantAsts = new LinkedHashMap<>();
 
     Project(Path root) {
         this.root = root;
@@ -80,6 +83,18 @@ final class Project {
         return cached;
     }
 
+    /**
+     * AST tolerante do ficheiro (ver {@link TolerantParser}) — para navegação e
+     * completion, nunca para diagnósticos. Em cache até algo mudar.
+     */
+    synchronized SukoFile tolerantAst(Path relative) {
+        String text = sources().files().get(relative);
+        if (text == null) {
+            return null;
+        }
+        return tolerantAsts.computeIfAbsent(relative, k -> TolerantParser.parse(text));
+    }
+
     private SukoSources readDisk() {
         try {
             return SukoSources.fromDirectory(root);
@@ -92,5 +107,6 @@ final class Project {
     private void invalidate() {
         cached = null;
         cachedSources = null;
+        tolerantAsts.clear();
     }
 }

@@ -135,6 +135,39 @@ final class TestSupport {
             List.of(new TextDocumentContentChangeEvent(text))));
     }
 
+    /** Posição LSP (unidades UTF-16) da {@code occurrence}-ésima ocorrência de {@code needle}, mais {@code delta} colunas. */
+    static org.eclipse.lsp4j.Position at(String text, String needle, int occurrence, int delta) {
+        int from = -1;
+        for (int i = 0; i <= occurrence; i++) {
+            from = text.indexOf(needle, from + 1);
+            if (from < 0) {
+                throw new AssertionError(needle + " #" + occurrence + " não existe em:\n" + text);
+            }
+        }
+        int line = (int) text.substring(0, from).chars().filter(c -> c == '\n').count();
+        int column = from - (text.lastIndexOf('\n', from - 1) + 1);
+        return new org.eclipse.lsp4j.Position(line, column + delta);
+    }
+
+    java.util.List<org.eclipse.lsp4j.Location> definition(String relative, org.eclipse.lsp4j.Position position) throws Exception {
+        var result = server.getTextDocumentService().definition(new org.eclipse.lsp4j.DefinitionParams(
+            new TextDocumentIdentifier(uri(relative)), position)).get();
+        return new java.util.ArrayList<>(result.getLeft());
+    }
+
+    /** O texto coberto por um intervalo LSP num texto (linhas separadas por \n). */
+    static String slice(String text, org.eclipse.lsp4j.Range range) {
+        String[] lines = text.split("\n", -1);
+        assertSingleLine(range);
+        return lines[range.getStart().getLine()].substring(range.getStart().getCharacter(), range.getEnd().getCharacter());
+    }
+
+    private static void assertSingleLine(org.eclipse.lsp4j.Range range) {
+        if (range.getStart().getLine() != range.getEnd().getLine()) {
+            throw new AssertionError("intervalo em várias linhas: " + range);
+        }
+    }
+
     void close(String relative) {
         server.getTextDocumentService().didClose(new DidCloseTextDocumentParams(
             new TextDocumentIdentifier(uri(relative))));
