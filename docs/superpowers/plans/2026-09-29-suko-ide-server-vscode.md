@@ -105,7 +105,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] `include("suko-lsp")` em `settings.gradle.kts`; `suko-lsp/build.gradle.kts`: `implementation(project(":suko-core"))`, `org.eclipse.lsp4j:org.eclipse.lsp4j` (versão estável mais recente compatível com Java 21, pinada), Gson 2.11.0; task `fatJar` no padrão do `suko-cli` (task `Jar` própria, sem Shadow) com `Main-Class`; `suko-lsp` **não** depende de `suko-cli`.
 - [ ] Teste de fumo: `fatJar` arranca `java -jar` e responde a `initialize` por stdio (JUnit com processo filho).
-- [ ] Commit `feat(lsp): módulo suko-lsp com fat jar`.
+- [x] Commit `feat(lsp): módulo suko-lsp com fat jar`. LSP4J **1.0.0** (release atual; jsonrpc aceita Gson [2.9.1,3.0)), Gson 2.11.0. O `suko-core` expõe o ANTLR *tool* no `api` (plugin `antlr`): o server exclui `org.antlr:antlr4` e declara só `antlr4-runtime:4.13.1` — o fat jar passa de 18 MB para 1,8 MB.
 
 ### Task 9: Conversão de posições
 
