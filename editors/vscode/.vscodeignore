@@ -1,0 +1,10 @@
+**
+!package.json
+!README.md
+!language-configuration.json
+!syntaxes/**
+!out/**
+!server/suko-lsp.jar
+!node_modules/vscode-languageclient/**
+out/test/**
+**/*.map

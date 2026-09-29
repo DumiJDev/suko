@@ -159,7 +159,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] `editors/vscode/`: `package.json` (`engines.vscode` mínimo, `contributes.languages/grammars/configuration/commands`, settings `suko.java.home`/`suko.sourceRoot`/`suko.trace.server`), `language-configuration.json` (`//`, `/* */`, pares, auto-fecho), `syntaxes/suko.tmLanguage.json` (`package`/`import`/`public component`, keywords, literais, tags/atributos, `${...}` como região Java embutida, `$ident` em strings, comentários).
 - [ ] Teste de gramática com `vscode-tmgrammar-test` sobre snapshots de `examples/*.sk` e de um componente de `suko-components`.
-- [ ] Commit.
+- [x] Commit `feat(vscode): scaffold da extensão e gramática TextMate`. Teste de gramática por *snapshot* (`vscode-tmgrammar-snap`) sobre `examples/`, `Dialog.sk` e um ficheiro de construções, em vez de asserções por seta (a alinhar à mão, frágeis); os `.snap` foram revistos à mão uma vez. `${...}` usa padrões de expressão próprios (não `source.java`), com `embeddedLanguages` para o Java; o 11c pode trocar. Versões: `vscode-languageclient` 10.1.2 (exige VS Code ^1.91), `engines.vscode ^1.91.0`, TypeScript 5.9, vsce 4 (Node >= 22).
 
 ### Task 17: Cliente LSP e descoberta de Java
 
