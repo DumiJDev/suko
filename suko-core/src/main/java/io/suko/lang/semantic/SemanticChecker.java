@@ -458,6 +458,52 @@ public class SemanticChecker {
         checkSlotFills(call, calledParams);
     }
 
+    /** Candidato mais parecido com {@code name} (Levenshtein, sem distinguir maiúsculas), para "quis dizer …?". */
+    static Optional<String> closest(String name, Collection<String> candidates) {
+        String lower = name.toLowerCase(Locale.ROOT);
+        int limit = Math.max(1, name.length() / 3);
+        String best = null;
+        int bestDistance = Integer.MAX_VALUE;
+        for (String candidate : candidates) {
+            int distance = levenshtein(lower, candidate.toLowerCase(Locale.ROOT));
+            if (distance <= limit && distance < bestDistance) {
+                best = candidate;
+                bestDistance = distance;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** " — quis dizer 'x'?" se houver um candidato parecido; senão a lista de válidos. */
+    private static String suggestionOrList(String name, Collection<String> valid, String plural, String none) {
+        if (valid.isEmpty()) {
+            return " (" + none + ")";
+        }
+        return closest(name, valid).map(c -> " — quis dizer '" + c + "'?")
+            .orElseGet(() -> " — " + plural + ": " + String.join(", ", valid));
+    }
+
+    /** Distância de edição com transposição de vizinhos a custar 1 (`titel` → `title`). */
+    private static int levenshtein(String a, String b) {
+        int[][] d = new int[a.length() + 1][b.length() + 1];
+        for (int i = 0; i <= a.length(); i++) {
+            d[i][0] = i;
+        }
+        for (int j = 0; j <= b.length(); j++) {
+            d[0][j] = j;
+        }
+        for (int i = 1; i <= a.length(); i++) {
+            for (int j = 1; j <= b.length(); j++) {
+                int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                d[i][j] = Math.min(Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1), d[i - 1][j - 1] + cost);
+                if (i > 1 && j > 1 && a.charAt(i - 1) == b.charAt(j - 2) && a.charAt(i - 2) == b.charAt(j - 1)) {
+                    d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+                }
+            }
+        }
+        return d[a.length()][b.length()];
+    }
+
     /** PARAM_NOT_FOUND: um argumento com nome que não é parâmetro do componente
      * chamado. Antes do 11a isto só falhava quando o gg.jte compilava o template. */
     private void checkArgumentNames(Statement.ComponentCallStmt call, List<ParamInfo> calledParams) {
@@ -469,10 +515,8 @@ public class SemanticChecker {
             }
             diagnostics.add(new SukoDiagnostic(
                     SukoDiagnostic.Severity.ERROR,
-                    "Parâmetro '" + arg.name().get() + "' não existe no componente '" + call.componentName()
-                            + "'" + (paramNames.isEmpty()
-                                ? " (não tem parâmetros)"
-                                : " — parâmetros: " + String.join(", ", paramNames)),
+                    "Parâmetro '" + arg.name().get() + "' não encontrado no componente '" + call.componentName()
+                            + "'" + suggestionOrList(arg.name().get(), paramNames, "parâmetros", "não tem parâmetros"),
                     "PARAM_NOT_FOUND",
                     sourceFile,
                     arg.span().isNone() ? call.span() : arg.span()
@@ -511,7 +555,8 @@ public class SemanticChecker {
             if (declaredSlot == null) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
-                        "Slot '" + slotName + "' não encontrado no componente '" + call.componentName() + "'",
+                        "Slot '" + slotName + "' não encontrado no componente '" + call.componentName() + "'"
+                                + suggestionOrList(slotName, calledSlots.keySet(), "slots", "não tem slots"),
                         "SLOT_NOT_FOUND",
                         sourceFile,
                         fillSpan(fills.get(0), call)
@@ -522,7 +567,7 @@ public class SemanticChecker {
             if (declaredSlot.cardinality().orElse(Cardinality.ONE) == Cardinality.ONE && fills.size() > 1) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
-                        "Slot '" + slotName + "' é obrigatório (cardinality ONE) mas recebeu " + fills.size() + " fills",
+                        "Slot '" + slotName + "' aceita um só bloco mas recebeu " + fills.size() + " — deixe apenas um",
                         "CARDINALITY_VIOLATION",
                         sourceFile,
                         fillSpan(fills.get(1), call)
@@ -533,7 +578,8 @@ public class SemanticChecker {
             if (duplicate != null) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
-                        "Slot '" + slotName + "' foi passado como argumento e também como bloco — use só um",
+                        "Slot '" + slotName + "' foi passado como argumento ('" + slotName + " = …') e também como bloco ('"
+                                + slotName + " { … }') — use só um",
                         "CARDINALITY_VIOLATION",
                         sourceFile,
                         duplicate.span().isNone() ? call.span() : duplicate.span()

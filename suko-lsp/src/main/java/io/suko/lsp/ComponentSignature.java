@@ -60,7 +60,15 @@ record ComponentSignature(String name, String qualifiedName, String packageName,
 
     static String slotLine(ParamInfo slot) {
         boolean many = slot.cardinality().orElse(Cardinality.ONE) == Cardinality.MANY;
-        String how = slot.renderProp() ? "recebe um valor (render-prop)" : many ? "vários blocos" : "um bloco";
+        String how;
+        if (slot.name().equals("children")) {
+            // o slot implícito: o dev Java não sabe que é o corpo `{ … }` da chamada
+            how = many ? "o corpo da chamada `{ … }`, repetível" : "o corpo da chamada `{ … }`";
+        } else if (slot.renderProp()) {
+            how = "bloco que recebe um valor (render-prop)";
+        } else {
+            how = many ? "vários blocos" : "um bloco";
+        }
         String required = slot.requiredSlot() ? "obrigatório" : "opcional";
         return "`" + slot.name() + "` — " + how + ", " + required;
     }

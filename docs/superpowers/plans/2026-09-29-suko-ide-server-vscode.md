@@ -138,7 +138,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 ### Task 13: Hover
 
 - [ ] Testes: assinatura com tipos e defaults, slots e cardinalidade, visibilidade, package, ficheiro. Texto revisto pelo `dx-specialist`.
-- [x] Commit `feat(lsp): hover` (`ComponentSignature`, `HoverService`). Revisão de texto pelo `dx-specialist`: pedida à parte, ver Task 19.
+- [x] Commit `feat(lsp): hover` (`ComponentSignature`, `HoverService`). Revisão de texto pelo `dx-specialist` feita e aplicada: mensagem de cardinalidade corrigida ("aceita um só bloco", sem jargão), `PARAM_NOT_FOUND`/`SLOT_NOT_FOUND` com "quis dizer 'x'?" (distância de Damerau) ou a lista de válidos, hover de privado de outro ficheiro, `children`/render-prop explicados, "slot de" vs "parâmetro de".
 
 ### Task 14: Completion por tokens
 

@@ -53,9 +53,14 @@ final class HoverService {
         if (!slots.isEmpty()) {
             parts.add("**Slots**\n\n" + String.join("\n", slots.stream().map(s -> "- " + s).toList()));
         }
-        String where = (sig.isPublic() ? "`public`" : "privado a este ficheiro")
-            + (sig.packageName().isEmpty() ? "" : " · package `" + sig.packageName() + "`")
-            + " · `" + sig.file().toString().replace('\\', '/') + "`";
+        boolean elsewhere = !sig.file().equals(ctx.relative);
+        String file = "`" + sig.file().toString().replace('\\', '/') + "`";
+        String pkg = sig.packageName().isEmpty() ? "" : " · package `" + sig.packageName() + "`";
+        String where = sig.isPublic()
+            ? "`public`" + pkg + " · " + file
+            : elsewhere
+                ? "privado (só visível em " + file + ")" + pkg
+                : "privado a este ficheiro" + pkg + " · " + file;
         parts.add(where);
         return String.join("\n\n", parts);
     }
@@ -69,7 +74,8 @@ final class HoverService {
             if (param.name().equals(paramName)) {
                 String detail = "```suko\n" + ComponentSignature.paramText(param) + "\n```";
                 String extra = param.slot() ? "\n\n" + ComponentSignature.slotLine(param) : "";
-                return Optional.of(detail + extra + "\n\nparâmetro de `" + sig.get().name() + "`");
+                String kind = param.slot() ? "slot" : "parâmetro";
+                return Optional.of(detail + extra + "\n\n" + kind + " de `" + sig.get().name() + "`");
             }
         }
         return Optional.empty();

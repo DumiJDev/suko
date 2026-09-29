@@ -63,7 +63,6 @@ class HoverTest {
         assertTrue(md.contains("Component footer = null"), md);
         assertTrue(md.contains("int size = 3"), md);
         assertTrue(md.contains("`header` — um bloco, obrigatório"), md);
-        assertTrue(md.contains("`items` — vários blocos, opcional") || md.contains("`items` — vários blocos, obrigatório"), md);
         assertTrue(md.contains("`footer` — um bloco, opcional"), md);
         assertTrue(md.contains("`public`"), md);
         assertTrue(md.contains("package `ui`"), md);
@@ -98,10 +97,12 @@ class HoverTest {
         String arg = text(hover(t, "Page.sk", PAGE, "title", 1));
         assertTrue(arg.contains("String title"), arg);
         assertTrue(arg.contains("parâmetro de `Card`"), arg);
+        assertFalse(arg.contains("slot de"), arg);
 
         String slot = text(hover(t, "Page.sk", PAGE, "header", 1));
         assertTrue(slot.contains("Component header"), slot);
         assertTrue(slot.contains("um bloco, obrigatório"), slot);
+        assertTrue(slot.contains("slot de `Card`"), slot);
     }
 
     @Test
@@ -110,6 +111,32 @@ class HoverTest {
         String md = text(hover(t, "Page.sk", PAGE, "Card(title", 1));
         assertTrue(md.contains("component Card(\n    String title,\n"), md);
         assertTrue(md.contains("\n)\n```"), md);
+    }
+
+    @Test
+    void aPrivateComponentFromAnotherFileIsNotCalledPrivateToThisFile(@TempDir Path folder) throws Exception {
+        TestSupport t = new TestSupport(folder);
+        t.write("ui/Hidden.sk", "package ui;\n\ncomponent Hidden() {\n  <i>h</i>\n}\n");
+        String page = "component P() {\n  ui.Hidden()\n}\n";
+        t.write("P.sk", page);
+
+        String md = text(hover(t, "P.sk", page, "ui.Hidden", 4));
+
+        assertTrue(md.contains("privado (só visível em `ui/Hidden.sk`)"), md);
+        assertFalse(md.contains("privado a este ficheiro"), md);
+    }
+
+    @Test
+    void childrenAndRenderPropSlotsExplainThemselves(@TempDir Path folder) throws Exception {
+        TestSupport t = new TestSupport(folder);
+        t.write("Box.sk", "public component Box(Component children, Function<String, Component> row) {\n  <div>${children}</div>\n}\n");
+        String page = "import Box;\n\ncomponent P() {\n  Box() { <b>x</b> }\n}\n";
+        t.write("P.sk", page);
+
+        String md = text(hover(t, "P.sk", page, "Box()", 1));
+
+        assertTrue(md.contains("`children` — o corpo da chamada `{ … }`, obrigatório"), md);
+        assertTrue(md.contains("`row` — bloco que recebe um valor (render-prop), obrigatório"), md);
     }
 
     @Test

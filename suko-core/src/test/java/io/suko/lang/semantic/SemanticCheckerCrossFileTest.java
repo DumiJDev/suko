@@ -86,6 +86,22 @@ class SemanticCheckerCrossFileTest {
     }
 
     @Test
+    void typosGetADidYouMeanSuggestionAndOtherNamesGetTheValidList() {
+        String head = "import ui.Card;\n\ncomponent Page() {\n";
+        SukoDiagnostic param = errorsOf(head + "  Card(titel = \"t\") { header { <b>h</b> } }\n}\n").stream()
+            .filter(e -> "PARAM_NOT_FOUND".equals(e.code())).findFirst().orElseThrow();
+        assertTrue(param.message().endsWith("— quis dizer 'title'?"), param.message());
+
+        SukoDiagnostic slot = errorsOf(head + "  Card(title = \"t\") { header { <b>h</b> } foter { <b>f</b> } }\n}\n").stream()
+            .filter(e -> "SLOT_NOT_FOUND".equals(e.code())).findFirst().orElseThrow();
+        assertTrue(slot.message().endsWith("— quis dizer 'footer'?"), slot.message());
+
+        SukoDiagnostic far = errorsOf(head + "  Card(zzzzzz = 1) { header { <b>h</b> } }\n}\n").stream()
+            .filter(e -> "PARAM_NOT_FOUND".equals(e.code())).findFirst().orElseThrow();
+        assertTrue(far.message().contains("— parâmetros: title, header, items, footer"), far.message());
+    }
+
+    @Test
     void qualifiedCallWithoutImportIsAlsoValidated() {
         assertCode(errorsOf("component Page() {\n  ui.Card(title = \"t\")\n}\n"), "REQUIRED_SLOT_MISSING");
     }
