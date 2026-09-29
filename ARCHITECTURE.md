@@ -108,6 +108,15 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   (`jbang --native --build-dir <dir> suko@DumiJDev/suko`) — nunca construído nem
   publicado por este projeto. Ver `suko-cli/README.md` para a referência
   de comandos e o desenho de duplo hash do `suko.lock.json`.
+- **`suko-lsp/`** — language server do Suko (subprojeto 11a): LSP4J sobre
+  stdio, depende só de `suko-core` (exclui o ANTLR *tool* que o plugin
+  `antlr` põe no `api` do core; usa `antlr4-runtime`). Fat jar à mão, como o
+  da CLI. Lê o `sourceRoot` do `suko.json` com Gson, sem depender do
+  `suko-cli`. Ver `suko-lsp/README.md`.
+- **`editors/vscode/`** — extensão VSCode (fora do Gradle, tal como
+  `examples/`): gramática TextMate, cliente fino que arranca
+  `java -jar server/suko-lsp.jar` (Java 21+), sem lógica de linguagem.
+  Ver `editors/vscode/README.md`.
 - **`suko-website/`** — scaffold vazio para o site de documentação
   (subprojeto 10). **Achado, não corrigido aqui:** o
   `build.gradle.kts` deste módulo continua a declarar
@@ -220,7 +229,8 @@ repositório, fora de qualquer módulo — não é uma unidade de build.
   rejeita é o `SemanticChecker` (`LEGACY_BRACE_INTERPOLATION`,
   `LEGACY_BRACE_ATTRIBUTE`, ambos ERROR, com a correção literal na
   mensagem). Removê-la do `.g4` faria o ANTLR recuperar em silêncio nos
-  dois caminhos de parse sem error listener — ver o bullet sobre erros de
+  dois caminhos de parse sem error listener (e o terceiro, tolerante, só do
+  language server) — ver o bullet sobre erros de
   parse em "Limitações conhecidas".
 - **Texto dentro de tags resolvido no parser, não no lexer.** A
   primeira tentativa usava um modo léxico `TEXT` (entrado via ação
@@ -318,7 +328,7 @@ arquitetura):
   foo.bar.Card as C;` (gramática já existente desde o subprojeto 1,
   nunca usados antes) passam a ser resolvidos de verdade por
   `io.suko.lang.project.ProjectIndex` (Fase 1: scan recursivo,
-  indexação de assinatura — nome, pacote, `public`, nº de params) e
+  indexação da assinatura completa — nome, pacote, `public` e parâmetros com tipo, default, slot/cardinalidade e spans; ver `ProjectIndexEntry`/`ParamInfo`) e
   `SukoProjectCompiler` (Fase 2: `JteCompiler.compile(ProjectIndex,
   Path)` por ficheiro, com o índice injetado). `package foo.bar;` só é
   válido dentro de `<sourceRoot>/foo/bar/` (`PACKAGE_DIRECTORY_MISMATCH`
@@ -350,13 +360,29 @@ arquitetura):
   pasta de pacote criada depois de `sukoWatch` já estar a correr, por
   exemplo por um `suko add` para um pacote novo, nunca é registada no
   `WatchService` e não dispara recompilação até o watch ser reiniciado.)
-- **Limitação aceite: verificação de slot fills não atravessa
-  ficheiros.** A Fase 1 do `ProjectIndex` só indexa a assinatura
-  superficial de cada componente (nome, pacote, `public`, nº de
-  params), não os slots — uma chamada a um componente definido noutro
-  ficheiro só é verificada quanto a existência e visibilidade, nunca
-  quanto a `SLOT_NOT_FOUND`/`CARDINALITY_VIOLATION`. Extensão futura
-  exigiria a Fase 1 indexar os `Param.SlotParam` inteiros.
+- **Validação de slots e parâmetros atravessa ficheiros (subprojeto 11a, D3).**
+  Como o `ProjectIndex` passou a guardar os parâmetros de cada componente,
+  as regras `REQUIRED_SLOT_MISSING`, `SLOT_NOT_FOUND` e
+  `CARDINALITY_VIOLATION` valem também para componentes de outros
+  ficheiros, e há uma regra nova, `PARAM_NOT_FOUND`: um argumento com nome
+  que não é parâmetro do componente chamado (com "quis dizer 'x'?" para
+  gralhas, ou a lista de válidos). Um slot pode ser passado como argumento
+  nomeado (`Card(header = h)`) e conta como preenchido; o mesmo slot como
+  argumento **e** como bloco é `CARDINALITY_VIOLATION`. É uma mudança de
+  comportamento deliberada: builds que passavam podem falhar por erros reais
+  que estavam escondidos (nenhum dos componentes de `suko-components`, do site
+  ou dos exemplos falhou). **Limitação:** só cobre chamadas em posição de
+  instrução; uma chamada usada como valor (`var c = Card(titel = "x")`) não
+  é verificada.
+- **Erros em cascata quando o ficheiro que declara um componente não faz
+  parse (decisão pendente, 11a).** Um `.sk` sem AST utilizável sai do
+  `ProjectIndex`, pelo que todos os ficheiros que o importam ganham
+  `IMPORT_NOT_FOUND`/`COMPONENT_NOT_FOUND` enquanto se escreve. No build é só
+  ruído (o build já falha); no editor os erros aparecem e desaparecem nos
+  chamadores. Mantido igual ao `sukoCompile` de propósito (os diagnósticos do
+  editor têm de ser os do build); a alternativa — o índice marcar ficheiros
+  com erro de sintaxe e o checker suprimir o "não encontrado" — muda o build
+  e precisa de decisão explícita.
 - **Limitação aceite: componente-como-valor com nome composto/importado
   não resolve.** `var c = ui.NavLink();` ou `var c = ImportedAlias();`
   em posição de **expressão** só reconhece um callee `Expr.PrimaryExpr`
@@ -449,6 +475,17 @@ arquitetura):
   normal. É por isso que o subprojeto 9 manteve a produção legada de
   chaveta nua na gramática e rejeitou a sintaxe antiga no
   `SemanticChecker`, em vez de a apagar do `.g4`.
+  **Terceiro caminho de parse (subprojeto 11a): `TolerantParser` +
+  `SukoAstBuilder.tolerant`, só para o language server** (completion e
+  navegação num ficheiro a meio de ser escrito). Nunca reporta diagnósticos —
+  esses vêm sempre do caminho estrito, idêntico ao do `sukoCompile` — e não
+  acrescenta variantes `Error` aos `sealed` `Statement`/`Expr`: descarta a
+  subárvore que não consegue construir. Como a recuperação de erros do ANTLR
+  engole os componentes seguintes para dentro do que está partido
+  (`${t.` sem fecho), quando o parse do ficheiro inteiro tem erros de sintaxe
+  cada componente é reparseado sozinho, com o resto do ficheiro substituído
+  por espaços (mantendo quebras de linha e nº de code points, para os spans
+  coincidirem com os do ficheiro real).
 - **`</` literal em texto livre** é erro de parse (consequência aceite
   da desambiguação do `textRun`).
 - **Um literal de string Suko não pode conter `<` nem `>`**
@@ -713,12 +750,28 @@ tem origem própria nesta spec):
     visual registado em `DESIGN.md`/`PRODUCT.md`. Lacuna documentada no
     próprio site: o `sukoCompile` não verifica os tipos Java das
     expressões (um `List` cru passa o build e só falha no JTE).
-11. **Suporte de IDE** (VSCode + IntelliJ) — language server sobre o
-    `DiagnosticCollector`/`SemanticChecker` já existentes. Sequenciado
-    depois do 7/8 (quer uma superfície de AST/diagnostics estável), mas
-    sem dependência bloqueante neles. IntelliJ não fala LSP nativamente
-    (LSP4IJ vs. plugin PSI-based próprio) — decisão a tomar no scoping
-    deste item.
+11. **Suporte de IDE** (VSCode + IntelliJ) — partido em três specs
+    sequenciais (release só depois das três): **11a** language server +
+    extensão VSCode, **11b** cliente IntelliJ reutilizando o server, **11c**
+    inteligência Java dentro de `${...}` (liga o `JavacTask` ao pipeline).
+    - **11a — IMPLEMENTADO, verificação manual pendente.** Spec
+      `docs/superpowers/specs/2026-09-28-suko-ide-server-vscode.md`, plano
+      `docs/superpowers/plans/2026-09-29-suko-ide-server-vscode.md`. Módulos
+      `suko-lsp/` (LSP4J 1.0.0, fat jar de 1,8 MB) e `editors/vscode/`
+      (extensão TypeScript empacotada com esbuild; o jar vai embutido).
+      Diagnósticos com debounce de 250 ms, go-to-definition, hover e
+      completion com auto-import; core ganhou `SukoSources`,
+      `SukoProjectCompiler.analyze`, `CallResolver`, spans de nome, D3
+      (ver acima) e o `TolerantParser`. Verificado: suites Gradle, testes de
+      integração que falam com o jar real por JSON-RPC com o cliente de
+      referência do VS Code, testes unitários e de gramática. **Não
+      verificado:** o teste Electron (`@vscode/test-electron`) nunca correu —
+      o sandbox de desenvolvimento não descarrega o VS Code — e o workflow
+      `build-vscode-extension.yml` ainda não correu; falta a verificação manual
+      pedida na spec (`.vsix` instalado num projeto criado com `suko init`).
+      Não publicado no Marketplace/Open VSX (D4).
+    - 11b e 11c: por fazer. IntelliJ não fala LSP nativamente (LSP4IJ vs.
+      plugin PSI-based próprio) — decisão a tomar no scoping do 11b.
 12. **Interoperabilidade Java ↔ Suko** — intenção futura registada pelo
     utilizador em 2026-09-28, sem data nem spec. A ideia: um componente
     Suko é, na essência, uma função Java que devolve `Component` — e

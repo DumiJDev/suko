@@ -179,9 +179,9 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 ### Task 19: Documentação e revisão final
 
-- [ ] `ARCHITECTURE.md`: módulos `suko-lsp` e `editors/vscode`; terceiro caminho de parse (tolerante, nunca reporta diagnósticos); validação entre ficheiros (remover a limitação "verificação de slot fills não atravessa ficheiros" e a nota do `ProjectIndex`); `PARAM_NOT_FOUND`; item 11a CONCLUÍDO no roadmap.
-- [ ] `suko-lsp/README.md` e `editors/vscode/README.md` (instalação do `.vsix`, requisitos Java 21+, settings).
-- [ ] `./gradlew build` verde a nível da raiz.
+- [x] `ARCHITECTURE.md`: módulos `suko-lsp` e `editors/vscode`; terceiro caminho de parse (tolerante, nunca reporta diagnósticos); validação entre ficheiros (remover a limitação "verificação de slot fills não atravessa ficheiros" e a nota do `ProjectIndex`); `PARAM_NOT_FOUND`; item 11a CONCLUÍDO no roadmap.
+- [x] `suko-lsp/README.md` e `editors/vscode/README.md` (instalação do `.vsix`, requisitos Java 21+, settings).
+- [x] `./gradlew build` verde a nível da raiz (2026-09-29).
 - [ ] Despachar `architect` para a revisão final da branch inteira; corrigir achados.
 - [ ] **Verificação manual pelo utilizador** (critério da spec): `.vsix` instalado num VSCode real, projeto criado com `suko init` — highlighting, erros ao escrever, go-to-definition, hover, completion com auto-import. Esta tarefa não fecha sem essa confirmação.
 
