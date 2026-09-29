@@ -58,6 +58,7 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
         // Sincronização Full (spec do 11a): o server recebe o texto inteiro a cada alteração.
         capabilities.setTextDocumentSync(TextDocumentSyncKind.Full);
         capabilities.setDefinitionProvider(true);
+        capabilities.setHoverProvider(true);
         return CompletableFuture.completedFuture(
             new InitializeResult(capabilities, new ServerInfo("suko-lsp", Version.get())));
     }

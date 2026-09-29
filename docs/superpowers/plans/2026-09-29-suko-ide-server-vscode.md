@@ -138,7 +138,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 ### Task 13: Hover
 
 - [ ] Testes: assinatura com tipos e defaults, slots e cardinalidade, visibilidade, package, ficheiro. Texto revisto pelo `dx-specialist`.
-- [ ] Commit.
+- [x] Commit `feat(lsp): hover` (`ComponentSignature`, `HoverService`). Revisão de texto pelo `dx-specialist`: pedida à parte, ver Task 19.
 
 ### Task 14: Completion por tokens
 

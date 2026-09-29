@@ -5,6 +5,8 @@ import org.eclipse.lsp4j.DidCloseTextDocumentParams;
 import org.eclipse.lsp4j.DidOpenTextDocumentParams;
 import org.eclipse.lsp4j.DefinitionParams;
 import org.eclipse.lsp4j.DidSaveTextDocumentParams;
+import org.eclipse.lsp4j.Hover;
+import org.eclipse.lsp4j.HoverParams;
 import org.eclipse.lsp4j.Location;
 import org.eclipse.lsp4j.LocationLink;
 import org.eclipse.lsp4j.jsonrpc.messages.Either;
@@ -69,6 +71,15 @@ final class SukoTextDocumentService implements TextDocumentService {
                 .map(ctx -> DefinitionService.definition(ctx, params.getPosition()))
                 .orElse(List.of()));
         return CompletableFuture.completedFuture(Either.forLeft(result));
+    }
+
+    @Override
+    public CompletableFuture<Hover> hover(HoverParams params) {
+        Hover result = Requests.guarded("hover", null, () ->
+            DocumentContext.of(workspace, uris, params.getTextDocument().getUri())
+                .map(ctx -> HoverService.hover(ctx, params.getPosition()))
+                .orElse(null));
+        return CompletableFuture.completedFuture(result);
     }
 
     private void update(String uri, String text) {
