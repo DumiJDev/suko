@@ -63,7 +63,7 @@ public class SukoAstBuilder {
         List<Statement> body = buildStatements(ctx.templateBlock().templateStatement());
 
         return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, spanOf(ctx),
-            ctx.PUBLIC() != null);
+            ctx.PUBLIC() != null, spanOf(ctx.Identifier().getSymbol()));
     }
 
     private static final Type CONTENT_ELEMENT_TYPE = new Type("Object", List.of(), 0);
@@ -185,7 +185,10 @@ public class SukoAstBuilder {
                 Optional<String> name = argCtx.Identifier() == null
                     ? Optional.empty()
                     : Optional.of(argCtx.Identifier().getText());
-                args.add(new Statement.Arg(name, buildExpr(argCtx.expression())));
+                SourceSpan argSpan = argCtx.Identifier() == null
+                    ? spanOf(argCtx.expression())
+                    : spanOf(argCtx.Identifier().getSymbol());
+                args.add(new Statement.Arg(name, buildExpr(argCtx.expression()), argSpan));
             }
         }
         List<Statement.SlotFill> slotFills = new ArrayList<>();
@@ -201,7 +204,8 @@ public class SukoAstBuilder {
                 // `componentDecl` ou `ifStatement`). Confirmado lendo o parser gerado
                 // (build/generated-src/antlr/main/io/suko/lang/SukoParser.java).
                 List<Statement> body = buildStatements(slotCtx.templateStatement());
-                slotFills.add(new Statement.SlotFill(paramName, lambdaParamName, body));
+                slotFills.add(new Statement.SlotFill(paramName, lambdaParamName, body,
+                    spanOf(slotCtx.Identifier(0).getSymbol())));
             }
 
             // Children implícitos (subprojeto 6): templateStatement soltos direto
@@ -215,7 +219,8 @@ public class SukoAstBuilder {
             }
         }
 
-        return new Statement.ComponentCallStmt(ctx.qualifiedName().getText(), args, slotFills, spanOf(ctx));
+        return new Statement.ComponentCallStmt(ctx.qualifiedName().getText(), args, slotFills, spanOf(ctx),
+            spanOf(ctx.qualifiedName()));
     }
 
     private Statement.IfStmt buildIfStmt(SukoParser.IfStmtContext ctx) {
@@ -455,6 +460,11 @@ public class SukoAstBuilder {
 
     private boolean isSkippedWhitespace(char c) {
         return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+    }
+
+    private SourceSpan spanOf(org.antlr.v4.runtime.Token token) {
+        return new SourceSpan(token.getLine(), token.getCharPositionInLine(),
+            token.getStartIndex(), token.getStopIndex());
     }
 
     private SourceSpan spanOf(org.antlr.v4.runtime.ParserRuleContext ctx) {
