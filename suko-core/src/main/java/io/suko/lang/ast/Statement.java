@@ -61,7 +61,7 @@ public sealed interface Statement permits Statement.HtmlElement, Statement.TextR
     /** `span` cobre o nome do argumento quando é nomeado (`title = ...`), senão o valor. */
     record Arg(java.util.Optional<String> name, Expr value, SourceSpan span) {
         public Arg(java.util.Optional<String> name, Expr value) {
-            this(name, value, new SourceSpan(0, 0, 0, 0));
+            this(name, value, SourceSpan.NONE);
         }
     }
 
@@ -71,7 +71,7 @@ public sealed interface Statement permits Statement.HtmlElement, Statement.TextR
         /** `children` implícito e AST construído à mão: sem posição do nome. */
         public SlotFill(String paramName, java.util.Optional<String> lambdaParamName,
                         List<Statement> body) {
-            this(paramName, lambdaParamName, body, new SourceSpan(0, 0, 0, 0));
+            this(paramName, lambdaParamName, body, SourceSpan.NONE);
         }
     }
 }

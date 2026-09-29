@@ -110,7 +110,7 @@ public class SemanticChecker {
                     // Revisão final, achado F: posição real da declaração
                     // `package` (antes era sempre 0:0). O fallback só existe
                     // para SukoFiles construídos à mão (testes de unidade).
-                    sukoFile.packageSpan().orElseGet(() -> new SourceSpan(0, 0, 0, 0))
+                    sukoFile.packageSpan().orElseGet(() -> SourceSpan.NONE)
             ));
         }
     }
@@ -467,7 +467,6 @@ public class SemanticChecker {
             if (arg.name().isEmpty() || paramNames.contains(arg.name().get())) {
                 continue;
             }
-            boolean hasOwnSpan = arg.span().startLine() != 0;
             diagnostics.add(new SukoDiagnostic(
                     SukoDiagnostic.Severity.ERROR,
                     "Parâmetro '" + arg.name().get() + "' não existe no componente '" + call.componentName()
@@ -476,7 +475,7 @@ public class SemanticChecker {
                                 : " — parâmetros: " + String.join(", ", paramNames)),
                     "PARAM_NOT_FOUND",
                     sourceFile,
-                    hasOwnSpan ? arg.span() : call.span()
+                    arg.span().isNone() ? call.span() : arg.span()
             ));
         }
     }
@@ -494,6 +493,16 @@ public class SemanticChecker {
             fillsBySlot.computeIfAbsent(fill.paramName(), k -> new ArrayList<>()).add(fill);
         }
 
+        // Um slot também pode ser preenchido por um argumento nomeado
+        // (`Card(header = h)`, com `h` um Component — subprojeto 6): o JteEmitter
+        // passa-o tal como está, por isso conta como preenchimento.
+        Map<String, Statement.Arg> slotArgs = new LinkedHashMap<>();
+        for (Statement.Arg arg : call.args()) {
+            if (arg.name().isPresent() && calledSlots.containsKey(arg.name().get())) {
+                slotArgs.putIfAbsent(arg.name().get(), arg);
+            }
+        }
+
         for (Map.Entry<String, List<Statement.SlotFill>> entry : fillsBySlot.entrySet()) {
             String slotName = entry.getKey();
             List<Statement.SlotFill> fills = entry.getValue();
@@ -505,7 +514,7 @@ public class SemanticChecker {
                         "Slot '" + slotName + "' não encontrado no componente '" + call.componentName() + "'",
                         "SLOT_NOT_FOUND",
                         sourceFile,
-                        call.span()
+                        fillSpan(fills.get(0), call)
                 ));
                 continue;
             }
@@ -516,21 +525,37 @@ public class SemanticChecker {
                         "Slot '" + slotName + "' é obrigatório (cardinality ONE) mas recebeu " + fills.size() + " fills",
                         "CARDINALITY_VIOLATION",
                         sourceFile,
-                        call.span()
+                        fillSpan(fills.get(1), call)
+                ));
+            }
+
+            Statement.Arg duplicate = slotArgs.get(slotName);
+            if (duplicate != null) {
+                diagnostics.add(new SukoDiagnostic(
+                        SukoDiagnostic.Severity.ERROR,
+                        "Slot '" + slotName + "' foi passado como argumento e também como bloco — use só um",
+                        "CARDINALITY_VIOLATION",
+                        sourceFile,
+                        duplicate.span().isNone() ? call.span() : duplicate.span()
                 ));
             }
         }
 
         for (ParamInfo slot : calledSlots.values()) {
-            if (slot.requiredSlot() && !fillsBySlot.containsKey(slot.name())) {
+            if (slot.requiredSlot() && !fillsBySlot.containsKey(slot.name()) && !slotArgs.containsKey(slot.name())) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
                         "Slot obrigatório '" + slot.name() + "' não foi preenchido no componente '" + call.componentName() + "'",
                         "REQUIRED_SLOT_MISSING",
                         sourceFile,
-                        call.span()
+                        call.nameSpan().isNone() ? call.span() : call.nameSpan()
                 ));
             }
         }
+    }
+
+    /** O nome do slot preenchido, não a chamada inteira (que inclui os corpos dos slots). */
+    private static SourceSpan fillSpan(Statement.SlotFill fill, Statement.ComponentCallStmt call) {
+        return fill.nameSpan().isNone() ? call.span() : fill.nameSpan();
     }
 }

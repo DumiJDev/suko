@@ -95,7 +95,9 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 ### Task 7: Revisão intermédia da Fase A
 
-- [ ] Despachar `architect` para rever a Fase A contra a spec (superfície de AST, terceiro caminho de parse, D3) antes de começar o server. Corrigir o que apontar; só depois avançar.
+- [x] `architect` reviu a Fase A. Corrigido: (#1) um slot passado como argumento nomeado (`Card(header = h)`) conta como preenchimento e argumento+bloco do mesmo slot é `CARDINALITY_VIOLATION` — era um falso positivo de D3; (#2) `TolerantParser` só segmenta quando o parse inteiro tem erros de sintaxe (senão prosa `component Card(x)` num `<p>` criava um componente fantasma); (#3) `ProjectIndex.entries()`; (#4) `textOf` convertia mal code points (UTF-16) — um emoji antes do texto truncava o `.jte` gerado (bug antigo do `sukoCompile`, corrigido e testado; reverter é um commit se o utilizador preferir só registá-lo); (#6) diagnósticos de slot apontam ao nome do slot/chamada, não à chamada inteira; (#7) `SourceSpan.NONE`/`isNone()`; (#8) `nameSpan` em `Param`/`ParamInfo`; (#9) `SukoSources` rejeita caminhos absolutos/não normalizados; (#10) nota no teste de paridade; (#12) javadoc do `ProjectIndex`. Mudança de comportamento registada: `SukoSources`/`ProjectIndex` iteram por ordem lexicográfica (antes, ordem do `Files.walk`), logo "o primeiro" de dois `DUPLICATE_COMPONENT` é determinístico.
+- [ ] **Decisão pendente do utilizador (#5):** quando o ficheiro que declara um componente não faz parse, a entrada desaparece do índice e todos os ficheiros que o chamam ganham `IMPORT_NOT_FOUND`/`COMPONENT_NOT_FOUND` enquanto se escreve. Opções: aceitar e documentar (comportamento igual ao build), ou o índice marcar ficheiros com erro de sintaxe e o checker suprimir o "não encontrado" quando o alvo pode estar neles (muda o build; explícito face a G2). Por omissão implementei a primeira.
+- [ ] **Limitação a registar na Task 19 (#11):** D3/`PARAM_NOT_FOUND` só cobrem chamadas em posição de instrução; uma chamada usada como valor (`var c = Card(titel = "x")`) não é verificada.
 
 ---
 

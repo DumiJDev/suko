@@ -75,7 +75,7 @@ public class JteCompiler {
                 "Erro ao construir AST: " + e.getMessage(),
                 "AST_BUILDER_ERROR",
                 fileName,
-                new SourceSpan(0, 0, 0, 0)
+                SourceSpan.NONE
             ));
             return null;
         }

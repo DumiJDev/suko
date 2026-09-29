@@ -15,6 +15,7 @@ import java.util.Optional;
  * escrito (slots reconstroem {@code Component}, {@code List<Component>} ou
  * {@code Function<T, Component>} — o AST só guarda a forma resolvida).
  * {@code cardinality}/{@code renderProp} só têm sentido quando {@code slot}.
+ * {@code span} cobre o parâmetro inteiro, {@code nameSpan} só o seu nome.
  */
 public record ParamInfo(
     String name,
@@ -23,15 +24,16 @@ public record ParamInfo(
     boolean slot,
     Optional<Cardinality> cardinality,
     boolean renderProp,
-    SourceSpan span
+    SourceSpan span,
+    SourceSpan nameSpan
 ) {
 
     public static ParamInfo of(Param param) {
         return switch (param) {
             case Param.ValueParam v -> new ParamInfo(v.name(), typeText(v.type()),
-                v.defaultValue().map(Expr::pretty), false, Optional.empty(), false, v.span());
+                v.defaultValue().map(Expr::pretty), false, Optional.empty(), false, v.span(), v.nameSpan());
             case Param.SlotParam s -> new ParamInfo(s.name(), slotTypeText(s),
-                s.defaultValue().map(Expr::pretty), true, Optional.of(s.cardinality()), s.renderProp(), s.span());
+                s.defaultValue().map(Expr::pretty), true, Optional.of(s.cardinality()), s.renderProp(), s.span(), s.nameSpan());
         };
     }
 

@@ -45,9 +45,15 @@ public final class TolerantParser {
     private static SukoFile doParse(String source) {
         List<Integer> starts = componentStarts(source);
 
-        SukoParser.CompilationUnitContext whole = parser(source).compilationUnit();
-        boolean wholeIsFaithful = whole.componentDecl().size() == starts.size()
-            && whole.componentDecl().stream().allMatch(c -> c.templateBlock() != null);
+        SukoParser wholeParser = parser(source);
+        SukoParser.CompilationUnitContext whole = wholeParser.compilationUnit();
+        // Sem erros de sintaxe o parse do ficheiro inteiro é a verdade — e a
+        // segmentação por linha só pode enganar-se: `component Card(x)` escrito
+        // como prosa dentro de um <p> (ex.: páginas de documentação) parece o
+        // início de um componente ao lexer, que não tem modos.
+        boolean wholeIsFaithful = wholeParser.getNumberOfSyntaxErrors() == 0
+            || (whole.componentDecl().size() == starts.size()
+                && whole.componentDecl().stream().allMatch(c -> c.templateBlock() != null));
         if (wholeIsFaithful) {
             return SukoAstBuilder.tolerant(source).build(whole);
         }

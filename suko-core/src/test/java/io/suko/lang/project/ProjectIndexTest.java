@@ -68,6 +68,9 @@ class ProjectIndexTest {
         assertFalse(params.get(0).requiredSlot());
 
         assertEquals("Card", source.substring(card.nameSpan().startIndex(), card.nameSpan().endIndex() + 1));
+        for (ParamInfo p : params) {
+            assertEquals(p.name(), source.substring(p.nameSpan().startIndex(), p.nameSpan().endIndex() + 1), p.name());
+        }
         assertTrue(source.substring(card.declarationSpan().startIndex(), card.declarationSpan().endIndex() + 1)
             .startsWith("public component Card"));
     }
@@ -79,6 +82,17 @@ class ProjectIndexTest {
         assertEquals(slot, p.slot());
         assertEquals(cardinality, p.cardinality());
         assertEquals(defaultText, p.defaultText());
+    }
+
+    @Test
+    void entriesListsEveryIndexedComponentInAStableOrder(@TempDir Path sourceRoot) throws IOException {
+        Files.createDirectories(sourceRoot.resolve("ui"));
+        Files.writeString(sourceRoot.resolve("ui/B.sk"), "package ui;\npublic component B() { <p>b</p> }\n");
+        Files.writeString(sourceRoot.resolve("A.sk"), "component A() { <p>a</p> }\n");
+
+        var names = ProjectIndex.build(sourceRoot).entries().stream().map(ProjectIndexEntry::qualifiedName).toList();
+
+        assertEquals(java.util.List.of("A", "ui.B"), names);
     }
 
     @Test

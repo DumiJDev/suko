@@ -25,11 +25,11 @@ import java.util.Optional;
  * chama A é legítimo — gg.jte resolve @template.x(...) em tempo de
  * render, não em tempo de compilação Suko).
  *
- * LIMITAÇÃO ACEITE (descoberta ao escrever este plano): só a assinatura
- * superficial é indexada (nome, pacote, public, nº de params) — não os
- * slots. Um ComponentCallStmt que resolve contra este índice (alvo
- * noutro ficheiro) não tem verificação de slot fills entre ficheiros;
- * só existência/visibilidade. Ver Tarefa 4.
+ * Cada entrada guarda a assinatura completa (parâmetros incluídos, ver
+ * {@link ProjectIndexEntry}); é isso que permite ao SemanticChecker validar
+ * slots e argumentos de chamadas a componentes de outros ficheiros. Os
+ * ficheiros são percorridos por ordem lexicográfica do caminho relativo,
+ * pelo que "o primeiro" de dois componentes duplicados é determinístico.
  */
 public class ProjectIndex {
 
@@ -134,6 +134,11 @@ public class ProjectIndex {
      * {@link DuplicateComponent}. */
     public List<DuplicateComponent> duplicates() {
         return List.copyOf(duplicates);
+    }
+
+    /** Todos os componentes indexados, por ordem de indexação (determinística). */
+    public java.util.Collection<ProjectIndexEntry> entries() {
+        return java.util.Collections.unmodifiableCollection(byQualifiedName.values());
     }
 
     public Optional<ProjectIndexEntry> resolveQualified(String qualifiedName) {

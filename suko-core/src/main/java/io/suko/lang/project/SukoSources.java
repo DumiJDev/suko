@@ -48,13 +48,13 @@ public final class SukoSources {
 
     /** Snapshot sem disco (testes e servers): {@code files} usa caminhos relativos ao root. */
     public static SukoSources of(Path root, Map<Path, String> files) {
-        return new SukoSources(root, new TreeMap<>(files));
+        return new SukoSources(root, new TreeMap<>(requireRelative(files)));
     }
 
     /** Novo snapshot com estes documentos a substituir (ou acrescentar a) os existentes. */
     public SukoSources withOverlay(Map<Path, String> overlay) {
         Map<Path, String> merged = new TreeMap<>(files);
-        merged.putAll(overlay);
+        merged.putAll(requireRelative(overlay));
         return new SukoSources(root, merged);
     }
 
@@ -63,6 +63,18 @@ public final class SukoSources {
         Map<Path, String> copy = new LinkedHashMap<>(files);
         copy.remove(relative);
         return new SukoSources(root, new TreeMap<>(copy));
+    }
+
+    /** Um caminho absoluto ou não normalizado criaria um ficheiro fantasma no snapshot
+     * (e um PACKAGE_DIRECTORY_MISMATCH falso) — fácil de acontecer ao converter URIs. */
+    private static Map<Path, String> requireRelative(Map<Path, String> files) {
+        for (Path p : files.keySet()) {
+            if (p.isAbsolute() || !p.normalize().equals(p)) {
+                throw new IllegalArgumentException(
+                    "caminho tem de ser relativo ao source root e normalizado: " + p);
+            }
+        }
+        return files;
     }
 
     public Path root() {

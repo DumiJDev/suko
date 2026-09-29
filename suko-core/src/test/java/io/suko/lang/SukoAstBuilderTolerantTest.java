@@ -94,6 +94,15 @@ class SukoAstBuilderTolerantTest {
     }
 
     @Test
+    void proseThatLooksLikeAComponentDeclarationIsNotInventedAsOne() {
+        // páginas de documentação: `component Card(x)` como texto dentro de um <p>
+        String source = "component Docs() {\n  <p>\n  component Card(title) define um card\n  </p>\n  <b>after</b>\n}\n" + GOOD;
+        SukoFile file = TolerantParser.parse(source);
+        assertEquals(List.of("Docs", "Good"), names(file));
+        assertTrue(component(file, "Docs").body().size() >= 1);
+    }
+
+    @Test
     void neverThrowsOnGarbage() {
         for (String source : List.of("", "}}}{{{", "component", "component (", "public public component X(",
                 "${", "\"unterminated", "component A() { if (", "import ;")) {

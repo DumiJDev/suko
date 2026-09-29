@@ -17,6 +17,7 @@ public class SukoAstBuilder {
 
     private final String source;
     private final boolean tolerant;
+    private final boolean sourceHasSurrogates;
 
     public SukoAstBuilder(String source) {
         this(source, false);
@@ -25,6 +26,7 @@ public class SukoAstBuilder {
     private SukoAstBuilder(String source, boolean tolerant) {
         this.source = source;
         this.tolerant = tolerant;
+        this.sourceHasSurrogates = source.chars().anyMatch(c -> Character.isSurrogate((char) c));
     }
 
     /**
@@ -149,24 +151,28 @@ public class SukoAstBuilder {
 
         return tryBuildSlotParam(type, name, defaultValue, ctx)
             .map(Param.class::cast)
-            .orElseGet(() -> new Param.ValueParam(type, name, defaultValue, spanOf(ctx)));
+            .orElseGet(() -> new Param.ValueParam(type, name, defaultValue, spanOf(ctx), spanOf(ctx.Identifier().getSymbol())));
     }
 
     private Optional<Param.SlotParam> tryBuildSlotParam(Type type, String name, Optional<Expr> defaultValue,
             SukoParser.ParamContext ctx) {
         if (isComponent(type)) {
-            return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.ONE, false, defaultValue, spanOf(ctx)));
+            return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.ONE, false, defaultValue, spanOf(ctx),
+                spanOf(ctx.Identifier().getSymbol())));
         }
         if (isRenderProp(type)) {
-            return Optional.of(new Param.SlotParam(type.typeArguments().get(0), name, Cardinality.ONE, true, defaultValue, spanOf(ctx)));
+            return Optional.of(new Param.SlotParam(type.typeArguments().get(0), name, Cardinality.ONE, true, defaultValue, spanOf(ctx),
+                spanOf(ctx.Identifier().getSymbol())));
         }
         if ("List".equals(type.name()) && type.typeArguments().size() == 1) {
             Type inner = type.typeArguments().get(0);
             if (isComponent(inner)) {
-                return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.MANY, false, defaultValue, spanOf(ctx)));
+                return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.MANY, false, defaultValue, spanOf(ctx),
+                spanOf(ctx.Identifier().getSymbol())));
             }
             if (isRenderProp(inner)) {
-                return Optional.of(new Param.SlotParam(inner.typeArguments().get(0), name, Cardinality.MANY, true, defaultValue, spanOf(ctx)));
+                return Optional.of(new Param.SlotParam(inner.typeArguments().get(0), name, Cardinality.MANY, true, defaultValue, spanOf(ctx),
+                spanOf(ctx.Identifier().getSymbol())));
             }
         }
         return Optional.empty();
@@ -527,15 +533,25 @@ public class SukoAstBuilder {
      * porque texto puramente espaço entre tags não gera nó nenhum — não há
      * risco de dupla contagem). Não requer mudança na gramática. */
     private String textOf(SukoParser.TextRunContext ctx) {
-        int start = ctx.getStart().getStartIndex();
-        int stop = ctx.getStop().getStopIndex();
-        while (start - 1 >= 0 && isSkippedWhitespace(source.charAt(start - 1))) {
+        // Os índices do ANTLR contam code points; String indexa em chars UTF-16.
+        // Sem esta conversão um emoji antes do texto deslocava o corte (o
+        // último carácter de "😀 ola mundo" perdia-se no .jte gerado).
+        int start = charOffset(ctx.getStart().getStartIndex());
+        int end = charOffset(ctx.getStop().getStopIndex() + 1); // exclusivo
+        while (start > 0 && isSkippedWhitespace(source.charAt(start - 1))) {
             start--;
         }
-        while (stop + 1 < source.length() && isSkippedWhitespace(source.charAt(stop + 1))) {
-            stop++;
+        while (end < source.length() && isSkippedWhitespace(source.charAt(end))) {
+            end++;
         }
-        return source.substring(start, stop + 1);
+        return source.substring(start, end);
+    }
+
+    private int charOffset(int codePointIndex) {
+        if (!sourceHasSurrogates) {
+            return codePointIndex;
+        }
+        return source.offsetByCodePoints(0, codePointIndex);
     }
 
     private boolean isSkippedWhitespace(char c) {

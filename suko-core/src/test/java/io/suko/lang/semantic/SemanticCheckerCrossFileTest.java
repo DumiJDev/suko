@@ -104,6 +104,32 @@ class SemanticCheckerCrossFileTest {
     }
 
     @Test
+    void aSlotPassedAsANamedArgumentCountsAsFilled() {
+        // `Component h` como valor: forma prevista no subprojeto 6, o JteEmitter passa-a tal como está
+        String page = "import ui.Card;\n\ncomponent Page(Component h) {\n  Card(title = \"t\", header = h)\n}\n";
+        assertNoErrors(errorsOf(page));
+        assertNoErrors(sameFileErrors("component Page(Component h) {\n  Card(title = \"t\", header = h)\n}\n"));
+    }
+
+    @Test
+    void aSlotGivenAsArgumentAndAsBlockIsRejected() {
+        String body = "component Page(Component h) {\n  Card(title = \"t\", header = h) {\n    header { <b>x</b> }\n  }\n}\n";
+        assertCode(errorsOf("import ui.Card;\n\n" + body), "CARDINALITY_VIOLATION");
+        assertCode(sameFileErrors(body), "CARDINALITY_VIOLATION");
+    }
+
+    @Test
+    void slotDiagnosticsPointAtTheSlotOrCallNameNotTheWholeCall() {
+        List<SukoDiagnostic> notFound = errorsOf("import ui.Card;\n\ncomponent Page() {\n  Card(title = \"t\") {\n    header { <b>h</b> }\n    sidebar { <b>s</b> }\n  }\n}\n");
+        SukoDiagnostic d = notFound.stream().filter(e -> "SLOT_NOT_FOUND".equals(e.code())).findFirst().orElseThrow();
+        assertEquals(6, d.span().startLine(), "aponta para `sidebar`, não para `Card(`");
+
+        List<SukoDiagnostic> missing = errorsOf("import ui.Card;\n\ncomponent Page() {\n  Card(title = \"t\")\n}\n");
+        SukoDiagnostic m = missing.stream().filter(e -> "REQUIRED_SLOT_MISSING".equals(e.code())).findFirst().orElseThrow();
+        assertEquals("Card".length() - 1, m.span().endIndex() - m.span().startIndex());
+    }
+
+    @Test
     void positionalArgumentsAreNotCheckedByName() {
         assertNoErrors(errorsOf("import ui.Card;\n\ncomponent Page() {\n  Card(\"t\") {\n    header { <b>h</b> }\n  }\n}\n"));
     }

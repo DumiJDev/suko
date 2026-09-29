@@ -49,4 +49,13 @@ class SukoSourcesTest {
         assertEquals(1, sources.files().size());
         assertThrows(UnsupportedOperationException.class, () -> sources.files().clear());
     }
+
+    @Test
+    void absoluteOrUnnormalisedPathsAreRejected() {
+        Path root = Path.of("/root");
+        assertThrows(IllegalArgumentException.class, () -> SukoSources.of(root, Map.of(Path.of("/root/A.sk"), "x")));
+        assertThrows(IllegalArgumentException.class, () -> SukoSources.of(root, Map.of(Path.of("ui/../A.sk"), "x")));
+        SukoSources ok = SukoSources.of(root, Map.of(Path.of("A.sk"), "x"));
+        assertThrows(IllegalArgumentException.class, () -> ok.withOverlay(Map.of(Path.of("/root/B.sk"), "x")));
+    }
 }

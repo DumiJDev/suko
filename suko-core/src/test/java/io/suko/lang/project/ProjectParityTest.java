@@ -14,7 +14,11 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** O caminho em memória ({@link SukoSources}) tem de ser indistinguível do
- * caminho do disco — o language server e o sukoCompile não podem divergir. */
+ * caminho do disco — o language server e o sukoCompile não podem divergir.
+ * Nota: {@code compile(Path)} delega em {@code compile(SukoSources)}, por isso
+ * as comparações Path/Sources só guardam essa delegação; a protecção real
+ * contra regressões de comportamento é a suite existente do compilador. O que
+ * tem valor próprio aqui é {@code analyze} vs {@code compile} e o overlay. */
 class ProjectParityTest {
 
     private static void write(Path root, String rel, String text) throws IOException {
