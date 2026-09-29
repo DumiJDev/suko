@@ -119,7 +119,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] Testes: `sourceRoot` do `suko.json` (lido com Gson, sem depender do `suko-cli`); senão `src/main/suko`; senão setting `suko.sourceRoot`; workspace multi-pasta → um índice por root, sem resolução entre roots.
 - [ ] `TextDocumentSyncKind.Full`; documentos abertos entram como overlay em `SukoSources`; `workspace/didChangeWatchedFiles` para ficheiros fechados.
-- [ ] Commit.
+- [x] Commit `feat(lsp): descoberta de projeto e overlay de buffers` (`ProjectLocator`, `Project`, `Workspace`). A ligação ao protocolo (`didOpen/didChange/didClose`, `didChangeWatchedFiles`, settings) fica na Task 11, onde há o que ver no cliente.
 
 ### Task 11: Diagnósticos com debounce
 

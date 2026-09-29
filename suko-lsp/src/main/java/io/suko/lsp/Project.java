@@ -1,0 +1,88 @@
+package io.suko.lsp;
+
+import io.suko.lang.project.ProjectAnalysis;
+import io.suko.lang.project.SukoProjectCompiler;
+import io.suko.lang.project.SukoSources;
+
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Um source root e o seu estado: o snapshot do disco mais os buffers abertos
+ * no editor por cima (overlay, nunca gravados). Sem compilação incremental
+ * (mesmo compromisso do {@code sukoWatch}): cada verificação recompila o root
+ * inteiro; o resultado fica em cache até algo mudar.
+ */
+final class Project {
+
+    private final Path root;
+    private final Map<Path, String> overlays = new LinkedHashMap<>();
+    private SukoSources disk;
+    private ProjectAnalysis cached;
+    private SukoSources cachedSources;
+
+    Project(Path root) {
+        this.root = root;
+    }
+
+    Path root() {
+        return root;
+    }
+
+    /** Buffer aberto ou alterado no editor ({@code relative} é relativo ao source root). */
+    synchronized void put(Path relative, String text) {
+        overlays.put(relative, text);
+        invalidate();
+    }
+
+    /** Fecha o buffer: volta a valer o conteúdo do disco. */
+    synchronized void close(Path relative) {
+        if (overlays.remove(relative) != null) {
+            invalidate();
+        }
+    }
+
+    /** Ficheiros alterados fora do editor (criados, apagados, gravados). */
+    synchronized void diskChanged() {
+        disk = null;
+        invalidate();
+    }
+
+    synchronized boolean isOpen(Path relative) {
+        return overlays.containsKey(relative);
+    }
+
+    /** Disco + overlays: o que o utilizador está a ver. */
+    synchronized SukoSources sources() {
+        if (cachedSources == null) {
+            if (disk == null) {
+                disk = readDisk();
+            }
+            cachedSources = disk.withOverlay(overlays);
+        }
+        return cachedSources;
+    }
+
+    /** Verificação do root inteiro, com cache; os diagnósticos são os do {@code sukoCompile}. */
+    synchronized ProjectAnalysis analysis() {
+        if (cached == null) {
+            cached = new SukoProjectCompiler().analyze(sources());
+        }
+        return cached;
+    }
+
+    private SukoSources readDisk() {
+        try {
+            return SukoSources.fromDirectory(root);
+        } catch (RuntimeException e) {
+            // pasta apagada/ilegível: sem ficheiros em disco, só os buffers abertos
+            return SukoSources.of(root, Map.of());
+        }
+    }
+
+    private void invalidate() {
+        cached = null;
+        cachedSources = null;
+    }
+}
