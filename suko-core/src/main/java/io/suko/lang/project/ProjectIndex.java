@@ -52,7 +52,6 @@ public class ProjectIndex {
     }
 
     private final Map<String, ProjectIndexEntry> byQualifiedName = new LinkedHashMap<>();
-    private final Map<String, SourceSpan> spanByQualifiedName = new LinkedHashMap<>();
     private final List<DuplicateComponent> duplicates = new ArrayList<>();
 
     private ProjectIndex() {
@@ -101,14 +100,15 @@ public class ProjectIndex {
                     index.duplicates.add(new DuplicateComponent(
                         qualifiedName,
                         previous.sourceFile(),
-                        index.spanByQualifiedName.get(qualifiedName),
+                        previous.declarationSpan(),
                         skFile,
                         component.span()));
                     continue;
                 }
                 index.byQualifiedName.put(qualifiedName, new ProjectIndexEntry(
-                    qualifiedName, component.name(), skFile, component.isPublic(), component.params().size()));
-                index.spanByQualifiedName.put(qualifiedName, component.span());
+                    qualifiedName, component.name(), skFile, component.isPublic(),
+                    component.params().stream().map(ParamInfo::of).toList(),
+                    component.span(), component.nameSpan()));
             }
         }
 

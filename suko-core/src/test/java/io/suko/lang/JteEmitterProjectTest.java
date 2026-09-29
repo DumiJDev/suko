@@ -32,7 +32,7 @@ class JteEmitterProjectTest {
             """);
         ComponentDecl home = file.components().get(0);
 
-        ProjectIndexEntry navLink = new ProjectIndexEntry("ui.NavLink", "NavLink", Path.of("ui/NavLink.sk"), true, 1);
+        ProjectIndexEntry navLink = new ProjectIndexEntry("ui.NavLink", "NavLink", Path.of("ui/NavLink.sk"), true, List.of(), null, null);
         JteEmitter emitter = new JteEmitter(List.of(home), Map.of("NavLink", navLink));
 
         String jte = emitter.emit(home);
@@ -65,7 +65,7 @@ class JteEmitterProjectTest {
             """);
         ComponentDecl home = file.components().get(0);
 
-        ProjectIndexEntry cardA = new ProjectIndexEntry("ui.CardA", "CardA", Path.of("ui/CardA.sk"), true, 0);
+        ProjectIndexEntry cardA = new ProjectIndexEntry("ui.CardA", "CardA", Path.of("ui/CardA.sk"), true, List.of(), null, null);
         JteEmitter emitter = new JteEmitter(List.of(home), Map.of("CardA", cardA));
 
         String jte = emitter.emit(home);

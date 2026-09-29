@@ -65,7 +65,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] Teste: a entrada de um componente com `String title`, `Component header`, `List<Component> items`, `Component footer = null` expõe `params()` com nome, tipo (texto), default (texto ou vazio), `slot?` e cardinalidade; `declarationSpan()` e `nameSpan()` correspondem ao fonte.
 - [ ] Novo record `ParamInfo(String name, String type, Optional<String> defaultText, boolean slot, Optional<Cardinality> cardinality, boolean renderProp)`; `ProjectIndexEntry` troca `paramCount` por `List<ParamInfo> params` mantendo `paramCount()` como método derivado (os consumidores atuais não mudam). Guardar o span deixa de ser o mapa privado `spanByQualifiedName`.
-- [ ] Commit `feat(core): índice do projeto expõe parâmetros e spans`.
+- [x] Commit `feat(core): índice do projeto expõe parâmetros e spans` (record `ParamInfo` novo; `ProjectIndexEntry` ganhou `params`, `declarationSpan`, `nameSpan`).
 
 ### Task 4: Resolver público chamada → declaração
 
