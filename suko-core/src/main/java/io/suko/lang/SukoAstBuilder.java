@@ -16,9 +16,26 @@ import java.util.Optional;
 public class SukoAstBuilder {
 
     private final String source;
+    private final boolean tolerant;
 
     public SukoAstBuilder(String source) {
+        this(source, false);
+    }
+
+    private SukoAstBuilder(String source, boolean tolerant) {
         this.source = source;
+        this.tolerant = tolerant;
+    }
+
+    /**
+     * Modo tolerante, só para o language server (ver {@link TolerantParser}):
+     * numa árvore de recuperação de erros ANTLR, uma falha ao construir uma
+     * instrução, um parâmetro ou um componente descarta apenas essa subárvore
+     * em vez de derrubar o ficheiro inteiro. Nunca é o caminho que reporta
+     * diagnósticos — esses vêm sempre do modo estrito, idêntico ao do build.
+     */
+    static SukoAstBuilder tolerant(String source) {
+        return new SukoAstBuilder(source, true);
     }
 
     public SukoFile build(SukoParser.CompilationUnitContext ctx) {
@@ -39,10 +56,65 @@ public class SukoAstBuilder {
 
         List<ComponentDecl> components = new ArrayList<>();
         for (SukoParser.ComponentDeclContext componentCtx : ctx.componentDecl()) {
-            components.add(buildComponent(componentCtx));
+            if (!tolerant) {
+                components.add(buildComponent(componentCtx));
+                continue;
+            }
+            ComponentDecl component = buildComponentTolerant(componentCtx);
+            if (component != null) {
+                components.add(component);
+            }
         }
 
         return new SukoFile(packageName, packageSpan, imports, components);
+    }
+
+    /** Sem `templateBlock` (`component B( {`) ou com nome em falta: o que der para
+     * aproveitar (nome, parâmetros válidos, corpo válido) fica; sem nome, nada. */
+    private ComponentDecl buildComponentTolerant(SukoParser.ComponentDeclContext ctx) {
+        if (ctx.Identifier() == null || ctx.Identifier().getSymbol().getStartIndex() < 0) {
+            return null;
+        }
+        try {
+            List<String> typeParameters = new ArrayList<>();
+            try {
+                if (ctx.typeParameters() != null) {
+                    for (SukoParser.TypeParameterContext tp : ctx.typeParameters().typeParameter()) {
+                        if (tp.Identifier() != null && tp.Identifier().getSymbol().getStartIndex() >= 0) {
+                            typeParameters.add(tp.Identifier().getText());
+                        }
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // parâmetros de tipo partidos: seguem sem eles
+            }
+            List<Param> params = new ArrayList<>();
+            if (ctx.paramList() != null) {
+                for (SukoParser.ParamContext paramCtx : ctx.paramList().param()) {
+                    try {
+                        if (paramCtx.type() != null && paramCtx.Identifier() != null
+                                && paramCtx.Identifier().getSymbol().getStartIndex() >= 0) {
+                            params.add(buildParam(paramCtx));
+                        }
+                    } catch (RuntimeException ignored) {
+                        // este parâmetro está partido: descartado, os outros ficam
+                    }
+                }
+            }
+            List<Statement> body = ctx.templateBlock() == null
+                ? List.of()
+                : buildStatements(ctx.templateBlock().templateStatement());
+            SourceSpan span;
+            try {
+                span = spanOf(ctx);
+            } catch (RuntimeException e) {
+                span = spanOf(ctx.getStart());
+            }
+            return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, span,
+                ctx.PUBLIC() != null, spanOf(ctx.Identifier().getSymbol()));
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private ComponentDecl buildComponent(SukoParser.ComponentDeclContext ctx) {
@@ -124,7 +196,15 @@ public class SukoAstBuilder {
     List<Statement> buildStatements(List<SukoParser.TemplateStatementContext> ctxs) {
         List<Statement> statements = new ArrayList<>();
         for (SukoParser.TemplateStatementContext stmtCtx : ctxs) {
-            statements.add(buildStatement(stmtCtx));
+            if (!tolerant) {
+                statements.add(buildStatement(stmtCtx));
+                continue;
+            }
+            try {
+                statements.add(buildStatement(stmtCtx));
+            } catch (RuntimeException e) {
+                // modo tolerante: só esta subárvore é descartada
+            }
         }
         return statements;
     }

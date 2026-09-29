@@ -91,7 +91,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] Testes com os quatro casos obrigatórios, cada um com um segundo componente **válido** no mesmo ficheiro que tem de continuar presente no AST, sem exceção: `${t.` a meio; `component B( {`; `A(` num corpo; `Card(ti` dentro de `<div>`. Mais um caso de regressão: o modo estrito continua a lançar/diagnosticar exatamente como antes (o `JteCompiler` não muda).
 - [ ] `SukoAstBuilder.tolerant(String source)` (ou construtor com flag): `try/catch` por componente e por instrução, descartando só essa subárvore; `NullPointerException` incluída (hoje `templateBlock()` rebenta). Sem novas variantes de AST (G5). Nunca ligado ao `JteCompiler`/`ProjectIndex` (G3).
-- [ ] Commit `feat(core): modo tolerante do AST builder para o language server`.
+- [x] Commit `feat(core): modo tolerante do AST builder para o language server`. **Descoberta:** um `${t.` sem fecho não faz o builder lançar (a spec previa `IllegalStateException`) — o ANTLR recupera e engole os componentes seguintes para o corpo de `A`. Por isso o modo tolerante é `TolerantParser` (isola cada componente, reparseando-o sozinho com o resto do ficheiro em branco para manter spans idênticos) + flag `tolerant` no `SukoAstBuilder`.
 
 ### Task 7: Revisão intermédia da Fase A
 
