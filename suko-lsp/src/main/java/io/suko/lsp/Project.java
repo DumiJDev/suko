@@ -64,6 +64,14 @@ final class Project {
         return cachedSources;
     }
 
+    /** Fontes e verificação do mesmo instante — o texto certo para converter as posições dos diagnósticos. */
+    record Snapshot(SukoSources sources, ProjectAnalysis analysis) {
+    }
+
+    synchronized Snapshot snapshot() {
+        return new Snapshot(sources(), analysis());
+    }
+
     /** Verificação do root inteiro, com cache; os diagnósticos são os do {@code sukoCompile}. */
     synchronized ProjectAnalysis analysis() {
         if (cached == null) {

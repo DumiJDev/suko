@@ -125,7 +125,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] Testes com cliente LSP4J em memória: abrir ficheiro com erro → `publishDiagnostics` com código/mensagem/severidade do `sukoCompile` e posição certa (linhas com acentos e fora do BMP); editar para corrigir → diagnósticos limpos; apagar/fechar ficheiro → limpa os que deixaram de existir; várias alterações em <250 ms → uma só verificação (relógio injetável para o teste, sem `sleep`).
 - [ ] Debounce de 250 ms; `analyze(SukoSources)` do Task 1; publica por ficheiro.
-- [ ] Commit.
+- [x] Commit `feat(lsp): diagnósticos com debounce de 250 ms` (`DiagnosticsService`, `Scheduler` injectável, `SukoTextDocumentService`, `SukoWorkspaceService`, `DocumentUris`). Notas: só volta a publicar um ficheiro se o seu conjunto de diagnósticos mudou; o cliente VSCode tem de enviar `didChangeWatchedFiles` para `**/*.sk` e `suko.json` (Task 17, `synchronize.fileEvents`).
 
 ### Task 12: Go-to-definition
 
