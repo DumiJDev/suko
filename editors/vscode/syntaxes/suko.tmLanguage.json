@@ -1,0 +1,216 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Suko",
+  "scopeName": "source.suko",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#package-import" },
+    { "include": "#component-declaration" },
+    { "include": "#template" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.block.suko",
+          "begin": "/\\*",
+          "beginCaptures": { "0": { "name": "punctuation.definition.comment.begin.suko" } },
+          "end": "\\*/",
+          "endCaptures": { "0": { "name": "punctuation.definition.comment.end.suko" } }
+        },
+        {
+          "name": "comment.line.double-slash.suko",
+          "comment": "Só é comentário quando o // é seguido de espaço/tab ou do fim da linha (regra do lexer) — assim http://x.com em texto não o é.",
+          "match": "(//)(?=[ \\t]|$).*$",
+          "captures": { "1": { "name": "punctuation.definition.comment.suko" } }
+        }
+      ]
+    },
+
+    "package-import": {
+      "patterns": [
+        {
+          "match": "\\b(package)\\s+([A-Za-z_][\\w]*(?:\\.[A-Za-z_][\\w]*)*)\\s*(;)",
+          "captures": {
+            "1": { "name": "keyword.other.package.suko" },
+            "2": { "name": "entity.name.namespace.suko" },
+            "3": { "name": "punctuation.terminator.suko" }
+          }
+        },
+        {
+          "match": "\\b(import)\\s+((?:[A-Za-z_][\\w]*\\.)*)([A-Za-z_][\\w]*)(?:\\s+(as)\\s+([A-Za-z_][\\w]*))?\\s*(;)",
+          "captures": {
+            "1": { "name": "keyword.control.import.suko" },
+            "2": { "name": "entity.name.namespace.suko" },
+            "3": { "name": "entity.name.type.component.suko" },
+            "4": { "name": "keyword.control.as.suko" },
+            "5": { "name": "entity.name.type.component.suko" },
+            "6": { "name": "punctuation.terminator.suko" }
+          }
+        }
+      ]
+    },
+
+    "component-declaration": {
+      "comment": "[public] component Nome<T>(Tipo nome = default, ...) — o corpo é o resto do ficheiro (#template).",
+      "begin": "\\b(?:(public)\\s+)?(component)\\s+([A-Za-z_][\\w]*)\\s*(<[^>(]*>)?\\s*(\\()",
+      "beginCaptures": {
+        "1": { "name": "storage.modifier.public.suko" },
+        "2": { "name": "storage.type.component.suko" },
+        "3": { "name": "entity.name.type.component.suko" },
+        "4": { "patterns": [{ "include": "#type-arguments" }] },
+        "5": { "name": "punctuation.definition.parameters.begin.suko" }
+      },
+      "end": "\\)",
+      "endCaptures": { "0": { "name": "punctuation.definition.parameters.end.suko" } },
+      "patterns": [
+        { "include": "#comments" },
+        { "match": "\\b(Component)\\b", "name": "support.type.component.suko" },
+        { "match": "\\b(List|Function|Map|Set|Optional)\\b(?=\\s*<)", "name": "support.class.suko" },
+        { "include": "#type-arguments" },
+        { "match": "\\b([A-Z][\\w]*)\\b", "name": "entity.name.type.suko" },
+        { "match": "\\b(int|long|double|float|boolean|char|byte|short)\\b", "name": "storage.type.primitive.suko" },
+        { "match": "\\b(true|false)\\b", "name": "constant.language.boolean.suko" },
+        { "match": "\\bnull\\b", "name": "constant.language.null.suko" },
+        { "match": "(=)", "name": "keyword.operator.assignment.suko" },
+        { "match": "\\b([a-z_][\\w]*)\\b(?=\\s*(?:=|,|\\)))", "name": "variable.parameter.suko" },
+        { "include": "#expression" }
+      ]
+    },
+
+    "type-arguments": {
+      "begin": "<",
+      "beginCaptures": { "0": { "name": "punctuation.definition.typeparameters.begin.suko" } },
+      "end": ">",
+      "endCaptures": { "0": { "name": "punctuation.definition.typeparameters.end.suko" } },
+      "patterns": [
+        { "match": "\\b(Component)\\b", "name": "support.type.component.suko" },
+        { "match": "\\b([A-Z][\\w]*)\\b", "name": "entity.name.type.suko" },
+        { "match": ",", "name": "punctuation.separator.comma.suko" },
+        { "include": "#type-arguments" }
+      ]
+    },
+
+    "template": {
+      "patterns": [
+        { "include": "#comments" },
+        { "include": "#interpolation" },
+        { "include": "#html-close-tag" },
+        { "include": "#html-open-tag" },
+        { "include": "#control-keywords" },
+        { "include": "#var-declaration" },
+        { "include": "#component-call" },
+        { "include": "#string" }
+      ]
+    },
+
+    "control-keywords": {
+      "match": "\\b(if|else|for|switch|case|default)\\b",
+      "name": "keyword.control.suko"
+    },
+
+    "var-declaration": {
+      "match": "\\b(var)\\s+([A-Za-z_][\\w]*)\\s*(=)",
+      "captures": {
+        "1": { "name": "storage.type.var.suko" },
+        "2": { "name": "variable.other.suko" },
+        "3": { "name": "keyword.operator.assignment.suko" }
+      }
+    },
+
+    "component-call": {
+      "comment": "Nome(…) ou pacote.Nome(…): convenção do projecto — componentes começam por maiúscula. Os argumentos nomeados `nome =` e os slots `nome {` são realçados.",
+      "patterns": [
+        {
+          "match": "\\b((?:[a-z_][\\w]*\\.)*[A-Z][\\w]*)(?=\\s*\\()",
+          "name": "entity.name.function.component-call.suko"
+        },
+        {
+          "match": "\\b([A-Za-z_][\\w]*)(?=\\s*=(?!=))",
+          "name": "variable.parameter.named-argument.suko"
+        },
+        {
+          "match": "\\b([a-z_][\\w]*)(?=\\s*\\{)",
+          "name": "entity.name.tag.slot.suko"
+        }
+      ]
+    },
+
+    "html-open-tag": {
+      "begin": "(<)([A-Za-z][\\w]*(?:-[\\w]+)*)",
+      "beginCaptures": {
+        "1": { "name": "punctuation.definition.tag.begin.suko" },
+        "2": { "name": "entity.name.tag.suko" }
+      },
+      "end": "(/?>)",
+      "endCaptures": { "1": { "name": "punctuation.definition.tag.end.suko" } },
+      "patterns": [
+        { "include": "#html-attribute" }
+      ]
+    },
+
+    "html-close-tag": {
+      "match": "(</)([A-Za-z][\\w]*(?:-[\\w]+)*)\\s*(>)",
+      "captures": {
+        "1": { "name": "punctuation.definition.tag.begin.suko" },
+        "2": { "name": "entity.name.tag.suko" },
+        "3": { "name": "punctuation.definition.tag.end.suko" }
+      }
+    },
+
+    "html-attribute": {
+      "patterns": [
+        { "include": "#comments" },
+        { "match": "([A-Za-z_:@][\\w:.-]*)", "name": "entity.other.attribute-name.suko" },
+        { "match": "=", "name": "punctuation.separator.key-value.suko" },
+        { "include": "#string" },
+        { "include": "#interpolation" }
+      ]
+    },
+
+    "string": {
+      "name": "string.quoted.double.suko",
+      "begin": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.suko" } },
+      "end": "\"",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.suko" } },
+      "patterns": [
+        { "match": "\\\\.", "name": "constant.character.escape.suko" },
+        { "include": "#interpolation" },
+        {
+          "match": "(\\$)([A-Za-z_][\\w]*)",
+          "captures": {
+            "1": { "name": "punctuation.definition.interpolation.suko" },
+            "2": { "name": "variable.other.interpolated.suko" }
+          }
+        }
+      ]
+    },
+
+    "interpolation": {
+      "comment": "${ expressão }: uma região de Java embutida (o 11c enriquece-a com Java a sério).",
+      "name": "meta.interpolation.suko",
+      "begin": "\\$\\{",
+      "beginCaptures": { "0": { "name": "punctuation.section.interpolation.begin.suko" } },
+      "end": "\\}",
+      "endCaptures": { "0": { "name": "punctuation.section.interpolation.end.suko" } },
+      "contentName": "meta.embedded.expression.suko",
+      "patterns": [
+        { "include": "#expression" }
+      ]
+    },
+
+    "expression": {
+      "patterns": [
+        { "include": "#string" },
+        { "match": "\\b(true|false)\\b", "name": "constant.language.boolean.suko" },
+        { "match": "\\bnull\\b", "name": "constant.language.null.suko" },
+        { "match": "\\b[0-9]+(?:\\.[0-9]+)?\\b", "name": "constant.numeric.suko" },
+        { "match": "(\\?\\.|\\?:|->|&&|\\|\\||[!=<>]=|[+\\-*/%<>!?:])", "name": "keyword.operator.suko" },
+        { "match": "\\b([A-Za-z_][\\w]*)(?=\\s*\\()", "name": "entity.name.function.suko" },
+        { "match": "(?<=\\.|\\?\\.)([A-Za-z_][\\w]*)", "name": "variable.other.property.suko" },
+        { "match": "\\b([A-Za-z_][\\w]*)\\b", "name": "variable.other.readwrite.suko" }
+      ]
+    }
+  }
+}

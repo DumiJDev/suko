@@ -1,0 +1,23 @@
+package io.suko.ui;
+
+// Único componente da biblioteca com `externalRequirements` de
+// Alpine.js (Tarefa 9 do subprojeto 7, manifesto). `x-data`/`x-show` são
+// JavaScript literal do Alpine — as chavetas nuas de `{ open: false }`
+// são texto literal dentro de uma string Suko, e continuam a sê-lo
+// depois da unificação do subprojeto 9: a regra da linguagem é que
+// interpolação é SEMPRE `${...}` e uma chaveta nua nunca interpola, em
+// posição nenhuma.
+//
+// `id="dialog-${id}"` ao lado É interpolação Suko real — prova empírica
+// de que o JavaScript do Alpine e a interpolação do Suko convivem no
+// mesmo atributo sem ambiguidade.
+public component Dialog(String id, String title, Component children) {
+  <div id="dialog-${id}" x-data="{ open: false }" x-show="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+      <h2 class="text-lg font-semibold text-gray-900">${title}</h2>
+      <div class="mt-2 text-sm text-gray-600">
+        ${children}
+      </div>
+    </div>
+  </div>
+}

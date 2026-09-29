@@ -75,7 +75,7 @@ public class JteCompiler {
                 "Erro ao construir AST: " + e.getMessage(),
                 "AST_BUILDER_ERROR",
                 fileName,
-                new SourceSpan(0, 0, 0, 0)
+                SourceSpan.NONE
             ));
             return null;
         }
@@ -97,19 +97,32 @@ public class JteCompiler {
         return emitAll(sukoFile, new JteEmitter(sukoFile.components()));
     }
 
+    /** Parse + verificação semântica consciente de projeto, sem emissão.
+     * {@code ast} é {@code null} quando o ficheiro não faz parse; os
+     * diagnósticos são exatamente os que {@link #compile(ProjectIndex, Path)}
+     * reporta (o language server usa esta entrada, o build usa aquela). */
+    public record Analysis(SukoFile ast, DiagnosticCollector diagnostics) {
+    }
+
+    public Analysis analyze(ProjectIndex projectIndex, Path fileRelativePath) {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        SukoFile sukoFile = parseAndBuild(diagnostics);
+        if (sukoFile == null) {
+            return new Analysis(null, diagnostics);
+        }
+        SymbolTable symbolTable = new SymbolTable();
+        new SemanticChecker(symbolTable, diagnostics, fileName, projectIndex, fileRelativePath).check(sukoFile);
+        return new Analysis(sukoFile, diagnostics);
+    }
+
     /** Consciente de projeto (subprojeto 5): resolve import/visibilidade/
      * nome-composto contra o ProjectIndex de todo o projeto, não só deste
      * ficheiro. Usado por SukoProjectCompiler (Fase 2). */
     public CompileResult compile(ProjectIndex projectIndex, Path fileRelativePath) {
-        DiagnosticCollector diagnostics = new DiagnosticCollector();
-        SukoFile sukoFile = parseAndBuild(diagnostics);
-        if (sukoFile == null) {
-            return CompileResult.failure(diagnostics);
-        }
-
-        SymbolTable symbolTable = new SymbolTable();
-        new SemanticChecker(symbolTable, diagnostics, fileName, projectIndex, fileRelativePath).check(sukoFile);
-        if (diagnostics.hasErrors()) {
+        Analysis analysis = analyze(projectIndex, fileRelativePath);
+        DiagnosticCollector diagnostics = analysis.diagnostics();
+        SukoFile sukoFile = analysis.ast();
+        if (sukoFile == null || diagnostics.hasErrors()) {
             return CompileResult.failure(diagnostics);
         }
 

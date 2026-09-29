@@ -1,0 +1,226 @@
+>package ui.forms;
+#^^^^^^^ source.suko keyword.other.package.suko
+#       ^ source.suko
+#        ^^^^^^^^ source.suko entity.name.namespace.suko
+#                ^ source.suko punctuation.terminator.suko
+>
+>import ui.Card as C;
+#^^^^^^ source.suko keyword.control.import.suko
+#      ^ source.suko
+#       ^^^ source.suko entity.name.namespace.suko
+#          ^^^^ source.suko entity.name.type.component.suko
+#              ^ source.suko
+#               ^^ source.suko keyword.control.as.suko
+#                 ^ source.suko
+#                  ^ source.suko entity.name.type.component.suko
+#                   ^ source.suko punctuation.terminator.suko
+>
+>public component Card(String title, Component header, List<Component> items = null, int size = 3) {
+#^^^^^^ source.suko storage.modifier.public.suko
+#      ^ source.suko
+#       ^^^^^^^^^ source.suko storage.type.component.suko
+#                ^ source.suko
+#                 ^^^^ source.suko entity.name.type.component.suko
+#                     ^ source.suko punctuation.definition.parameters.begin.suko
+#                      ^^^^^^ source.suko entity.name.type.suko
+#                            ^ source.suko
+#                             ^^^^^ source.suko variable.parameter.suko
+#                                  ^^ source.suko
+#                                    ^^^^^^^^^ source.suko support.type.component.suko
+#                                             ^ source.suko
+#                                              ^^^^^^ source.suko variable.parameter.suko
+#                                                    ^^ source.suko
+#                                                      ^^^^ source.suko support.class.suko
+#                                                          ^ source.suko punctuation.definition.typeparameters.begin.suko
+#                                                           ^^^^^^^^^ source.suko support.type.component.suko
+#                                                                    ^ source.suko punctuation.definition.typeparameters.end.suko
+#                                                                     ^ source.suko
+#                                                                      ^^^^^ source.suko variable.parameter.suko
+#                                                                           ^ source.suko
+#                                                                            ^ source.suko keyword.operator.assignment.suko
+#                                                                             ^ source.suko
+#                                                                              ^^^^ source.suko constant.language.null.suko
+#                                                                                  ^^ source.suko
+#                                                                                    ^^^ source.suko storage.type.primitive.suko
+#                                                                                       ^ source.suko
+#                                                                                        ^^^^ source.suko variable.parameter.suko
+#                                                                                            ^ source.suko
+#                                                                                             ^ source.suko keyword.operator.assignment.suko
+#                                                                                              ^ source.suko
+#                                                                                               ^ source.suko constant.numeric.suko
+#                                                                                                ^ source.suko punctuation.definition.parameters.end.suko
+#                                                                                                 ^^^ source.suko
+>  <div class="card ${title}" data-id=${size}>
+#^^ source.suko
+#  ^ source.suko punctuation.definition.tag.begin.suko
+#   ^^^ source.suko entity.name.tag.suko
+#      ^ source.suko
+#       ^^^^^ source.suko entity.other.attribute-name.suko
+#            ^ source.suko punctuation.separator.key-value.suko
+#             ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#              ^^^^^ source.suko string.quoted.double.suko
+#                   ^^ source.suko string.quoted.double.suko meta.interpolation.suko punctuation.section.interpolation.begin.suko
+#                     ^^^^^ source.suko string.quoted.double.suko meta.interpolation.suko meta.embedded.expression.suko variable.other.readwrite.suko
+#                          ^ source.suko string.quoted.double.suko meta.interpolation.suko punctuation.section.interpolation.end.suko
+#                           ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                            ^ source.suko
+#                             ^^^^^^^ source.suko entity.other.attribute-name.suko
+#                                    ^ source.suko punctuation.separator.key-value.suko
+#                                     ^^ source.suko meta.interpolation.suko punctuation.section.interpolation.begin.suko
+#                                       ^^^^ source.suko meta.interpolation.suko meta.embedded.expression.suko variable.other.readwrite.suko
+#                                           ^ source.suko meta.interpolation.suko punctuation.section.interpolation.end.suko
+#                                            ^ source.suko punctuation.definition.tag.end.suko
+>    <h1>${title}</h1>
+#^^^^ source.suko
+#    ^ source.suko punctuation.definition.tag.begin.suko
+#     ^^ source.suko entity.name.tag.suko
+#       ^ source.suko punctuation.definition.tag.end.suko
+#        ^^ source.suko meta.interpolation.suko punctuation.section.interpolation.begin.suko
+#          ^^^^^ source.suko meta.interpolation.suko meta.embedded.expression.suko variable.other.readwrite.suko
+#               ^ source.suko meta.interpolation.suko punctuation.section.interpolation.end.suko
+#                ^^ source.suko punctuation.definition.tag.begin.suko
+#                  ^^ source.suko entity.name.tag.suko
+#                    ^ source.suko punctuation.definition.tag.end.suko
+>    if (size > 2) {
+#^^^^ source.suko
+#    ^^ source.suko keyword.control.suko
+#      ^^^^^^^^^^^^^^ source.suko
+>      Badge(text = "hi $name", tone = ui.Tone.OK)
+#^^^^^^ source.suko
+#      ^^^^^ source.suko entity.name.function.component-call.suko
+#           ^ source.suko
+#            ^^^^ source.suko variable.parameter.named-argument.suko
+#                ^^^ source.suko
+#                   ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                    ^^^ source.suko string.quoted.double.suko
+#                       ^ source.suko string.quoted.double.suko punctuation.definition.interpolation.suko
+#                        ^^^^ source.suko string.quoted.double.suko variable.other.interpolated.suko
+#                            ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                             ^^ source.suko
+#                               ^^^^ source.suko variable.parameter.named-argument.suko
+#                                   ^^^^^^^^^^^^^^^ source.suko
+>    } else {
+#^^^^^^ source.suko
+#      ^^^^ source.suko keyword.control.suko
+#          ^^^ source.suko
+>      Card(title = "x") {
+#^^^^^^ source.suko
+#      ^^^^ source.suko entity.name.function.component-call.suko
+#          ^ source.suko
+#           ^^^^^ source.suko variable.parameter.named-argument.suko
+#                ^^^ source.suko
+#                   ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                    ^ source.suko string.quoted.double.suko
+#                     ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                      ^^^^ source.suko
+>        header { <b>h</b> }
+#^^^^^^^^ source.suko
+#        ^^^^^^ source.suko entity.name.tag.slot.suko
+#              ^^^ source.suko
+#                 ^ source.suko punctuation.definition.tag.begin.suko
+#                  ^ source.suko entity.name.tag.suko
+#                   ^ source.suko punctuation.definition.tag.end.suko
+#                    ^ source.suko
+#                     ^^ source.suko punctuation.definition.tag.begin.suko
+#                       ^ source.suko entity.name.tag.suko
+#                        ^ source.suko punctuation.definition.tag.end.suko
+#                         ^^^ source.suko
+>      }
+#^^^^^^^^ source.suko
+>    }
+#^^^^^^ source.suko
+>    var c = Badge("y");
+#^^^^ source.suko
+#    ^^^ source.suko storage.type.var.suko
+#       ^ source.suko
+#        ^ source.suko variable.other.suko
+#         ^ source.suko
+#          ^ source.suko keyword.operator.assignment.suko
+#           ^ source.suko
+#            ^^^^^ source.suko entity.name.function.component-call.suko
+#                 ^ source.suko
+#                  ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                   ^ source.suko string.quoted.double.suko
+#                    ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                     ^^^ source.suko
+>    ${c ?: "none"}
+#^^^^ source.suko
+#    ^^ source.suko meta.interpolation.suko punctuation.section.interpolation.begin.suko
+#      ^ source.suko meta.interpolation.suko meta.embedded.expression.suko variable.other.readwrite.suko
+#       ^ source.suko meta.interpolation.suko meta.embedded.expression.suko
+#        ^^ source.suko meta.interpolation.suko meta.embedded.expression.suko keyword.operator.suko
+#          ^ source.suko meta.interpolation.suko meta.embedded.expression.suko
+#           ^ source.suko meta.interpolation.suko meta.embedded.expression.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#            ^^^^ source.suko meta.interpolation.suko meta.embedded.expression.suko string.quoted.double.suko
+#                ^ source.suko meta.interpolation.suko meta.embedded.expression.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                 ^ source.suko meta.interpolation.suko punctuation.section.interpolation.end.suko
+>  </div>
+#^^ source.suko
+#  ^^ source.suko punctuation.definition.tag.begin.suko
+#    ^^^ source.suko entity.name.tag.suko
+#       ^ source.suko punctuation.definition.tag.end.suko
+>}
+#^^ source.suko
+>
+>// um comentário de linha
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>/* um comentário
+#^^ source.suko comment.block.suko punctuation.definition.comment.begin.suko
+#  ^^^^^^^^^^^^^^^ source.suko comment.block.suko
+>   de bloco */
+#^^^^^^^^^^^^ source.suko comment.block.suko
+#            ^^ source.suko comment.block.suko punctuation.definition.comment.end.suko
+>component Links(boolean on = true) {
+#^^^^^^^^^ source.suko storage.type.component.suko
+#         ^ source.suko
+#          ^^^^^ source.suko entity.name.type.component.suko
+#               ^ source.suko punctuation.definition.parameters.begin.suko
+#                ^^^^^^^ source.suko storage.type.primitive.suko
+#                       ^ source.suko
+#                        ^^ source.suko variable.parameter.suko
+#                          ^ source.suko
+#                           ^ source.suko keyword.operator.assignment.suko
+#                            ^ source.suko
+#                             ^^^^ source.suko constant.language.boolean.suko
+#                                 ^ source.suko punctuation.definition.parameters.end.suko
+#                                  ^^^ source.suko
+>  <p>veja http://example.com agora // e isto também é texto</p>
+#^^ source.suko
+#  ^ source.suko punctuation.definition.tag.begin.suko
+#   ^ source.suko entity.name.tag.suko
+#    ^ source.suko punctuation.definition.tag.end.suko
+#     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko
+#                                   ^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>  <a href="http://example.com" x-on:click="go()" @click="x()">link</a>
+#^^ source.suko
+#  ^ source.suko punctuation.definition.tag.begin.suko
+#   ^ source.suko entity.name.tag.suko
+#    ^ source.suko
+#     ^^^^ source.suko entity.other.attribute-name.suko
+#         ^ source.suko punctuation.separator.key-value.suko
+#          ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#           ^^^^^^^^^^^^^^^^^^ source.suko string.quoted.double.suko
+#                             ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                              ^ source.suko
+#                               ^^^^^^^^^^ source.suko entity.other.attribute-name.suko
+#                                         ^ source.suko punctuation.separator.key-value.suko
+#                                          ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                                           ^^^^ source.suko string.quoted.double.suko
+#                                               ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                                                ^ source.suko
+#                                                 ^^^^^^ source.suko entity.other.attribute-name.suko
+#                                                       ^ source.suko punctuation.separator.key-value.suko
+#                                                        ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                                                         ^^^ source.suko string.quoted.double.suko
+#                                                            ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                                                             ^ source.suko punctuation.definition.tag.end.suko
+#                                                              ^^^^ source.suko
+#                                                                  ^^ source.suko punctuation.definition.tag.begin.suko
+#                                                                    ^ source.suko entity.name.tag.suko
+#                                                                     ^ source.suko punctuation.definition.tag.end.suko
+>}
+#^^ source.suko
+>
+>

@@ -10,16 +10,12 @@ import io.suko.lang.ast.SukoFile;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Stream;
 
 /**
  * Fase 1 (indexação) do SukoProjectCompiler: varre um sourceRoot
@@ -29,11 +25,11 @@ import java.util.stream.Stream;
  * chama A é legítimo — gg.jte resolve @template.x(...) em tempo de
  * render, não em tempo de compilação Suko).
  *
- * LIMITAÇÃO ACEITE (descoberta ao escrever este plano): só a assinatura
- * superficial é indexada (nome, pacote, public, nº de params) — não os
- * slots. Um ComponentCallStmt que resolve contra este índice (alvo
- * noutro ficheiro) não tem verificação de slot fills entre ficheiros;
- * só existência/visibilidade. Ver Tarefa 4.
+ * Cada entrada guarda a assinatura completa (parâmetros incluídos, ver
+ * {@link ProjectIndexEntry}); é isso que permite ao SemanticChecker validar
+ * slots e argumentos de chamadas a componentes de outros ficheiros. Os
+ * ficheiros são percorridos por ordem lexicográfica do caminho relativo,
+ * pelo que "o primeiro" de dois componentes duplicados é determinístico.
  */
 public class ProjectIndex {
 
@@ -56,31 +52,23 @@ public class ProjectIndex {
     }
 
     private final Map<String, ProjectIndexEntry> byQualifiedName = new LinkedHashMap<>();
-    private final Map<String, SourceSpan> spanByQualifiedName = new LinkedHashMap<>();
     private final List<DuplicateComponent> duplicates = new ArrayList<>();
 
     private ProjectIndex() {
     }
 
     public static ProjectIndex build(Path sourceRoot) {
+        return build(SukoSources.fromDirectory(sourceRoot));
+    }
+
+    /** Fase 1 sobre um snapshot em memória — {@link #build(Path)} delega aqui. */
+    public static ProjectIndex build(SukoSources sources) {
         ProjectIndex index = new ProjectIndex();
+        Path sourceRoot = sources.root();
 
-        List<Path> skFiles;
-        try (Stream<Path> walk = Files.walk(sourceRoot)) {
-            skFiles = walk.filter(Files::isRegularFile)
-                .filter(p -> p.toString().endsWith(".sk"))
-                .toList();
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-
-        for (Path skFile : skFiles) {
-            String source;
-            try {
-                source = Files.readString(skFile);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+        for (Map.Entry<Path, String> sourceEntry : sources.files().entrySet()) {
+            Path skFile = sources.absolute(sourceEntry.getKey());
+            String source = sourceEntry.getValue();
 
             SukoFile file = parseQuietly(source);
             if (file == null) {
@@ -112,14 +100,15 @@ public class ProjectIndex {
                     index.duplicates.add(new DuplicateComponent(
                         qualifiedName,
                         previous.sourceFile(),
-                        index.spanByQualifiedName.get(qualifiedName),
+                        previous.declarationSpan(),
                         skFile,
                         component.span()));
                     continue;
                 }
                 index.byQualifiedName.put(qualifiedName, new ProjectIndexEntry(
-                    qualifiedName, component.name(), skFile, component.isPublic(), component.params().size()));
-                index.spanByQualifiedName.put(qualifiedName, component.span());
+                    qualifiedName, component.name(), skFile, component.isPublic(),
+                    component.params().stream().map(ParamInfo::of).toList(),
+                    component.span(), component.nameSpan()));
             }
         }
 
@@ -145,6 +134,11 @@ public class ProjectIndex {
      * {@link DuplicateComponent}. */
     public List<DuplicateComponent> duplicates() {
         return List.copyOf(duplicates);
+    }
+
+    /** Todos os componentes indexados, por ordem de indexação (determinística). */
+    public java.util.Collection<ProjectIndexEntry> entries() {
+        return java.util.Collections.unmodifiableCollection(byQualifiedName.values());
     }
 
     public Optional<ProjectIndexEntry> resolveQualified(String qualifiedName) {

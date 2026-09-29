@@ -1,0 +1,27 @@
+package ui.forms;
+
+import ui.Card as C;
+
+public component Card(String title, Component header, List<Component> items = null, int size = 3) {
+  <div class="card ${title}" data-id=${size}>
+    <h1>${title}</h1>
+    if (size > 2) {
+      Badge(text = "hi $name", tone = ui.Tone.OK)
+    } else {
+      Card(title = "x") {
+        header { <b>h</b> }
+      }
+    }
+    var c = Badge("y");
+    ${c ?: "none"}
+  </div>
+}
+
+// um comentário de linha
+/* um comentário
+   de bloco */
+component Links(boolean on = true) {
+  <p>veja http://example.com agora // e isto também é texto</p>
+  <a href="http://example.com" x-on:click="go()" @click="x()">link</a>
+}
+

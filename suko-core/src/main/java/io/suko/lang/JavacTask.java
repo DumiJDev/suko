@@ -67,7 +67,7 @@ public class JavacTask {
                 "Falha ao criar diretório temporário: " + e.getMessage(),
                 "JAVAC_IO_ERROR",
                 "suko://system",
-                new SourceSpan(0, 0, 0, 0)
+                SourceSpan.NONE
             ));
             return collector;
         }
@@ -84,7 +84,7 @@ public class JavacTask {
                     "Compilador Java (javac) não disponível deste ambiente",
                     "JAVAC_NOT_AVAILABLE",
                     "suko://system",
-                    new SourceSpan(0, 0, 0, 0)
+                    SourceSpan.NONE
                 ));
                 return collector;
             }
@@ -145,7 +145,7 @@ public class JavacTask {
                 "Erro de I/O durante compilação javac: " + e.getMessage(),
                 "JAVAC_IO_ERROR",
                 "suko://system",
-                new SourceSpan(0, 0, 0, 0)
+                SourceSpan.NONE
             ));
         } finally {
             try {

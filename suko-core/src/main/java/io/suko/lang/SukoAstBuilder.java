@@ -16,9 +16,28 @@ import java.util.Optional;
 public class SukoAstBuilder {
 
     private final String source;
+    private final boolean tolerant;
+    private final boolean sourceHasSurrogates;
 
     public SukoAstBuilder(String source) {
+        this(source, false);
+    }
+
+    private SukoAstBuilder(String source, boolean tolerant) {
         this.source = source;
+        this.tolerant = tolerant;
+        this.sourceHasSurrogates = source.chars().anyMatch(c -> Character.isSurrogate((char) c));
+    }
+
+    /**
+     * Modo tolerante, só para o language server (ver {@link TolerantParser}):
+     * numa árvore de recuperação de erros ANTLR, uma falha ao construir uma
+     * instrução, um parâmetro ou um componente descarta apenas essa subárvore
+     * em vez de derrubar o ficheiro inteiro. Nunca é o caminho que reporta
+     * diagnósticos — esses vêm sempre do modo estrito, idêntico ao do build.
+     */
+    static SukoAstBuilder tolerant(String source) {
+        return new SukoAstBuilder(source, true);
     }
 
     public SukoFile build(SukoParser.CompilationUnitContext ctx) {
@@ -39,10 +58,65 @@ public class SukoAstBuilder {
 
         List<ComponentDecl> components = new ArrayList<>();
         for (SukoParser.ComponentDeclContext componentCtx : ctx.componentDecl()) {
-            components.add(buildComponent(componentCtx));
+            if (!tolerant) {
+                components.add(buildComponent(componentCtx));
+                continue;
+            }
+            ComponentDecl component = buildComponentTolerant(componentCtx);
+            if (component != null) {
+                components.add(component);
+            }
         }
 
         return new SukoFile(packageName, packageSpan, imports, components);
+    }
+
+    /** Sem `templateBlock` (`component B( {`) ou com nome em falta: o que der para
+     * aproveitar (nome, parâmetros válidos, corpo válido) fica; sem nome, nada. */
+    private ComponentDecl buildComponentTolerant(SukoParser.ComponentDeclContext ctx) {
+        if (ctx.Identifier() == null || ctx.Identifier().getSymbol().getStartIndex() < 0) {
+            return null;
+        }
+        try {
+            List<String> typeParameters = new ArrayList<>();
+            try {
+                if (ctx.typeParameters() != null) {
+                    for (SukoParser.TypeParameterContext tp : ctx.typeParameters().typeParameter()) {
+                        if (tp.Identifier() != null && tp.Identifier().getSymbol().getStartIndex() >= 0) {
+                            typeParameters.add(tp.Identifier().getText());
+                        }
+                    }
+                }
+            } catch (RuntimeException ignored) {
+                // parâmetros de tipo partidos: seguem sem eles
+            }
+            List<Param> params = new ArrayList<>();
+            if (ctx.paramList() != null) {
+                for (SukoParser.ParamContext paramCtx : ctx.paramList().param()) {
+                    try {
+                        if (paramCtx.type() != null && paramCtx.Identifier() != null
+                                && paramCtx.Identifier().getSymbol().getStartIndex() >= 0) {
+                            params.add(buildParam(paramCtx));
+                        }
+                    } catch (RuntimeException ignored) {
+                        // este parâmetro está partido: descartado, os outros ficam
+                    }
+                }
+            }
+            List<Statement> body = ctx.templateBlock() == null
+                ? List.of()
+                : buildStatements(ctx.templateBlock().templateStatement());
+            SourceSpan span;
+            try {
+                span = spanOf(ctx);
+            } catch (RuntimeException e) {
+                span = spanOf(ctx.getStart());
+            }
+            return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, span,
+                ctx.PUBLIC() != null, spanOf(ctx.Identifier().getSymbol()));
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private ComponentDecl buildComponent(SukoParser.ComponentDeclContext ctx) {
@@ -63,7 +137,7 @@ public class SukoAstBuilder {
         List<Statement> body = buildStatements(ctx.templateBlock().templateStatement());
 
         return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, spanOf(ctx),
-            ctx.PUBLIC() != null);
+            ctx.PUBLIC() != null, spanOf(ctx.Identifier().getSymbol()));
     }
 
     private static final Type CONTENT_ELEMENT_TYPE = new Type("Object", List.of(), 0);
@@ -77,24 +151,28 @@ public class SukoAstBuilder {
 
         return tryBuildSlotParam(type, name, defaultValue, ctx)
             .map(Param.class::cast)
-            .orElseGet(() -> new Param.ValueParam(type, name, defaultValue, spanOf(ctx)));
+            .orElseGet(() -> new Param.ValueParam(type, name, defaultValue, spanOf(ctx), spanOf(ctx.Identifier().getSymbol())));
     }
 
     private Optional<Param.SlotParam> tryBuildSlotParam(Type type, String name, Optional<Expr> defaultValue,
             SukoParser.ParamContext ctx) {
         if (isComponent(type)) {
-            return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.ONE, false, defaultValue, spanOf(ctx)));
+            return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.ONE, false, defaultValue, spanOf(ctx),
+                spanOf(ctx.Identifier().getSymbol())));
         }
         if (isRenderProp(type)) {
-            return Optional.of(new Param.SlotParam(type.typeArguments().get(0), name, Cardinality.ONE, true, defaultValue, spanOf(ctx)));
+            return Optional.of(new Param.SlotParam(type.typeArguments().get(0), name, Cardinality.ONE, true, defaultValue, spanOf(ctx),
+                spanOf(ctx.Identifier().getSymbol())));
         }
         if ("List".equals(type.name()) && type.typeArguments().size() == 1) {
             Type inner = type.typeArguments().get(0);
             if (isComponent(inner)) {
-                return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.MANY, false, defaultValue, spanOf(ctx)));
+                return Optional.of(new Param.SlotParam(CONTENT_ELEMENT_TYPE, name, Cardinality.MANY, false, defaultValue, spanOf(ctx),
+                spanOf(ctx.Identifier().getSymbol())));
             }
             if (isRenderProp(inner)) {
-                return Optional.of(new Param.SlotParam(inner.typeArguments().get(0), name, Cardinality.MANY, true, defaultValue, spanOf(ctx)));
+                return Optional.of(new Param.SlotParam(inner.typeArguments().get(0), name, Cardinality.MANY, true, defaultValue, spanOf(ctx),
+                spanOf(ctx.Identifier().getSymbol())));
             }
         }
         return Optional.empty();
@@ -124,7 +202,15 @@ public class SukoAstBuilder {
     List<Statement> buildStatements(List<SukoParser.TemplateStatementContext> ctxs) {
         List<Statement> statements = new ArrayList<>();
         for (SukoParser.TemplateStatementContext stmtCtx : ctxs) {
-            statements.add(buildStatement(stmtCtx));
+            if (!tolerant) {
+                statements.add(buildStatement(stmtCtx));
+                continue;
+            }
+            try {
+                statements.add(buildStatement(stmtCtx));
+            } catch (RuntimeException e) {
+                // modo tolerante: só esta subárvore é descartada
+            }
         }
         return statements;
     }
@@ -185,7 +271,10 @@ public class SukoAstBuilder {
                 Optional<String> name = argCtx.Identifier() == null
                     ? Optional.empty()
                     : Optional.of(argCtx.Identifier().getText());
-                args.add(new Statement.Arg(name, buildExpr(argCtx.expression())));
+                SourceSpan argSpan = argCtx.Identifier() == null
+                    ? spanOf(argCtx.expression())
+                    : spanOf(argCtx.Identifier().getSymbol());
+                args.add(new Statement.Arg(name, buildExpr(argCtx.expression()), argSpan));
             }
         }
         List<Statement.SlotFill> slotFills = new ArrayList<>();
@@ -201,7 +290,8 @@ public class SukoAstBuilder {
                 // `componentDecl` ou `ifStatement`). Confirmado lendo o parser gerado
                 // (build/generated-src/antlr/main/io/suko/lang/SukoParser.java).
                 List<Statement> body = buildStatements(slotCtx.templateStatement());
-                slotFills.add(new Statement.SlotFill(paramName, lambdaParamName, body));
+                slotFills.add(new Statement.SlotFill(paramName, lambdaParamName, body,
+                    spanOf(slotCtx.Identifier(0).getSymbol())));
             }
 
             // Children implícitos (subprojeto 6): templateStatement soltos direto
@@ -215,7 +305,8 @@ public class SukoAstBuilder {
             }
         }
 
-        return new Statement.ComponentCallStmt(ctx.qualifiedName().getText(), args, slotFills, spanOf(ctx));
+        return new Statement.ComponentCallStmt(ctx.qualifiedName().getText(), args, slotFills, spanOf(ctx),
+            spanOf(ctx.qualifiedName()));
     }
 
     private Statement.IfStmt buildIfStmt(SukoParser.IfStmtContext ctx) {
@@ -442,19 +533,34 @@ public class SukoAstBuilder {
      * porque texto puramente espaço entre tags não gera nó nenhum — não há
      * risco de dupla contagem). Não requer mudança na gramática. */
     private String textOf(SukoParser.TextRunContext ctx) {
-        int start = ctx.getStart().getStartIndex();
-        int stop = ctx.getStop().getStopIndex();
-        while (start - 1 >= 0 && isSkippedWhitespace(source.charAt(start - 1))) {
+        // Os índices do ANTLR contam code points; String indexa em chars UTF-16.
+        // Sem esta conversão um emoji antes do texto deslocava o corte (o
+        // último carácter de "😀 ola mundo" perdia-se no .jte gerado).
+        int start = charOffset(ctx.getStart().getStartIndex());
+        int end = charOffset(ctx.getStop().getStopIndex() + 1); // exclusivo
+        while (start > 0 && isSkippedWhitespace(source.charAt(start - 1))) {
             start--;
         }
-        while (stop + 1 < source.length() && isSkippedWhitespace(source.charAt(stop + 1))) {
-            stop++;
+        while (end < source.length() && isSkippedWhitespace(source.charAt(end))) {
+            end++;
         }
-        return source.substring(start, stop + 1);
+        return source.substring(start, end);
+    }
+
+    private int charOffset(int codePointIndex) {
+        if (!sourceHasSurrogates) {
+            return codePointIndex;
+        }
+        return source.offsetByCodePoints(0, codePointIndex);
     }
 
     private boolean isSkippedWhitespace(char c) {
         return c == ' ' || c == '\t' || c == '\r' || c == '\n';
+    }
+
+    private SourceSpan spanOf(org.antlr.v4.runtime.Token token) {
+        return new SourceSpan(token.getLine(), token.getCharPositionInLine(),
+            token.getStartIndex(), token.getStopIndex());
     }
 
     private SourceSpan spanOf(org.antlr.v4.runtime.ParserRuleContext ctx) {

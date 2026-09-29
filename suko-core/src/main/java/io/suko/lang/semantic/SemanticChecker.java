@@ -3,6 +3,8 @@ package io.suko.lang.semantic;
 import io.suko.lang.ast.*;
 import io.suko.lang.diagnostic.DiagnosticCollector;
 import io.suko.lang.diagnostic.SukoDiagnostic;
+import io.suko.lang.project.CallResolver;
+import io.suko.lang.project.ParamInfo;
 import io.suko.lang.project.ProjectIndex;
 import io.suko.lang.project.ProjectIndexEntry;
 import io.suko.lang.symbol.SymbolTable;
@@ -26,11 +28,9 @@ public class SemanticChecker {
     private final String sourceFile;
     private final ProjectIndex projectIndex;
     private final Path fileRelativePath;
-    private Map<String, ProjectIndexEntry> currentImportedByShortName = Map.of();
-    /** Nomes curtos cujo import resolveu para um componente NÃO public: o
-     * COMPONENT_NOT_VISIBLE já foi reportado na linha do import, por isso as
-     * chamadas a estes nomes não reportam nada (revisão final, achado G). */
-    private final Set<String> nonVisibleImportedNames = new HashSet<>();
+    /** Resolve chamadas com as regras do compilador (ver {@link CallResolver}),
+     * partilhado com o language server; reconstruído a cada {@link #check}. */
+    private CallResolver resolver;
 
     public SemanticChecker(SymbolTable symbolTable, DiagnosticCollector diagnostics, String sourceFile) {
         this(symbolTable, diagnostics, sourceFile, null, null);
@@ -48,8 +48,8 @@ public class SemanticChecker {
     /** Executa a verificação semântica completa em um SukoFile. */
     public void check(SukoFile sukoFile) {
         registerComponents(sukoFile);
-        nonVisibleImportedNames.clear();
-        currentImportedByShortName = projectIndex == null ? Map.of() : checkImportsAndBuildAliasMap(sukoFile);
+        resolver = new CallResolver(symbolTable::lookup, projectIndex, sukoFile.imports());
+        reportImportProblems();
         if (projectIndex != null) {
             checkPackageDirectoryMismatch(sukoFile);
         }
@@ -58,53 +58,41 @@ public class SemanticChecker {
         }
     }
 
-    private Map<String, ProjectIndexEntry> checkImportsAndBuildAliasMap(SukoFile sukoFile) {
-        Map<String, ProjectIndexEntry> byShortName = new HashMap<>();
-        for (ImportDecl imp : sukoFile.imports()) {
-            var found = projectIndex.resolveQualified(imp.qualifiedName());
-            if (found.isEmpty()) {
-                diagnostics.add(new SukoDiagnostic(
+    private void reportImportProblems() {
+        for (CallResolver.ImportStatus status : resolver.imports()) {
+            ImportDecl imp = status.decl();
+            switch (status.kind()) {
+                case OK -> {
+                }
+                case NOT_FOUND -> diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
                         "Import não encontrado: '" + imp.qualifiedName() + "'",
                         "IMPORT_NOT_FOUND",
                         sourceFile,
                         imp.span()
                 ));
-                continue;
-            }
-            ProjectIndexEntry entry = found.get();
-            if (!entry.isPublic()) {
-                diagnostics.add(new SukoDiagnostic(
+                // REVISÃO FINAL (achado G): o resolver não põe a entrada não-public
+                // no mapa de aliases. O COMPONENT_NOT_VISIBLE é reportado aqui, na
+                // linha do import, e as chamadas a esse nome não o repetem
+                // (Resolution.NotVisible.reportedAtImport): exatamente um
+                // diagnóstico por problema real.
+                case NOT_VISIBLE -> diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
                         "Componente '" + imp.qualifiedName() + "' não é public — não pode ser importado",
                         "COMPONENT_NOT_VISIBLE",
                         sourceFile,
                         imp.span()
                 ));
-                // REVISÃO FINAL (achado G): não inserir a entrada não-public no
-                // mapa de aliases. Já reportámos COMPONENT_NOT_VISIBLE aqui, na
-                // linha do import — deixá-la no mapa fazia o mesmo problema
-                // disparar OUTRA VEZ em cada chamada. O nome curto fica
-                // registado em `nonVisibleImportedNames` para que a chamada
-                // também não caia num COMPONENT_NOT_FOUND espúrio: exatamente
-                // um diagnóstico por problema real.
-                nonVisibleImportedNames.add(imp.alias().orElse(entry.simpleName()));
-                continue;
-            }
-            String key = imp.alias().orElse(entry.simpleName());
-            if (imp.alias().isEmpty() && byShortName.containsKey(key)) {
-                diagnostics.add(new SukoDiagnostic(
+                case AMBIGUOUS -> diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
-                        "Import ambíguo: '" + key + "' já foi importado de outro pacote — use 'as' para desambiguar",
+                        "Import ambíguo: '" + imp.alias().orElse(status.entry().simpleName())
+                                + "' já foi importado de outro pacote — use 'as' para desambiguar",
                         "AMBIGUOUS_IMPORT",
                         sourceFile,
                         imp.span()
                 ));
-            } else {
-                byShortName.put(key, entry);
             }
         }
-        return byShortName;
     }
 
     private void checkPackageDirectoryMismatch(SukoFile sukoFile) {
@@ -122,7 +110,7 @@ public class SemanticChecker {
                     // Revisão final, achado F: posição real da declaração
                     // `package` (antes era sempre 0:0). O fallback só existe
                     // para SukoFiles construídos à mão (testes de unidade).
-                    sukoFile.packageSpan().orElseGet(() -> new SourceSpan(0, 0, 0, 0))
+                    sukoFile.packageSpan().orElseGet(() -> SourceSpan.NONE)
             ));
         }
     }
@@ -382,30 +370,31 @@ public class SemanticChecker {
     private void checkExprForComponentCalls(Expr expr) {
         switch (expr) {
             case Expr.CallExpr call when call.callee() instanceof Expr.PrimaryExpr p -> {
-                ComponentDecl target = symbolTable.lookup(p.text());
-                if (target == null) {
-                    ProjectIndexEntry resolved = resolveViaProject(p.text());
-                    // `nonVisibleImportedNames`: COMPONENT_NOT_VISIBLE já foi
-                    // reportado na linha do import (achado G) — não repetir,
-                    // nem trocar por um COMPONENT_NOT_FOUND espúrio.
-                    if (resolved == null && !nonVisibleImportedNames.contains(p.text())
-                            && looksLikeComponentName(p.text())) {
-                        diagnostics.add(new SukoDiagnostic(
-                                SukoDiagnostic.Severity.ERROR,
-                                "Componente '" + p.text() + "' não encontrado",
-                                "COMPONENT_NOT_FOUND",
-                                sourceFile,
-                                call.span()
-                        ));
-                    } else if (resolved != null && !resolved.isPublic()) {
-                        diagnostics.add(new SukoDiagnostic(
-                                SukoDiagnostic.Severity.ERROR,
-                                "Componente '" + p.text() + "' não é public",
-                                "COMPONENT_NOT_VISIBLE",
-                                sourceFile,
-                                call.span()
-                        ));
+                switch (resolver.resolve(p.text())) {
+                    case CallResolver.Resolution.NotFound notFound -> {
+                        if (looksLikeComponentName(p.text())) {
+                            diagnostics.add(new SukoDiagnostic(
+                                    SukoDiagnostic.Severity.ERROR,
+                                    "Componente '" + p.text() + "' não encontrado",
+                                    "COMPONENT_NOT_FOUND",
+                                    sourceFile,
+                                    call.span()
+                            ));
+                        }
                     }
+                    case CallResolver.Resolution.NotVisible notVisible -> {
+                        if (!notVisible.reportedAtImport()) {
+                            diagnostics.add(new SukoDiagnostic(
+                                    SukoDiagnostic.Severity.ERROR,
+                                    "Componente '" + p.text() + "' não é public",
+                                    "COMPONENT_NOT_VISIBLE",
+                                    sourceFile,
+                                    call.span()
+                            ));
+                        }
+                    }
+                    case CallResolver.Resolution.Local local -> { }
+                    case CallResolver.Resolution.Project project -> { }
                 }
             }
             case Expr.TernaryExpr ternary -> {
@@ -432,25 +421,12 @@ public class SemanticChecker {
         }
     }
 
-    private ProjectIndexEntry resolveViaProject(String name) {
-        if (projectIndex == null) {
-            return null;
-        }
-        if (name.contains(".")) {
-            return projectIndex.resolveQualified(name).orElse(null);
-        }
-        return currentImportedByShortName.get(name);
-    }
-
     private void checkComponentCall(Statement.ComponentCallStmt call, Map<String, Param.SlotParam> currentScopeSlots) {
-        ComponentDecl calledComponent = symbolTable.lookup(call.componentName());
-        if (calledComponent == null) {
-            ProjectIndexEntry resolved = resolveViaProject(call.componentName());
-            if (resolved == null && nonVisibleImportedNames.contains(call.componentName())) {
-                // COMPONENT_NOT_VISIBLE já reportado na linha do import (achado G)
-                return;
-            }
-            if (resolved == null) {
+        List<ParamInfo> calledParams;
+        switch (resolver.resolve(call.componentName())) {
+            case CallResolver.Resolution.Local local ->
+                calledParams = local.decl().params().stream().map(ParamInfo::of).toList();
+            case CallResolver.Resolution.NotFound notFound -> {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
                         "Componente '" + call.componentName() + "' não encontrado",
@@ -460,78 +436,172 @@ public class SemanticChecker {
                 ));
                 return;
             }
-            if (!resolved.isPublic()) {
-                diagnostics.add(new SukoDiagnostic(
-                        SukoDiagnostic.Severity.ERROR,
-                        "Componente '" + call.componentName() + "' não é public",
-                        "COMPONENT_NOT_VISIBLE",
-                        sourceFile,
-                        call.span()
-                ));
+            case CallResolver.Resolution.NotVisible notVisible -> {
+                if (!notVisible.reportedAtImport()) {
+                    diagnostics.add(new SukoDiagnostic(
+                            SukoDiagnostic.Severity.ERROR,
+                            "Componente '" + call.componentName() + "' não é public",
+                            "COMPONENT_NOT_VISIBLE",
+                            sourceFile,
+                            call.span()
+                    ));
+                }
+                return;
             }
-            // Resolvido via projeto: a Fase 1 só indexa a assinatura (ver
-            // ProjectIndex), não os slots — verificação de slot fills
-            // cross-ficheiro não é feita aqui (limitação aceite, Tarefa 9).
-            return;
+            // D3 (subprojeto 11a): o índice do projeto já guarda os parâmetros,
+            // por isso as mesmas regras de slots/parâmetros valem para
+            // componentes de outros ficheiros.
+            case CallResolver.Resolution.Project project -> calledParams = project.entry().params();
         }
 
-        Map<String, Param.SlotParam> calledSlots = new HashMap<>();
-        for (Param param : calledComponent.params()) {
-            if (param instanceof Param.SlotParam slotParam) {
-                calledSlots.put(slotParam.name(), slotParam);
+        checkArgumentNames(call, calledParams);
+        checkSlotFills(call, calledParams);
+    }
+
+    /** Candidato mais parecido com {@code name} (Levenshtein, sem distinguir maiúsculas), para "quis dizer …?". */
+    static Optional<String> closest(String name, Collection<String> candidates) {
+        String lower = name.toLowerCase(Locale.ROOT);
+        int limit = Math.max(1, name.length() / 3);
+        String best = null;
+        int bestDistance = Integer.MAX_VALUE;
+        for (String candidate : candidates) {
+            int distance = levenshtein(lower, candidate.toLowerCase(Locale.ROOT));
+            if (distance <= limit && distance < bestDistance) {
+                best = candidate;
+                bestDistance = distance;
+            }
+        }
+        return Optional.ofNullable(best);
+    }
+
+    /** " — quis dizer 'x'?" se houver um candidato parecido; senão a lista de válidos. */
+    private static String suggestionOrList(String name, Collection<String> valid, String plural, String none) {
+        if (valid.isEmpty()) {
+            return " (" + none + ")";
+        }
+        return closest(name, valid).map(c -> " — quis dizer '" + c + "'?")
+            .orElseGet(() -> " — " + plural + ": " + String.join(", ", valid));
+    }
+
+    /** Distância de edição com transposição de vizinhos a custar 1 (`titel` → `title`). */
+    private static int levenshtein(String a, String b) {
+        int[][] d = new int[a.length() + 1][b.length() + 1];
+        for (int i = 0; i <= a.length(); i++) {
+            d[i][0] = i;
+        }
+        for (int j = 0; j <= b.length(); j++) {
+            d[0][j] = j;
+        }
+        for (int i = 1; i <= a.length(); i++) {
+            for (int j = 1; j <= b.length(); j++) {
+                int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                d[i][j] = Math.min(Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1), d[i - 1][j - 1] + cost);
+                if (i > 1 && j > 1 && a.charAt(i - 1) == b.charAt(j - 2) && a.charAt(i - 2) == b.charAt(j - 1)) {
+                    d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+                }
+            }
+        }
+        return d[a.length()][b.length()];
+    }
+
+    /** PARAM_NOT_FOUND: um argumento com nome que não é parâmetro do componente
+     * chamado. Antes do 11a isto só falhava quando o gg.jte compilava o template. */
+    private void checkArgumentNames(Statement.ComponentCallStmt call, List<ParamInfo> calledParams) {
+        Set<String> paramNames = new LinkedHashSet<>();
+        calledParams.forEach(p -> paramNames.add(p.name()));
+        for (Statement.Arg arg : call.args()) {
+            if (arg.name().isEmpty() || paramNames.contains(arg.name().get())) {
+                continue;
+            }
+            diagnostics.add(new SukoDiagnostic(
+                    SukoDiagnostic.Severity.ERROR,
+                    "Parâmetro '" + arg.name().get() + "' não encontrado no componente '" + call.componentName()
+                            + "'" + suggestionOrList(arg.name().get(), paramNames, "parâmetros", "não tem parâmetros"),
+                    "PARAM_NOT_FOUND",
+                    sourceFile,
+                    arg.span().isNone() ? call.span() : arg.span()
+            ));
+        }
+    }
+
+    private void checkSlotFills(Statement.ComponentCallStmt call, List<ParamInfo> calledParams) {
+        Map<String, ParamInfo> calledSlots = new LinkedHashMap<>();
+        for (ParamInfo param : calledParams) {
+            if (param.slot()) {
+                calledSlots.put(param.name(), param);
             }
         }
 
-        Map<String, List<Statement.SlotFill>> fillsBySlot = new HashMap<>();
+        Map<String, List<Statement.SlotFill>> fillsBySlot = new LinkedHashMap<>();
         for (Statement.SlotFill fill : call.slotFills()) {
             fillsBySlot.computeIfAbsent(fill.paramName(), k -> new ArrayList<>()).add(fill);
+        }
+
+        // Um slot também pode ser preenchido por um argumento nomeado
+        // (`Card(header = h)`, com `h` um Component — subprojeto 6): o JteEmitter
+        // passa-o tal como está, por isso conta como preenchimento.
+        Map<String, Statement.Arg> slotArgs = new LinkedHashMap<>();
+        for (Statement.Arg arg : call.args()) {
+            if (arg.name().isPresent() && calledSlots.containsKey(arg.name().get())) {
+                slotArgs.putIfAbsent(arg.name().get(), arg);
+            }
         }
 
         for (Map.Entry<String, List<Statement.SlotFill>> entry : fillsBySlot.entrySet()) {
             String slotName = entry.getKey();
             List<Statement.SlotFill> fills = entry.getValue();
 
-            Param.SlotParam declaredSlot = calledSlots.get(slotName);
+            ParamInfo declaredSlot = calledSlots.get(slotName);
             if (declaredSlot == null) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
-                        "Slot '" + slotName + "' não encontrado no componente '" + call.componentName() + "'",
+                        "Slot '" + slotName + "' não encontrado no componente '" + call.componentName() + "'"
+                                + suggestionOrList(slotName, calledSlots.keySet(), "slots", "não tem slots"),
                         "SLOT_NOT_FOUND",
                         sourceFile,
-                        call.span()
+                        fillSpan(fills.get(0), call)
                 ));
                 continue;
             }
 
-            if (declaredSlot.cardinality() == Cardinality.ONE && fills.size() > 1) {
+            if (declaredSlot.cardinality().orElse(Cardinality.ONE) == Cardinality.ONE && fills.size() > 1) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
-                        "Slot '" + slotName + "' é obrigatório (cardinality ONE) mas recebeu " + fills.size() + " fills",
+                        "Slot '" + slotName + "' aceita um só bloco mas recebeu " + fills.size() + " — deixe apenas um",
                         "CARDINALITY_VIOLATION",
                         sourceFile,
-                        call.span()
+                        fillSpan(fills.get(1), call)
                 ));
             }
-        }
 
-        for (Map.Entry<String, Param.SlotParam> entry : calledSlots.entrySet()) {
-            String slotName = entry.getKey();
-            Param.SlotParam slotParam = entry.getValue();
-
-            boolean hasFills = fillsBySlot.containsKey(slotName);
-            int fillCount = hasFills ? fillsBySlot.get(slotName).size() : 0;
-
-            boolean isRequired = !slotParam.defaultValue().isPresent() && slotParam.cardinality() == Cardinality.ONE;
-
-            if (isRequired && fillCount == 0) {
+            Statement.Arg duplicate = slotArgs.get(slotName);
+            if (duplicate != null) {
                 diagnostics.add(new SukoDiagnostic(
                         SukoDiagnostic.Severity.ERROR,
-                        "Slot obrigatório '" + slotName + "' não foi preenchido no componente '" + call.componentName() + "'",
-                        "REQUIRED_SLOT_MISSING",
+                        "Slot '" + slotName + "' foi passado como argumento ('" + slotName + " = …') e também como bloco ('"
+                                + slotName + " { … }') — use só um",
+                        "CARDINALITY_VIOLATION",
                         sourceFile,
-                        call.span()
+                        duplicate.span().isNone() ? call.span() : duplicate.span()
                 ));
             }
         }
+
+        for (ParamInfo slot : calledSlots.values()) {
+            if (slot.requiredSlot() && !fillsBySlot.containsKey(slot.name()) && !slotArgs.containsKey(slot.name())) {
+                diagnostics.add(new SukoDiagnostic(
+                        SukoDiagnostic.Severity.ERROR,
+                        "Slot obrigatório '" + slot.name() + "' não foi preenchido no componente '" + call.componentName() + "'",
+                        "REQUIRED_SLOT_MISSING",
+                        sourceFile,
+                        call.nameSpan().isNone() ? call.span() : call.nameSpan()
+                ));
+            }
+        }
+    }
+
+    /** O nome do slot preenchido, não a chamada inteira (que inclui os corpos dos slots). */
+    private static SourceSpan fillSpan(Statement.SlotFill fill, Statement.ComponentCallStmt call) {
+        return fill.nameSpan().isNone() ? call.span() : fill.nameSpan();
     }
 }

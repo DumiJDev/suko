@@ -1,0 +1,152 @@
+>package io.suko.ui;
+#^^^^^^^ source.suko keyword.other.package.suko
+#       ^ source.suko
+#        ^^^^^^^^^^ source.suko entity.name.namespace.suko
+#                  ^ source.suko punctuation.terminator.suko
+>
+>// Único componente da biblioteca com `externalRequirements` de
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>// Alpine.js (Tarefa 9 do subprojeto 7, manifesto). `x-data`/`x-show` são
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>// JavaScript literal do Alpine — as chavetas nuas de `{ open: false }`
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>// são texto literal dentro de uma string Suko, e continuam a sê-lo
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>// depois da unificação do subprojeto 9: a regra da linguagem é que
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>// interpolação é SEMPRE `${...}` e uma chaveta nua nunca interpola, em
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>// posição nenhuma.
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>//
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+>// `id="dialog-${id}"` ao lado É interpolação Suko real — prova empírica
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>// de que o JavaScript do Alpine e a interpolação do Suko convivem no
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>// mesmo atributo sem ambiguidade.
+#^^ source.suko comment.line.double-slash.suko punctuation.definition.comment.suko
+#  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko comment.line.double-slash.suko
+>public component Dialog(String id, String title, Component children) {
+#^^^^^^ source.suko storage.modifier.public.suko
+#      ^ source.suko
+#       ^^^^^^^^^ source.suko storage.type.component.suko
+#                ^ source.suko
+#                 ^^^^^^ source.suko entity.name.type.component.suko
+#                       ^ source.suko punctuation.definition.parameters.begin.suko
+#                        ^^^^^^ source.suko entity.name.type.suko
+#                              ^ source.suko
+#                               ^^ source.suko variable.parameter.suko
+#                                 ^^ source.suko
+#                                   ^^^^^^ source.suko entity.name.type.suko
+#                                         ^ source.suko
+#                                          ^^^^^ source.suko variable.parameter.suko
+#                                               ^^ source.suko
+#                                                 ^^^^^^^^^ source.suko support.type.component.suko
+#                                                          ^ source.suko
+#                                                           ^^^^^^^^ source.suko variable.parameter.suko
+#                                                                   ^ source.suko punctuation.definition.parameters.end.suko
+#                                                                    ^^^ source.suko
+>  <div id="dialog-${id}" x-data="{ open: false }" x-show="open" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+#^^ source.suko
+#  ^ source.suko punctuation.definition.tag.begin.suko
+#   ^^^ source.suko entity.name.tag.suko
+#      ^ source.suko
+#       ^^ source.suko entity.other.attribute-name.suko
+#         ^ source.suko punctuation.separator.key-value.suko
+#          ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#           ^^^^^^^ source.suko string.quoted.double.suko
+#                  ^^ source.suko string.quoted.double.suko meta.interpolation.suko punctuation.section.interpolation.begin.suko
+#                    ^^ source.suko string.quoted.double.suko meta.interpolation.suko meta.embedded.expression.suko variable.other.readwrite.suko
+#                      ^ source.suko string.quoted.double.suko meta.interpolation.suko punctuation.section.interpolation.end.suko
+#                       ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                        ^ source.suko
+#                         ^^^^^^ source.suko entity.other.attribute-name.suko
+#                               ^ source.suko punctuation.separator.key-value.suko
+#                                ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                                 ^^^^^^^^^^^^^^^ source.suko string.quoted.double.suko
+#                                                ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                                                 ^ source.suko
+#                                                  ^^^^^^ source.suko entity.other.attribute-name.suko
+#                                                        ^ source.suko punctuation.separator.key-value.suko
+#                                                         ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                                                          ^^^^ source.suko string.quoted.double.suko
+#                                                              ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                                                               ^ source.suko
+#                                                                ^^^^^ source.suko entity.other.attribute-name.suko
+#                                                                     ^ source.suko punctuation.separator.key-value.suko
+#                                                                      ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko string.quoted.double.suko
+#                                                                                                                                      ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                                                                                                                                       ^ source.suko punctuation.definition.tag.end.suko
+>    <div class="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+#^^^^ source.suko
+#    ^ source.suko punctuation.definition.tag.begin.suko
+#     ^^^ source.suko entity.name.tag.suko
+#        ^ source.suko
+#         ^^^^^ source.suko entity.other.attribute-name.suko
+#              ^ source.suko punctuation.separator.key-value.suko
+#               ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko string.quoted.double.suko
+#                                                                 ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                                                                  ^ source.suko punctuation.definition.tag.end.suko
+>      <h2 class="text-lg font-semibold text-gray-900">${title}</h2>
+#^^^^^^ source.suko
+#      ^ source.suko punctuation.definition.tag.begin.suko
+#       ^^ source.suko entity.name.tag.suko
+#         ^ source.suko
+#          ^^^^^ source.suko entity.other.attribute-name.suko
+#               ^ source.suko punctuation.separator.key-value.suko
+#                ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko string.quoted.double.suko
+#                                                    ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                                                     ^ source.suko punctuation.definition.tag.end.suko
+#                                                      ^^ source.suko meta.interpolation.suko punctuation.section.interpolation.begin.suko
+#                                                        ^^^^^ source.suko meta.interpolation.suko meta.embedded.expression.suko variable.other.readwrite.suko
+#                                                             ^ source.suko meta.interpolation.suko punctuation.section.interpolation.end.suko
+#                                                              ^^ source.suko punctuation.definition.tag.begin.suko
+#                                                                ^^ source.suko entity.name.tag.suko
+#                                                                  ^ source.suko punctuation.definition.tag.end.suko
+>      <div class="mt-2 text-sm text-gray-600">
+#^^^^^^ source.suko
+#      ^ source.suko punctuation.definition.tag.begin.suko
+#       ^^^ source.suko entity.name.tag.suko
+#          ^ source.suko
+#           ^^^^^ source.suko entity.other.attribute-name.suko
+#                ^ source.suko punctuation.separator.key-value.suko
+#                 ^ source.suko string.quoted.double.suko punctuation.definition.string.begin.suko
+#                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ source.suko string.quoted.double.suko
+#                                            ^ source.suko string.quoted.double.suko punctuation.definition.string.end.suko
+#                                             ^ source.suko punctuation.definition.tag.end.suko
+>        ${children}
+#^^^^^^^^ source.suko
+#        ^^ source.suko meta.interpolation.suko punctuation.section.interpolation.begin.suko
+#          ^^^^^^^^ source.suko meta.interpolation.suko meta.embedded.expression.suko variable.other.readwrite.suko
+#                  ^ source.suko meta.interpolation.suko punctuation.section.interpolation.end.suko
+>      </div>
+#^^^^^^ source.suko
+#      ^^ source.suko punctuation.definition.tag.begin.suko
+#        ^^^ source.suko entity.name.tag.suko
+#           ^ source.suko punctuation.definition.tag.end.suko
+>    </div>
+#^^^^ source.suko
+#    ^^ source.suko punctuation.definition.tag.begin.suko
+#      ^^^ source.suko entity.name.tag.suko
+#         ^ source.suko punctuation.definition.tag.end.suko
+>  </div>
+#^^ source.suko
+#  ^^ source.suko punctuation.definition.tag.begin.suko
+#    ^^^ source.suko entity.name.tag.suko
+#       ^ source.suko punctuation.definition.tag.end.suko
+>}
+#^^ source.suko
+>

@@ -48,15 +48,30 @@ public sealed interface Statement permits Statement.HtmlElement, Statement.TextR
     record SwitchCase(Expr matchValue, List<Statement> body) {
     }
 
+    /** `nameSpan` cobre só o nome (possivelmente qualificado) do componente. */
     record ComponentCallStmt(String componentName, List<Arg> args, List<SlotFill> slotFills,
-                             SourceSpan span) implements Statement {
+                             SourceSpan span, SourceSpan nameSpan) implements Statement {
+        /** Sem posição própria do nome (AST construído à mão): usa o span da chamada. */
+        public ComponentCallStmt(String componentName, List<Arg> args, List<SlotFill> slotFills,
+                                 SourceSpan span) {
+            this(componentName, args, slotFills, span, span);
+        }
     }
 
-    record Arg(java.util.Optional<String> name, Expr value) {
+    /** `span` cobre o nome do argumento quando é nomeado (`title = ...`), senão o valor. */
+    record Arg(java.util.Optional<String> name, Expr value, SourceSpan span) {
+        public Arg(java.util.Optional<String> name, Expr value) {
+            this(name, value, SourceSpan.NONE);
+        }
     }
 
     /** paramName é o nome do slot; lambdaParamName só é usado por slots render-prop (tarefa 18). */
     record SlotFill(String paramName, java.util.Optional<String> lambdaParamName,
-                    List<Statement> body) {
+                    List<Statement> body, SourceSpan nameSpan) {
+        /** `children` implícito e AST construído à mão: sem posição do nome. */
+        public SlotFill(String paramName, java.util.Optional<String> lambdaParamName,
+                        List<Statement> body) {
+            this(paramName, lambdaParamName, body, SourceSpan.NONE);
+        }
     }
 }
