@@ -1,0 +1,79 @@
+name: VS Code extension
+
+# Constrói o language server (suko-lsp) e a extensão, corre os testes e publica o
+# .vsix como artefacto da execução. NÃO publica no Marketplace nem no Open VSX
+# (decisão D4 do subprojeto 11a: isso fica para a release).
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "suko-core/**"
+      - "suko-lsp/**"
+      - "editors/vscode/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - ".github/workflows/build-vscode-extension.yml"
+  pull_request:
+    paths:
+      - "suko-core/**"
+      - "suko-lsp/**"
+      - "editors/vscode/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - ".github/workflows/build-vscode-extension.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  vsix:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors/vscode
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: editors/vscode/package-lock.json
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test the language server
+        working-directory: .
+        run: ./gradlew :suko-core:test :suko-lsp:test :suko-lsp:fatJar --console=plain
+
+      - name: Install extension dependencies
+        run: npm ci
+
+      - name: Unit, server-integration and grammar tests
+        run: npm test
+
+      - name: Package the .vsix
+        env:
+          # o jar já foi construído no passo do Gradle
+          SUKO_SKIP_GRADLE: "1"
+        run: npm run package
+
+      - name: Smoke test in a real VS Code
+        # xvfb: o VS Code (Electron) precisa de um display
+        run: xvfb-run -a npm run test:electron
+
+      - name: Upload the .vsix
+        uses: actions/upload-artifact@v4
+        with:
+          name: suko-vscode-vsix
+          path: editors/vscode/*.vsix
+          if-no-files-found: error

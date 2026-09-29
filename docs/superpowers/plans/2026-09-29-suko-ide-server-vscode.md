@@ -171,7 +171,7 @@ Java em `${...}` e ligar o `JavacTask` (11c); IntelliJ (11b); qualquer mudança 
 
 - [ ] `@vscode/test-electron`: ativa, o server responde, um `.sk` com erro produz um diagnóstico.
 - [ ] `.github/workflows/build-vscode-extension.yml`: JDK 21, `./gradlew :suko-lsp:fatJar`, `npm ci`, testes, `npm run package`, `actions/upload-artifact` do `.vsix`. **Sem publicar** (D4).
-- [ ] Commit.
+- [x] Commit `feat(vscode): teste de fumo em VS Code real e workflow do .vsix`. **Não executado localmente:** o proxy do sandbox bloqueia `update.code.visualstudio.com` (403), por isso o `@vscode/test-electron` só corre no CI (`xvfb-run`); o código compila (`tsc`) mas o teste Electron nunca foi visto passar. Cobertura equivalente sem VS Code: `src/test/integration/server.test.ts` (Task 17).
 
 ---
 

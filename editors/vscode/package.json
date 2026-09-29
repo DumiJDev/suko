@@ -86,7 +86,7 @@
     "copy-server": "node scripts/copy-server.mjs",
     "test:unit": "npm run compile && node --test \"out/test/unit/*.test.js\"",
     "test:grammar": "vscode-tmgrammar-snap -g syntaxes/suko.tmLanguage.json \"test/grammar/*.sk\"",
-    "test:electron": "npm run compile && node out/test/electron/runTest.js",
+    "test:electron": "npm run compile && npm run bundle && node out/test/electron/runTest.js",
     "test": "npm run test:unit && npm run test:server && npm run test:grammar",
     "package": "npm run copy-server && npm run compile && npm run bundle && vsce package --no-dependencies",
     "test:grammar:update": "vscode-tmgrammar-snap -g syntaxes/suko.tmLanguage.json --updateSnapshot \"test/grammar/*.sk\"",
