@@ -837,14 +837,60 @@ tem origem própria nesta spec):
     tipo de widget/fábrica (`Supplier<Node>`, `JComponent`, ...), o que
     muda a forma dos slots `Function<T, Component>` e dos children
     implícitos; (d) **modelo de renderização** — JTE é *render uma vez,
-    para texto*; Swing/JavaFX/TamboUI são retidos e reativos (estado,
-    eventos, re-render). Sem uma história para estado e handlers
-    (`onClick`, etc.), a transpilação só cobriria UIs estáticas — a
-    decisão de escopo é se o Suko cresce além da "camada de view" de
-    servidor definida em "Decisões de design"; (e) **relação com o item
-    12** (interoperabilidade Java ↔ Suko), que é o mecanismo natural
-    para ligar handlers e estado escritos em Java a componentes Suko; e
-    com o item 11 (o suporte de IDE terá de conhecer o vocabulário por
-    alvo). Ordem sugerida para o scoping, do mais barato ao mais caro:
-    Swing e JavaFX partilham o modelo (árvore retida de widgets), TamboUI
-    acrescenta o layout de terminal.
+    para texto*. **Corrigido a 2026-10-03 (issue #7):** o TamboUI 0.5.0
+    **não** é retido — `ToolkitRunner.run(Supplier<Element>)` reconstrói
+    a árvore a cada frame e o estado dos widgets vive fora dela
+    (verificado com `javap` sobre os jars e num spike no BuildCLI), ou
+    seja, é *função de estado → árvore*, o mesmo modelo mental do JTE.
+    Só Swing e JavaFX são realmente retidos (precisam de mutar a árvore
+    existente). Em todos os alvos nativos falta uma história para estado
+    e eventos (`on:key`, handlers), sem a qual a transpilação só cobre
+    UIs estáticas — a decisão de escopo é se o Suko cresce além da
+    "camada de view" de servidor definida em "Decisões de design";
+    (e) **relação com o item 12** (interoperabilidade Java ↔ Suko), que
+    é o mecanismo natural para ligar handlers e estado escritos em Java
+    a componentes Suko; com o 11c (a verificação de lambdas e estado
+    dentro de `${...}` depende da análise Java); e com o item 11 (o
+    suporte de IDE terá de conhecer o vocabulário por alvo). **Ordem
+    revista (issue #7):** TamboUI primeiro — sendo *estado → árvore*,
+    é o alvo nativo mais barato (sem reconciliação; o diff célula a
+    célula do terminal já é do TamboUI) e tem um primeiro consumidor
+    real (BuildCLI); Swing e JavaFX depois, porque exigem mutações
+    dirigidas de uma árvore retida.
+
+    **Direção decidida pelo utilizador (2026-10-03): extensões em
+    compile-time, não crescimento do core.** Os alvos e vocabulários
+    entram como *extensões* que correm só no build e no LSP, sobre uma
+    API pequena e versionada (proposta na issue #7: `Target`,
+    `Vocabulary`, `Checker` primeiro; outros pontos só quando uma
+    segunda extensão precisar). **Core:** gramática única (as extensões
+    não mudam a sintaxe — usam tags e atributos com namespace como
+    `on:`/`bind:`), AST, símbolos/`ProjectIndex`/imports/visibilidade,
+    componentes/slots/cardinalidade, as construções genéricas
+    (`if`/`for`/`switch`, interpolação e — quando existirem — `state`,
+    `derived` e lambdas, que cada alvo declara se suporta),
+    diagnósticos e source maps, a análise Java dentro de `${...}` (11c)
+    e a interoperabilidade Java (12), a API e o carregador de extensões
+    e o host genérico do LSP. **Extensões:** os alvos (o JTE embutido mas
+    implementado pela mesma API — critério: `.jte` gerado byte a byte
+    igual —, o gerador de HTML estático do site, TamboUI, Swing,
+    JavaFX), os vocabulários (o HTML, com as regras de escape e de URLs
+    perigosas, acompanha o alvo JTE e mantém revisão de segurança), os
+    namespaces de atributos, verificadores extra (a11y, i18n),
+    origens de registry, comandos da CLI e contribuições ao LSP. **A
+    reatividade também é resolvida em compile-time** (modelo
+    Svelte/Solid, não React): o compilador calcula estaticamente o
+    grafo `state` → `derived` → subárvores e gera setters que marcam o
+    que mudou, `derived` recalculado só quando as dependências mudam e,
+    nos alvos retidos, mutações dirigidas — sem proxies, subscrições em
+    runtime nem virtual DOM. O que não é resolúvel em compile-time é
+    pequeno: agendar frames de forma thread-safe e coalescida (valores
+    vindos de outras threads), a identidade de instâncias com estado
+    entre frames (cache por posição + `key`) e a ligação ao event loop
+    do toolkit. Proposta para isso: a extensão do alvo **gera** essas
+    poucas classes de suporte para dentro do código gerado do projeto,
+    em vez de um jar de runtime — "nenhuma dependência do Suko em
+    runtime" mantém-se em todos os alvos. Riscos: cada ponto de
+    extensão é uma promessa de compatibilidade; extensões são código de
+    terceiros a correr no build e no LSP (o LSP só as carrega em
+    workspaces confiáveis). Sem spec ainda; depende de 11c e 12.
