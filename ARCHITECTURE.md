@@ -894,3 +894,35 @@ tem origem própria nesta spec):
     extensão é uma promessa de compatibilidade; extensões são código de
     terceiros a correr no build e no LSP (o LSP só as carrega em
     workspaces confiáveis). Sem spec ainda; depende de 11c e 12.
+
+    **Arrumação em artefactos e multi-alvo (decidido pelo utilizador,
+    2026-10-03).** `suko-api` (a API de extensões — `Target`,
+    `Vocabulary`, `Checker` — e uma vista só de leitura do AST, dos
+    diagnósticos e do índice; o único contrato que as extensões veem),
+    `suko-core` (compilador, verificador, análise Java, carregador de
+    extensões) e **um artefacto de compile-time por alvo**: `suko-jte`,
+    `suko-html`, `suko-javafx`, `suko-tamboui` (sobre JLine), e
+    variantes `+js` para a web (`jte+js`, `html+js`). Objetivo: o mesmo
+    ficheiro (ex.: `intro.sk`) compilar para vários alvos no mesmo
+    projeto. **Vocabulário: neutro + nativo.** O core define
+    primitivas neutras (`<column>`, `<row>`, `<text>`, `<button>`,
+    `<list>`, `<input>`, ...) que todos os alvos mapeiam (HTML, `VBox`,
+    `Toolkit.column`, ...); cada alvo acrescenta as suas tags nativas
+    (HTML livre, widgets JavaFX/TamboUI). Um ficheiro que usa uma tag
+    nativa fica preso a esse alvo, e o verificador diz-o; um ficheiro só
+    com primitivas compila para todos. **"java" não é um alvo de
+    render:** é a camada transversal do item 12 — em qualquer alvo, cada
+    componente expõe uma API Java (classe/método que devolve o
+    `Component` desse alvo: `gg.jte.Content` no JTE, `Node` no JavaFX,
+    `Element` no TamboUI), e um `.sk` pode importar componentes escritos
+    em Java; vive no core, e cada extensão só define o tipo de
+    `Component`. **Alvos `+js`:** a reatividade resolvida em
+    compile-time gera JS vanilla mínimo só para os componentes com
+    estado/eventos (HTML renderizado no servidor + "ilhas" interativas,
+    modelo Svelte), sem framework no cliente; é o alvo mais sensível em
+    segurança (gerar JS a partir de expressões mantendo o escape) e
+    exige revisão do `security-specialist`. Riscos: a matriz de testes
+    cresce com cada alvo (começar com dois — JTE, já existente, e
+    TamboUI, da issue #7); as primitivas neutras tendem para o mínimo
+    denominador comum, por isso ficam poucas e as tags nativas são a
+    saída.
