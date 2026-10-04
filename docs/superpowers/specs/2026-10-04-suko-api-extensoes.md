@@ -1,6 +1,7 @@
 # Suko — Subprojeto 13a: API de extensões (fase 0 do item 13)
 
 Data: 2026-10-04
+Estado: **aprovada pelo utilizador a 2026-10-04**. O plano de implementação é escrito depois do 11b e do 11c, sobre o estado que deixarem (D1).
 
 ## Contexto
 
