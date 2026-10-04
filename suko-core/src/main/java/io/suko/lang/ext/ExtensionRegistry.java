@@ -27,10 +27,26 @@ public final class ExtensionRegistry {
 
     public static ExtensionRegistry load(ClassLoader loader) {
         List<SukoExtension> found = new ArrayList<>();
-        for (SukoExtension extension : ServiceLoader.load(SukoExtension.class, loader)) {
-            found.add(extension);
+        List<SukoDiagnostic> problems = new ArrayList<>();
+        Iterator<SukoExtension> it = ServiceLoader.load(SukoExtension.class, loader).iterator();
+        while (true) {
+            try {
+                if (!it.hasNext()) {
+                    break;
+                }
+            } catch (ServiceConfigurationError e) {
+                problems.add(failed("Falhou a descoberta de extensões: " + describe(e)));
+                break; // hasNext() a falhar pode repetir-se para sempre
+            }
+            try {
+                found.add(it.next());
+            } catch (ServiceConfigurationError e) {
+                problems.add(failed("Falhou a descoberta de extensões: " + describe(e)));
+            }
         }
-        return of(found);
+        ExtensionRegistry registry = of(found);
+        registry.loadDiagnostics.addAll(0, problems);
+        return registry;
     }
 
     /** O registo do próprio classpath do compilador: o caso de quem não declara extensões. */
@@ -40,23 +56,45 @@ public final class ExtensionRegistry {
 
     public static ExtensionRegistry of(List<SukoExtension> extensions) {
         ExtensionRegistry registry = new ExtensionRegistry();
-        List<SukoExtension> sorted = new ArrayList<>(extensions);
-        sorted.sort(Comparator.comparing(SukoExtension::id));
+        record Entry(String id, int apiVersion, SukoExtension extension) {
+        }
+        List<Entry> entries = new ArrayList<>();
+        for (SukoExtension extension : extensions) {
+            try {
+                String id = extension.id();
+                if (id == null || id.isBlank()) {
+                    registry.error("EXTENSION_FAILED", "Uma extensão devolveu um id vazio: " + extension.getClass().getName());
+                    continue;
+                }
+                entries.add(new Entry(id, extension.apiVersion(), extension));
+            } catch (RuntimeException | LinkageError e) {
+                registry.error("EXTENSION_FAILED", "Uma extensão (" + extension.getClass().getName()
+                    + ") falhou ao ler id/apiVersion: " + describe(e));
+            }
+        }
+        entries.sort(Comparator.comparing(Entry::id));
         Set<String> seenIds = new HashSet<>();
-        for (SukoExtension extension : sorted) {
-            if (!seenIds.add(extension.id())) {
+        for (Entry entry : entries) {
+            if (!seenIds.add(entry.id())) {
                 continue; // a mesma extensão vista duas vezes no classpath
             }
-            registry.add(extension);
+            registry.add(entry.extension(), entry.id(), entry.apiVersion());
         }
         return registry;
     }
 
-    private void add(SukoExtension extension) {
-        String id = extension.id();
-        if (extension.apiVersion() != ExtensionApi.VERSION) {
+    private static String describe(Throwable e) {
+        return e.getMessage() != null ? e.getMessage() : e.toString();
+    }
+
+    private static SukoDiagnostic failed(String message) {
+        return new SukoDiagnostic(SukoDiagnostic.Severity.ERROR, message, "EXTENSION_FAILED", null, SourceSpan.NONE);
+    }
+
+    private void add(SukoExtension extension, String id, int apiVersion) {
+        if (apiVersion != ExtensionApi.VERSION) {
             error("EXTENSION_API_MISMATCH", "A extensão '" + id + "' foi compilada para a API de extensões "
-                + extension.apiVersion() + ", mas este compilador usa a versão " + ExtensionApi.VERSION);
+                + apiVersion + ", mas este compilador usa a versão " + ExtensionApi.VERSION);
             return;
         }
         try {
@@ -74,8 +112,8 @@ public final class ExtensionRegistry {
                     owners.put(checker, id);
                 }
             });
-        } catch (RuntimeException e) {
-            error("EXTENSION_FAILED", "A extensão '" + id + "' falhou ao registar-se: " + e.getMessage());
+        } catch (RuntimeException | LinkageError e) {
+            error("EXTENSION_FAILED", "A extensão '" + id + "' falhou ao registar-se: " + describe(e));
         }
     }
 

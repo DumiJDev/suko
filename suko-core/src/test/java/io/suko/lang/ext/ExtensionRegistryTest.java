@@ -96,4 +96,49 @@ class ExtensionRegistryTest {
         assertSame(v, registry.vocabulary("demo").orElseThrow());
         assertTrue(io.suko.lang.project.ProjectView.EMPTY.entries().isEmpty());
     }
+
+    @Test
+    void throwingOrBlankIdBecomesExtensionFailedAndOthersStillLoad() {
+        SukoExtension throwing = new SukoExtension() {
+            public String id() { throw new IllegalStateException("no id"); }
+            public int apiVersion() { return 1; }
+            public void register(ExtensionContext ctx) { }
+        };
+        SukoExtension nullId = new SukoExtension() {
+            public String id() { return null; }
+            public int apiVersion() { return 1; }
+            public void register(ExtensionContext ctx) { }
+        };
+        var registry = ExtensionRegistry.of(List.of(throwing, nullId,
+            new Ext("ok.ext", 1, List.of(target("ok")))));
+        assertEquals(2, registry.loadDiagnostics().size());
+        assertTrue(registry.loadDiagnostics().stream().allMatch(d -> d.code().equals("EXTENSION_FAILED")));
+        assertTrue(registry.target("ok").isPresent());
+    }
+
+    @Test
+    void linkageErrorInRegisterBecomesExtensionFailed() {
+        SukoExtension broken = new SukoExtension() {
+            public String id() { return "linkage.ext"; }
+            public int apiVersion() { return ExtensionApi.VERSION; }
+            public void register(ExtensionContext ctx) { throw new NoClassDefFoundError("x"); }
+        };
+        var registry = ExtensionRegistry.of(List.of(broken));
+        SukoDiagnostic d = registry.loadDiagnostics().get(0);
+        assertEquals("EXTENSION_FAILED", d.code());
+        assertTrue(d.message().contains("linkage.ext") && d.message().contains("x"), d.message());
+    }
+
+    @Test
+    void serviceLoaderFailureBecomesExtensionFailed(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        java.nio.file.Path services = dir.resolve("META-INF/services");
+        java.nio.file.Files.createDirectories(services);
+        java.nio.file.Files.writeString(services.resolve("io.suko.ext.SukoExtension"), "does.not.Exist\n");
+        try (var loader = new java.net.URLClassLoader(new java.net.URL[]{dir.toUri().toURL()},
+                ExtensionRegistryTest.class.getClassLoader())) {
+            var registry = ExtensionRegistry.load(loader);
+            assertTrue(registry.loadDiagnostics().stream().anyMatch(d -> d.code().equals("EXTENSION_FAILED")),
+                registry.loadDiagnostics().toString());
+        }
+    }
 }
