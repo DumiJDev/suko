@@ -65,7 +65,7 @@ gradle sukoWatch
 
 ### Maven
 
-`suko-maven-plugin` ships a hand-written plugin descriptor (`META-INF/maven/plugin.xml`, goal `compile`, 6 parameters) and was verified once with a real `mvn` run, but it is not published to a Maven repository and no automated test runs a real `mvn` (only Mojo- and descriptor-level tests) — see ARCHITECTURE.md, roadmap item 4.
+`suko-maven-plugin` ships a hand-written plugin descriptor (`META-INF/maven/plugin.xml`, goal `compile`, 6 parameters) and was verified once with a real `mvn` run (before 13a added `targets`/`buildDirectory`), but it is not published to a Maven repository and no automated test runs a real `mvn` (only Mojo- and descriptor-level tests) — see ARCHITECTURE.md, roadmap item 4.
 
 ```xml
 <plugin>

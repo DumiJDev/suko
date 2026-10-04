@@ -76,7 +76,7 @@ public class SukoCompileMojo extends AbstractMojo {
         try {
             Files.createDirectories(outputDir.toPath());
 
-            java.util.List<String> requested = targets == null || targets.isEmpty() ? java.util.List.of("jte") : targets;
+            java.util.List<String> requested = io.suko.lang.JteCompiler.normalizeTargets(targets == null ? java.util.List.of() : targets);
             ClassLoader loader = extensionLoader();
             io.suko.lang.ext.ExtensionRegistry registry = io.suko.lang.ext.ExtensionRegistry.load(loader);
             // Maven injeta sempre buildDirectory; null só ocorre em testes que instanciam a Mojo à mão.

@@ -117,7 +117,7 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   fontes (`RegistryGoldenTest`).
 - **`suko-cli/`** — a ferramenta de linha de comandos `suko` (subprojeto 8):
   `init`/`list`/`add`/`diff`/`update`. Depende de `suko-registry` (modelo +
-  JSON) e Gson; **nunca depende de `suko-core`** em produção (`testFixtures(suko-core)`
+  JSON) e Gson; **nunca depende de `suko-core`** em produção (`testFixtures(suko-core)`, `suko-jte`
   e `gg.jte` pinado entram só em `testImplementation`, para o
   `FullCycleTest` de ponta-a-ponta) — o compilador não faz parte do que a
   CLI precisa para copiar ficheiros. Empacotada num único fat jar
@@ -977,7 +977,9 @@ tem origem própria nesta spec):
     (a spec dizia avisar uma vez; desvio deliberado para evitar ruído); (h) com
     um `buildDirectory` personalizado no Gradle, o LSP só procura
     `build/suko` e `target/suko`; (i) `TagSpec.attributeTypes` e
-    `allowsChildren` ainda não são aplicados pelo core.
+    `allowsChildren` ainda não são aplicados pelo core; (j) o `JavacTask` ainda está no core com
+    `"gg.jte.Content"` e as chaves `.jte` fixas — pela regra do item 3, os
+    stubs específicos do JTE passam para o `suko-jte` (antes do 11c).
 
     *`ExtensionApi` v1 é provisória até à primeira release.* Qualquer mudança
     incompatível (novo subtipo selado de `Statement`/`Expr`/`Param`, novo
