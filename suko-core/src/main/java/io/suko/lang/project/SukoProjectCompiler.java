@@ -31,7 +31,7 @@ public class SukoProjectCompiler {
 
     public SukoProjectCompiler(ExtensionRegistry registry, List<String> targets) {
         this.registry = registry;
-        this.targets = List.copyOf(targets);
+        this.targets = JteCompiler.normalizeTargets(targets);
     }
 
     public record ProjectCompileResult(

@@ -34,11 +34,17 @@ public class JteCompiler {
         this(fileName, sukoSource, ExtensionRegistry.defaults(), List.of("jte"));
     }
 
+    /** Sem duplicados (ordem preservada); lista vazia vale ["jte"]. Partilhado por Gradle, Maven e LSP. */
+    public static List<String> normalizeTargets(List<String> requested) {
+        List<String> distinct = requested.stream().distinct().toList();
+        return distinct.isEmpty() ? List.of("jte") : distinct;
+    }
+
     public JteCompiler(String fileName, String sukoSource, ExtensionRegistry registry, List<String> targets) {
         this.fileName = fileName;
         this.sukoSource = sukoSource;
         this.registry = registry;
-        this.targets = List.copyOf(targets);
+        this.targets = normalizeTargets(targets);
     }
 
     public record CompileResult(

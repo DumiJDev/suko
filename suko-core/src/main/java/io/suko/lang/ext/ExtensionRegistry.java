@@ -34,13 +34,15 @@ public final class ExtensionRegistry {
                 if (!it.hasNext()) {
                     break;
                 }
-            } catch (ServiceConfigurationError e) {
+            } catch (Throwable e) {
+                ExtensionFailures.rethrowFatal(e);
                 problems.add(failed("Falhou a descoberta de extensões: " + describe(e)));
                 break; // hasNext() a falhar pode repetir-se para sempre
             }
             try {
                 found.add(it.next());
-            } catch (ServiceConfigurationError e) {
+            } catch (Throwable e) {
+                ExtensionFailures.rethrowFatal(e);
                 problems.add(failed("Falhou a descoberta de extensões: " + describe(e)));
             }
         }

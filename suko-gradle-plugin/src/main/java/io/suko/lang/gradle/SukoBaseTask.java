@@ -26,7 +26,7 @@ public abstract class SukoBaseTask extends DefaultTask {
 
     /** Alvos pedidos; sem extensão Gradle (tasks soltas em testes) vale o default "jte". */
     protected java.util.List<String> resolvedTargets() {
-        return extension == null ? java.util.List.of("jte") : extension.getTargets().get();
+        return extension == null ? java.util.List.of("jte") : io.suko.lang.JteCompiler.normalizeTargets(extension.getTargets().get());
     }
 
     protected java.util.List<java.io.File> extensionFiles() {

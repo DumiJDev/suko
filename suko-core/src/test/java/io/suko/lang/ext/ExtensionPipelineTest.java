@@ -218,4 +218,54 @@ class ExtensionPipelineTest {
         assertTrue(result.success());
         assertEquals(Set.of("Hello.jte"), result.generatedJteSources().keySet());
     }
+
+    static final class Ghost implements SukoExtension {
+        public String id() { return "test.ghost"; }
+        public int apiVersion() { return ExtensionApi.VERSION; }
+        public void register(ExtensionContext ctx) {
+            ctx.target(new Target() {
+                public String id() { return "ghost"; }
+                public String componentType() { return "ghost.Node"; }
+                public Set<String> vocabularies() { return Set.of("nowhere"); }
+                public Emitted emit(ComponentDecl c, EmitContext e) {
+                    return new Emitted(c.name() + ".ghost", "ghost\n", List.of());
+                }
+            });
+        }
+    }
+
+    @Test
+    void missingVocabularyIsReportedOnceWithoutUnknownTagNoise(@TempDir Path root) throws Exception {
+        write(root, "Hello.sk", "component Hello() {\n  <div><p>x</p></div>\n}\n");
+        var result = new SukoProjectCompiler(registry(new Ghost()), List.of("ghost")).compile(root);
+        assertFalse(result.success());
+        assertEquals(List.of("VOCABULARY_NOT_FOUND"),
+            result.projectDiagnostics().stream().map(SukoDiagnostic::code).toList());
+        assertTrue(result.projectDiagnostics().get(0).message().contains("nowhere"));
+        assertTrue(result.diagnosticsByFile().get(Path.of("Hello.sk")).getDiagnostics().stream()
+            .noneMatch(d -> d.code().equals("UNKNOWN_TAG")));
+    }
+
+    @Test
+    void emptyTargetListDefaultsToJteSingleTargetLayout(@TempDir Path root) throws Exception {
+        write(root, "a/Hello.sk", "package a;\n\ncomponent Hello() {\n  <p>x</p>\n}\n");
+        var result = new SukoProjectCompiler(registry(), List.of()).compile(root);
+        assertTrue(result.success(), result.diagnosticsByFile().toString());
+        assertEquals(Set.of(Path.of("a/Hello.jte")), result.generatedJteSources().keySet());
+    }
+
+    @Test
+    void duplicateTargetsCollapseToTheSingleTargetLayout(@TempDir Path root) throws Exception {
+        write(root, "a/Hello.sk", "package a;\n\ncomponent Hello() {\n  <p>x</p>\n}\n");
+        var result = new SukoProjectCompiler(registry(), List.of("jte", "jte")).compile(root);
+        assertTrue(result.success(), result.diagnosticsByFile().toString());
+        assertEquals(Set.of(Path.of("a/Hello.jte")), result.generatedJteSources().keySet());
+    }
+
+    @Test
+    void singleFileCompilerAlsoNormalizesTargets() {
+        var result = new JteCompiler("Hello.sk", "component Hello() {\n  <p>x</p>\n}\n", registry(), List.of()).compile();
+        assertTrue(result.success());
+        assertEquals(Set.of("Hello.jte"), result.generatedJteSources().keySet());
+    }
 }

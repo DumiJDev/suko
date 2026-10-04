@@ -63,8 +63,8 @@ public final class VocabularyChecker {
                         break;
                     }
                 }
-                if (ids == null) {
-                    continue;
+                if (ids == null || vocabularies.isEmpty()) {
+                    continue; // aberto, ou nenhum vocabulário resolvido (já é VOCABULARY_NOT_FOUND)
                 }
                 for (ComponentDecl component : file.components()) {
                     walk(component.body(), target, ids, vocabularies, fileName, diagnostics);
