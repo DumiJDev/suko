@@ -1,0 +1,86 @@
+
+<div class="${"min-h-screen flex flex-col line-core"}"><nav data-nav="${"language-reference"}"></nav><main class="${"flex-1 w-full max-w-5xl mx-auto px-4 sm:px-6 py-14"}"><h1 class="${"font-display text-5xl font-extrabold text-slate-900 mb-4"}">Language Reference</h1><p class="${"text-xl text-slate-600 mb-8 max-w-2xl"}">
+        Cada exemplo desta página foi compilado pelo plugin Gradle e renderizado pelo motor gg.jte real.
+      </p><nav aria-label="${"Nesta página"}" class="${"max-w-xl mb-16"}"><ol class="${"navline"}"><li><a href="${"#componentes"}" class="${"navstop line-core"}"><span class="${"navstop-marker"}"></span>Componentes</a></li><li><a href="${"#slots"}" class="${"navstop line-core"}"><span class="${"navstop-marker"}"></span>Slots</a></li><li><a href="${"#logica"}" class="${"navstop line-core"}"><span class="${"navstop-marker"}"></span>Lógica</a></li><li><a href="${"#regras"}" class="${"navstop line-core"}"><span class="${"navstop-marker"}"></span>Regras</a></li></ol></nav><ol class="${"route"}"><li id="${"componentes"}" class="${"scroll-mt-8"}"><h2 class="${"station-heading"}"><span class="${"station-marker"}"></span>Componentes</h2><p class="${"text-slate-700 mb-4 max-w-2xl"}">
+            Um componente tem um nome e parâmetros tipados, com valores por omissão opcionais.
+            O ficheiro declara o seu <code>package</code>, que tem de corresponder à pasta.
+          </p><pre class="${"code-block mb-4"}">package components;
+
+component TodoList(String title, List&lt;String&gt; items, String emptyLabel = "Sem itens") &#123;
+  &lt;section class="todo"&gt;
+    &lt;h2&gt;&#36;&#123;title&#125;&lt;/h2&gt;
+    if (items.size() &gt; 0) &#123;
+      &lt;ul&gt;
+        for (String item : items) &#123;
+          &lt;li&gt;&#36;&#123;item&#125;&lt;/li&gt;
+        &#125;
+      &lt;/ul&gt;
+    &#125; else &#123;
+      &lt;p&gt;&#36;&#123;emptyLabel&#125;&lt;/p&gt;
+    &#125;
+  &lt;/section&gt;
+&#125;</pre><p class="${"text-slate-700 mb-3 max-w-2xl"}">
+            Cada componente compila para um template JTE independente. Este é o que o compilador gera:
+          </p><pre class="${"code-block"}">&#64;param String title
+&#64;param java.util.List&lt;String&gt; items
+&#64;param String emptyLabel = "Sem itens"
+
+&lt;section class="todo"&gt;&lt;h2&gt;&#36;&#123;title&#125;&lt;/h2&gt;&#64;if(items.size() &gt; 0)
+&lt;ul&gt;&#64;for(String item : items)
+&lt;li&gt;&#36;&#123;item&#125;&lt;/li&gt;
+&#64;endfor
+&lt;/ul&gt;
+&#64;else
+&lt;p&gt;&#36;&#123;emptyLabel&#125;&lt;/p&gt;
+&#64;endif
+&lt;/section&gt;</pre></li><li id="${"slots"}" class="${"scroll-mt-8"}"><h2 class="${"station-heading"}"><span class="${"station-marker"}"></span>Slots</h2><p class="${"text-slate-700 mb-4 max-w-2xl"}">
+            Não há um tipo <code>slot&lt;T&gt;</code>: um parâmetro do tipo <code>Component</code> é um slot.
+            Um parâmetro chamado <code>children</code> recebe o conteúdo solto passado na chamada; qualquer
+            outro slot é preenchido pelo nome. Para ser importado noutro ficheiro, o componente tem de ser
+            <code>public</code>.
+          </p><pre class="${"code-block mb-4"}">package components;
+
+public component Panel(Component children, Component header = null) &#123;
+  &lt;div class="panel"&gt;
+    if (header != null) &#123;
+      &lt;div class="panel-header"&gt;&#36;&#123;header&#125;&lt;/div&gt;
+    &#125;
+    &lt;div class="panel-body"&gt;&#36;&#123;children&#125;&lt;/div&gt;
+  &lt;/div&gt;
+&#125;</pre><p class="${"text-slate-700 mb-3 max-w-2xl"}">
+            Na chamada, <code>header &#123; ... &#125;</code> preenche o slot com nome e o resto vai para <code>children</code>.
+            Mesmo no mesmo package, o import é obrigatório:
+          </p><pre class="${"code-block mb-4"}">package components;
+
+import components.Panel;
+
+component OrderPage(String orderId) &#123;
+  Panel() &#123;
+    header &#123; &lt;strong&gt;Encomenda &#36;&#123;orderId&#125;&lt;/strong&gt; &#125;
+    &lt;p&gt;Enviada hoje.&lt;/p&gt;
+  &#125;
+&#125;</pre><p class="${"text-slate-700 max-w-2xl"}"><code>header</code> é opcional (<code>&#61; null</code>) e testado com <code>if (header != null)</code>;
+            não há operador de coalescência para valores <code>Component</code>. O componente real equivalente é o
+            <a href="${"components/card.html"}" class="${"text-link"}">Card</a> do registry.
+          </p></li><li id="${"logica"}" class="${"scroll-mt-8"}"><h2 class="${"station-heading"}"><span class="${"station-marker"}"></span>Lógica</h2><p class="${"text-slate-700 mb-4 max-w-2xl"}"><code>if</code>/<code>else</code> e <code>for</code> usam a sintaxe do Java, sem prefixo, e as expressões
+            dentro de <code>&#36;&#123;...&#125;</code> são Java.
+          </p><pre class="${"code-block"}">package components;
+
+component UserBadge(String name, boolean active, List&lt;String&gt; roles) &#123;
+  &lt;div class="user"&gt;
+    &lt;h2&gt;&#36;&#123;name&#125;&lt;/h2&gt;
+    if (active) &#123;
+      &lt;span class="status-on"&gt;Ativo&lt;/span&gt;
+    &#125; else &#123;
+      &lt;span class="status-off"&gt;Inativo&lt;/span&gt;
+    &#125;
+    for (String role : roles) &#123;
+      &lt;span class="role"&gt;&#36;&#123;role&#125;&lt;/span&gt;
+    &#125;
+  &lt;/div&gt;
+&#125;</pre></li><li id="${"regras"}" class="${"scroll-mt-8"}"><h2 class="${"station-heading"}"><span class="${"station-marker"}"></span>Regras e limites</h2><p class="${"text-slate-700 mb-3 max-w-2xl"}">O compilador Suko recusa, no build:</p><ul class="${"space-y-3 text-slate-700 max-w-2xl list-disc pl-5 mb-6"}"><li>importar um componente que não é <code>public</code> (<code>COMPONENT_NOT_VISIBLE</code>);</li><li>chamar um componente de outro ficheiro sem o importar pelo nome completo, mesmo no mesmo package;</li><li>um <code>package</code> que não corresponde à pasta do ficheiro (<code>PACKAGE_DIRECTORY_MISMATCH</code>).</li></ul><p class="${"text-slate-700 max-w-2xl"}">
+            Os tipos Java dentro das expressões ainda não são verificados pelo <code>sukoCompile</code>: só falham
+            quando o JTE compila o template. Por isso use tipos genéricos completos, como <code>List&lt;String&gt;</code>
+            e não <code>List</code>. Com um <code>List</code> cru, <code>for (String item : items)</code> passa no build
+            e falha no JTE.
+          </p></li></ol></main><footer data-footer="${"true"}"></footer></div>

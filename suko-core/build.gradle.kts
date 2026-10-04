@@ -81,4 +81,5 @@ tasks.compileJava {
 tasks.test {
     useJUnitPlatform()
     dependsOn(generateSukoParser)
+    systemProperty("suko.updateGolden", System.getProperty("suko.updateGolden") ?: "false")
 }
