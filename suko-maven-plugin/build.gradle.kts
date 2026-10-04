@@ -67,6 +67,9 @@ tasks.withType<Javadoc> {
 // Test configuration
 tasks.test {
     useJUnitPlatform()
+    val testExtJar = project(":suko-test-ext").tasks.named<Jar>("jar")
+    dependsOn(testExtJar)
+    systemProperty("suko.testExtJar", testExtJar.get().archiveFile.get().asFile.absolutePath)
 }
 
 // NOTE (subprojeto 5, Tarefa 7): este ficheiro tinha, antes desta tarefa, um

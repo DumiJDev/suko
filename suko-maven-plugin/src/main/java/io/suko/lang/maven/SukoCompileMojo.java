@@ -44,6 +44,17 @@ public class SukoCompileMojo extends AbstractMojo {
     @Parameter(property = "suko.package", defaultValue = "io.suko.generated")
     private String generatedPackage;
 
+    @Parameter(property = "suko.targets", defaultValue = "jte")
+    private java.util.List<String> targets;
+
+    @Parameter(defaultValue = "${project.build.directory}", readonly = true)
+    private File buildDirectory;
+
+    /** O classloader do plugin: as extensões declaradas em <plugin><dependencies> já estão nele. */
+    ClassLoader extensionLoader() {
+        return SukoCompileMojo.class.getClassLoader();
+    }
+
     @Override
     public void execute() throws MojoExecutionException {
         getLog().info("Suko Maven Plugin - Compiling .sk files to .jte");
@@ -65,8 +76,20 @@ public class SukoCompileMojo extends AbstractMojo {
         try {
             Files.createDirectories(outputDir.toPath());
 
+            java.util.List<String> requested = targets == null || targets.isEmpty() ? java.util.List.of("jte") : targets;
+            ClassLoader loader = extensionLoader();
+            io.suko.lang.ext.ExtensionRegistry registry = io.suko.lang.ext.ExtensionRegistry.load(loader);
+            // Maven injeta sempre buildDirectory; null só ocorre em testes que instanciam a Mojo à mão.
+            if (buildDirectory != null) {
+                io.suko.lang.ext.ExtensionManifest.write(buildDirectory.toPath().resolve("suko/extensions.json"),
+                    io.suko.lang.ext.ExtensionManifest.extensionJars(loader), requested);
+            }
+            var compiler = new io.suko.lang.project.SukoProjectCompiler(registry, requested);
+            for (var d : compiler.projectDiagnostics()) {
+                getLog().error("[" + d.severity() + "] " + d.code() + ": " + d.message());
+            }
             io.suko.lang.project.SukoProjectCompiler.ProjectCompileResult result =
-                new io.suko.lang.project.SukoProjectCompiler().compile(sourceDir.toPath());
+                compiler.compile(sourceDir.toPath());
 
             for (var entry : result.generatedJteSources().entrySet()) {
                 Path jtePath = outputDir.toPath().resolve(entry.getKey());
