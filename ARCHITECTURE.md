@@ -806,7 +806,21 @@ tem origem própria nesta spec):
     Suko a partir de código Java como funções normais (ex.: `Hello.of(name)`
     a devolver `Component`), e (b) importar num `.sk` componentes
     escritos em Java puro (uma classe/método Java que devolve
-    `Component`), tal como hoje se importa outro `.sk`. Pontos a
+    `Component`), tal como hoje se importa outro `.sk`.
+    **Clarificado pelo utilizador (2026-10-04):** "crio uma classe Java
+    que implementa `Component` e importo no `.sk` sem problemas nenhuns,
+    e vice-versa — o compilador trata disso". As duas direções são
+    simétricas e transparentes: um `.sk` importa uma classe Java que
+    implementa o `Component` do alvo como importa outro `.sk`, e o código
+    Java usa um componente Suko como usa uma classe Java. A divisão de
+    trabalho que isto permite: **lógica pesada em componentes Java, UI em
+    Suko** (que terá a sua própria reatividade em "ilhas", resolvida em
+    compile-time — item 13). "java" é por isso uma camada transversal no
+    core, não um alvo de render; em qualquer alvo do item 13, o tipo
+    `Component` é o desse alvo (`gg.jte.Content` no JTE, `Node` no
+    JavaFX, `Element` no TamboUI). O subprojeto 13a (API de extensões)
+    prepara o gancho: cada alvo declara o seu tipo `Component`
+    (`Target.componentType()`). Pontos a
     resolver no scoping: que API Java é gerada por componente (hoje o
     output é só `.jte`), como o `ProjectIndex`/`SemanticChecker`
     resolvem um símbolo que vive em Java em vez de `.sk`, e a relação

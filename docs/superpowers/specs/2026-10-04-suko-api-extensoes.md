@@ -27,7 +27,9 @@ refatoração sem mudança visível, por isso não perde nada em esperar.
 A 2026-10-03/04 o utilizador definiu o item 12: **"eu crio uma classe
 Java que implementa `Component` e importo no `.sk` sem problemas
 nenhuns"**; e, em qualquer alvo, cada componente Suko expõe uma API Java
-que devolve o `Component` desse alvo. "java" não é um alvo de render: é
+que devolve o `Component` desse alvo, **e vice-versa — o compilador trata
+disso** (lógica pesada em componentes Java, UI em Suko com reatividade
+em "ilhas"). "java" não é um alvo de render: é
 uma camada transversal, no core. A restrição que isto impõe à fase 0:
 **cada alvo declara qual é o seu tipo `Component`** (no JTE,
 `gg.jte.Content`), para o item 12 entrar depois sem refazer a API.
