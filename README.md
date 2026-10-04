@@ -65,7 +65,7 @@ gradle sukoWatch
 
 ### Maven
 
-⚠️ Not yet functional end-to-end: `suko-maven-plugin` compiles and has unit tests, but doesn't yet produce a usable plugin descriptor (`META-INF/maven/plugin.xml`) — see the roadmap ressalva in [ARCHITECTURE.md](ARCHITECTURE.md). The snippet documents the intended usage once that's added.
+`suko-maven-plugin` ships a hand-written plugin descriptor (`META-INF/maven/plugin.xml`, goal `compile`, 6 parameters) and was verified once with a real `mvn` run, but it is not published to a Maven repository and no automated test runs a real `mvn` (only Mojo- and descriptor-level tests) — see ARCHITECTURE.md, roadmap item 4.
 
 ```xml
 <plugin>
@@ -220,7 +220,16 @@ suko { targets.set(listOf("jte", "demo")) }
   `target/suko/extensions.json` (Maven) — the extension jars (absolute paths)
   and the targets — so the language server can load the same extensions.
   It is not written when there are no sources, nor by `sukoWatch`, and the
-  write is not atomic.
+  write is not atomic. With a customised Gradle `buildDirectory` the LSP does
+  not find it (it only looks in `build/suko` and `target/suko`); with no
+  `extensions.json` the LSP stays silent.
+- Going from one target to several moves templates from `<out>/pkg/X.jte` to
+  `<out>/jte/pkg/X.jte` (repoint the JTE root, e.g. Spring's `src/main/jte`);
+  neither `sukoCompile` nor `suko:compile` deletes orphaned outputs.
+- Gradle writes the whole `sukoExtensions` configuration (transitive deps
+  included) to `extensions.json`; Maven only the jars that carry a provider
+  file, so an extension with runtime dependencies works under `mvn` but fails
+  in the LSP of Maven projects (`EXTENSION_FAILED`). Follow-up.
 - **Trust rule (LSP / VSCode):** extensions are third-party code. The language
   server loads them only when VSCode reports the workspace as trusted. In an
   untrusted workspace only the built-in `jte` runs and `extensions.json` is
@@ -253,7 +262,7 @@ suko/
 │   │   └── symbol/               # Symbol table
 │   └── src/test/                 # Unit and integration tests
 ├── suko-gradle-plugin/           # Gradle plugin (io.suko.lang.gradle.*), discoverable ID "io.suko.lang" (not Portal-published)
-├── suko-maven-plugin/            # Maven plugin module (no plugin.xml yet — not end-to-end usable)
+├── suko-maven-plugin/            # Maven plugin module (hand-written plugin.xml; not published; no automated real-`mvn` test)
 ├── suko-registry/                # Registry data model + JSON I/O (registry.json/manifest), no suko-core dependency
 ├── suko-registry-generator/      # Generates the manifest from suko-components' .sk sources
 ├── suko-components/              # Component library: 8 real .sk components + generated registry.json/manifest

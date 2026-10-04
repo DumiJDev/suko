@@ -5,6 +5,10 @@ JDK e dos tipos de leitura do compilador que as assinaturas expõem (AST,
 diagnósticos, `ProjectView`). Uma extensão corre **apenas no build e no LSP**,
 nunca em runtime. `ExtensionApi.VERSION` é hoje `1`.
 
+**A API v1 é provisória até à primeira release.** Qualquer mudança incompatível
+(novo subtipo selado de `Statement`/`Expr`/`Param`, novo componente de record num
+contexto ou em `ProjectIndexEntry`, mudança de assinatura) incrementa `VERSION`.
+
 Ainda não há release nem extensões de terceiros publicadas; este documento
 descreve o que existe no repositório.
 
@@ -94,3 +98,12 @@ a original também tem um ramo que lança de propósito, para os testes de robus
 Declarar a extensão no projeto (`sukoExtensions` no Gradle, `<dependencies>` do plugin
 no Maven) e escolher os alvos — ver a secção "Extensions" do `README.md` da raiz. O
 LSP só carrega extensões em workspaces confiáveis.
+
+## Limitações conhecidas e checklist para o item 12
+
+- `TagSpec.attributeTypes` e `allowsChildren` ainda não são aplicados pelo core.
+- `Target.emit` devolve um único `Emitted`; jte+js/html+js e o item 12 precisam de
+  várias saídas por componente.
+- `EmitContext` não tem resolvedor de chamadas (hoje só `importedByShortName` e
+  `packagePrefix`); `CheckContext` não expõe os alvos ativos.
+- Os contextos e `ProjectIndexEntry` são records; considerar interfaces antes do item 12.

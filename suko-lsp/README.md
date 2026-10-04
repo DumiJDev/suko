@@ -1,6 +1,6 @@
 # suko-lsp
 
-Language server do Suko (Language Server Protocol, por stdio). Depende só de `suko-core`; a extensão VSCode (`editors/vscode/`) embute o fat jar e o cliente IntelliJ (11b) irá reutilizá-lo.
+Language server do Suko (Language Server Protocol, por stdio). Depende de `suko-core` e `suko-jte`; a extensão VSCode (`editors/vscode/`) embute o fat jar e o cliente IntelliJ (11b) irá reutilizá-lo.
 
 ```sh
 ./gradlew :suko-lsp:fatJar        # build/libs/suko-lsp-<versão>-all.jar
@@ -30,6 +30,7 @@ O server traz o alvo `jte` embutido. As extensões do projeto (alvos, vocabulár
 - Manifesto com mais de 1 MiB é ignorado; cada entrada do classpath tem de ser um caminho absoluto para um `.jar` existente (diretórios e UNC rejeitados, com aviso). Um `suko-jte` listado no manifesto é ignorado.
 - O `extensions.json` é vigiado (`**/suko/extensions.json`) e as extensões são recarregadas quando muda (comparação por fingerprint). Se o manifesto não existe ainda (nunca houve build) ou a escrita não é atómica, o server pode ver o estado anterior.
 - O `sourceRoot` do `suko.json` tem de ficar dentro da pasta do workspace.
+- Sem `extensions.json` o server fica em silêncio (a spec dizia avisar uma vez; desvio deliberado para evitar ruído). Só procura `build/suko` e `target/suko`: com um `buildDirectory` personalizado no Gradle não o encontra.
 - Uma extensão que falhe dá `EXTENSION_FAILED` e o server continua.
 
 ## Limites conhecidos
