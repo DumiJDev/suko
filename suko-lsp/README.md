@@ -22,6 +22,16 @@ Java dentro de `${...}` (completion, hover, tipos) fica para o 11c.
 
 Por pasta do workspace: `sourceRoot` do `suko.json`; senão `src/main/suko`; senão a setting `suko.sourceRoot` (`initializationOptions.sourceRoot` / `workspace/didChangeConfiguration`). Um índice por source root; sem resolução de nomes entre roots. O cliente deve enviar `workspace/didChangeWatchedFiles` para `**/*.sk` e `suko.json`.
 
+## Extensões do projeto (13a)
+
+O server traz o alvo `jte` embutido. As extensões do projeto (alvos, vocabulários, checkers — ver `suko-api/README.md`) vêm do `build/suko/extensions.json` (Gradle) ou `target/suko/extensions.json` (Maven), escrito pelo `sukoCompile`/`suko:compile`; é procurado do source root para cima, até à pasta do workspace.
+
+- **Só em workspace confiável.** O cliente envia `trusted` nas `initializationOptions` (o VSCode usa `workspace.isTrusted`). Não confiável: só o `jte` embutido e o manifesto nem é aberto. Ao conceder confiança, a extensão VSCode reinicia o server.
+- Manifesto com mais de 1 MiB é ignorado; cada entrada do classpath tem de ser um caminho absoluto para um `.jar` existente (diretórios e UNC rejeitados, com aviso). Um `suko-jte` listado no manifesto é ignorado.
+- O `extensions.json` é vigiado (`**/suko/extensions.json`) e as extensões são recarregadas quando muda (comparação por fingerprint). Se o manifesto não existe ainda (nunca houve build) ou a escrita não é atómica, o server pode ver o estado anterior.
+- O `sourceRoot` do `suko.json` tem de ficar dentro da pasta do workspace.
+- Uma extensão que falhe dá `EXTENSION_FAILED` e o server continua.
+
 ## Limites conhecidos
 
 - Cada verificação recompila o root inteiro (sem compilação incremental — o mesmo compromisso do `sukoWatch`).
