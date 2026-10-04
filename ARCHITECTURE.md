@@ -751,7 +751,10 @@ tem origem própria nesta spec):
     próprio site: o `sukoCompile` não verifica os tipos Java das
     expressões (um `List` cru passa o build e só falha no JTE).
 11. **Suporte de IDE** (VSCode + IntelliJ) — partido em três specs
-    sequenciais (release só depois das três): **11a** language server +
+    sequenciais (**release:** decidido pelo utilizador a 2026-10-04 que a
+    primeira release só sai depois do 11b, do 11c, do 13a — `suko-api`,
+    extensão `suko-jte`, core sem JTE — e da interoperabilidade Java do
+    item 12): **11a** language server +
     extensão VSCode, **11b** cliente IntelliJ reutilizando o server, **11c**
     inteligência Java dentro de `${...}` (liga o `JavacTask` ao pipeline).
     - **11a — IMPLEMENTADO, verificação manual pendente.** Spec
