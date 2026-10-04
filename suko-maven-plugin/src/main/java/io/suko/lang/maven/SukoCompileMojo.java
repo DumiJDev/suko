@@ -50,7 +50,7 @@ public class SukoCompileMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project.build.directory}", readonly = true)
     private File buildDirectory;
 
-    /** O classloader do plugin: as extensões declaradas em <plugin><dependencies> já estão nele. */
+    /** O classloader do plugin: as extensões declaradas em {@code <plugin><dependencies>} já estão nele. */
     ClassLoader extensionLoader() {
         return SukoCompileMojo.class.getClassLoader();
     }
@@ -109,7 +109,7 @@ public class SukoCompileMojo extends AbstractMojo {
             }
 
             getLog().info("Successfully compiled project");
-        } catch (java.io.IOException e) {
+        } catch (java.io.IOException | java.io.UncheckedIOException | IllegalStateException e) {
             throw new MojoExecutionException("Failed to compile Suko files", e);
         }
     }
