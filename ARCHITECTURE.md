@@ -799,8 +799,19 @@ tem origem própria nesta spec):
       ao workspace (`"../../.."` faz `Files.walk` enorme) e cada gravação relê o
       root inteiro em vez do ficheiro alterado; (d) o ANTLR 4.13.1 está fixado em
       dois sítios (`suko-core` tool, `suko-lsp` runtime) — manter iguais.
-    - 11b e 11c: por fazer. IntelliJ não fala LSP nativamente (LSP4IJ vs.
-      plugin PSI-based próprio) — decisão a tomar no scoping do 11b.
+    - 11b e 11c: por fazer. **Ordem revista pelo utilizador (2026-10-04):**
+      primeiro as mudanças de linguagem/compilador — **13a** (API de
+      extensões) → **item 12** (interop Java ↔ Suko) → **metade de
+      compilador do 11c** (ligar o `JavacTask`, verificar tipos Java em
+      `${...}` no build) — e só depois os editores (seguimentos do 11a,
+      11b, parte de editor do 11c), para não refazer o suporte de IDE.
+      **Scoping do 11b já iniciado (2026-10-04), em pausa:** o utilizador
+      quer **integração profunda com o Java do IntelliJ** e escolheu a
+      abordagem **híbrida** — linguagem nativa (PSI a partir da gramática
+      ANTLR via `antlr4-intellij-adaptor`) com injeção de Java em `${...}`
+      e referências `.sk` ↔ `.sk`, mais LSP4IJ para a semântica Suko vinda
+      do mesmo `suko-lsp`; Community + Ultimate; referências Java ↔ `.sk`
+      dentro do item 12.
 12. **Interoperabilidade Java ↔ Suko** — intenção futura registada pelo
     utilizador em 2026-09-28, sem data nem spec. A ideia: um componente
     Suko é, na essência, uma função Java que devolve `Component` — e

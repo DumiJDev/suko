@@ -1,7 +1,7 @@
 # Suko — Subprojeto 13a: API de extensões (fase 0 do item 13)
 
 Data: 2026-10-04
-Estado: **aprovada pelo utilizador a 2026-10-04**. O plano de implementação é escrito depois do 11b e do 11c, sobre o estado que deixarem (D1).
+Estado: **aprovada pelo utilizador a 2026-10-04**. **Ordem revista no mesmo dia (D1, abaixo):** o 13a é o primeiro trabalho a implementar.
 
 ## Contexto
 
@@ -18,10 +18,9 @@ Este documento é a **fase 0**: criar a API, o carregador e passar o
 alvo JTE para trás dela, **sem mudar nenhum `.jte` gerado**. Nenhum alvo
 novo entra aqui; a primeira extensão real (TamboUI) é a fase 1.
 
-**Ordem de execução (decidida 2026-10-04):** esta spec é escrita agora,
-mas implementada **depois do 11b (IntelliJ) e do 11c (Java em
-`${...}`)**, que bloqueiam a primeira release. A fase 0 é uma
-refatoração sem mudança visível, por isso não perde nada em esperar.
+**Ordem de execução:** o 13a é o **primeiro** trabalho a implementar
+(D1, revista a 2026-10-04): mudanças de linguagem e compilador antes do
+suporte de editores.
 
 ### Interoperabilidade Java (item 12), clarificada pelo utilizador
 
@@ -46,7 +45,13 @@ que mantém os diagnósticos e o output idênticos.
 
 ## Decisões
 
-- **D1 — Ordem:** implementar depois do 11b/11c.
+- **D1 — Ordem (revista pelo utilizador a 2026-10-04):** as mudanças de
+  linguagem/compilador vêm **antes** do suporte de editores, para evitar
+  refazer os editores: **13a → item 12 (interop Java) → metade de
+  compilador do 11c** (ligar o `JavacTask` e verificar os tipos Java em
+  `${...}` no build); só depois os seguimentos do 11a, o 11b e a parte de
+  editor do 11c. (Decisão inicial, substituída: implementar depois do
+  11b/11c.)
 - **D2 — Declaração:** as extensões vêm do **classpath do build**, com
   descoberta por `ServiceLoader`. Resolver coordenadas Maven pela CLI
   fica para depois.
@@ -82,9 +87,12 @@ que mantém os diagnósticos e o output idênticos.
   movido do core e uma `JteExtension` registada por `ServiceLoader`. Os
   plugins Gradle/Maven, o gerador do site e o LSP trazem-no por
   omissão; para o utilizador nada muda.
-- **Regra para o que o 11c deixar:** o que for independente do alvo
-  (análise Java das expressões) fica no core; o que for específico do
-  JTE (ex.: stubs `.jte` do `JavacTask`) vai para o `suko-jte`.
+- **`JavacTask`:** hoje não é chamado por nenhum código de produção. O
+  13a corre antes da verificação de tipos Java, por isso **não lhe
+  toca**: fica onde está. A regra para quando essa verificação for
+  ligada: o que for independente do alvo (análise Java das expressões)
+  fica no core; o que for específico do JTE (stubs `.jte`) vai para o
+  `suko-jte`.
 - **Sem mudanças:** `suko-cli` e `suko-registry-generator` não compilam
   para nenhum alvo (só parse e índice).
 
@@ -223,9 +231,10 @@ Erros, sempre como diagnósticos (nunca exceções soltas):
 - **Código de terceiros no build e no LSP.** Mitigado por carregar no
   LSP só em workspaces confiáveis, por isolar falhas como
   `EXTENSION_FAILED` e por revisão do `security-specialist`.
-- **Ordem com o 11c:** o 11c pode mudar o que é "core" vs. "específico do
-  JTE" na análise Java; a regra da secção "Módulos" decide, e o plano
-  desta fase é escrito sobre o estado que o 11c deixar.
+- **Os editores vêm depois:** o `suko-lsp` (11a) passa a usar o
+  carregador e o `suko-jte`; o 13a ajusta-o o mínimo para continuar a
+  funcionar (com os testes atuais como guarda), e o resto fica para a
+  fase dos editores.
 
 ## Execução
 
@@ -238,5 +247,5 @@ final). Sem trailers de atribuição nos commits (`CLAUDE.md`).
 ## Próximos passos
 
 1. Revisão desta spec pelo utilizador.
-2. Plano de implementação (writing-plans) — escrito quando o 11b e o
-   11c estiverem concluídos, sobre o estado que deixarem.
+2. Plano de implementação (writing-plans) — a escrever agora (D1
+   revista).
