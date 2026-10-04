@@ -1,6 +1,7 @@
 package io.suko.lang.project;
 
 import io.suko.lang.JteCompiler;
+import io.suko.lang.ext.ExtensionRegistry;
 import io.suko.lang.diagnostic.DiagnosticCollector;
 import io.suko.lang.diagnostic.SukoDiagnostic;
 
@@ -21,11 +22,51 @@ import java.util.Map;
  */
 public class SukoProjectCompiler {
 
+    private final ExtensionRegistry registry;
+    private final List<String> targets;
+
+    public SukoProjectCompiler() {
+        this(ExtensionRegistry.defaults(), List.of("jte"));
+    }
+
+    public SukoProjectCompiler(ExtensionRegistry registry, List<String> targets) {
+        this.registry = registry;
+        this.targets = List.copyOf(targets);
+    }
+
     public record ProjectCompileResult(
         boolean success,
         Map<Path, DiagnosticCollector> diagnosticsByFile,
-        Map<Path, String> generatedJteSources
+        Map<Path, String> generatedJteSources,
+        List<SukoDiagnostic> projectDiagnostics
     ) {
+        public ProjectCompileResult(boolean success, Map<Path, DiagnosticCollector> diagnosticsByFile,
+                                    Map<Path, String> generatedJteSources) {
+            this(success, diagnosticsByFile, generatedJteSources, List.of());
+        }
+    }
+
+    /** Problemas do registo e alvos/vocabulários pedidos que não existem. */
+    public List<SukoDiagnostic> projectDiagnostics() {
+        List<SukoDiagnostic> out = new ArrayList<>(registry.loadDiagnostics());
+        for (String id : targets) {
+            var target = registry.target(id);
+            if (target.isEmpty()) {
+                out.add(new SukoDiagnostic(SukoDiagnostic.Severity.ERROR,
+                    "O alvo '" + id + "' não é fornecido por nenhuma extensão; disponíveis: "
+                        + String.join(", ", new java.util.TreeSet<>(registry.targetIds())),
+                    "TARGET_NOT_FOUND", null, io.suko.lang.ast.SourceSpan.NONE));
+                continue;
+            }
+            for (String vocabulary : target.get().vocabularies()) {
+                if (registry.vocabulary(vocabulary).isEmpty()) {
+                    out.add(new SukoDiagnostic(SukoDiagnostic.Severity.ERROR,
+                        "O alvo '" + id + "' usa o vocabulário '" + vocabulary + "', que nenhuma extensão fornece",
+                        "VOCABULARY_NOT_FOUND", null, io.suko.lang.ast.SourceSpan.NONE));
+                }
+            }
+        }
+        return out;
     }
 
     public ProjectCompileResult compile(Path sourceRoot) {
@@ -43,7 +84,7 @@ public class SukoProjectCompiler {
         for (Map.Entry<Path, String> entry : sources.files().entrySet()) {
             Path relative = entry.getKey();
             JteCompiler.Analysis analysis =
-                new JteCompiler(relative.toString(), entry.getValue()).analyze(index, relative);
+                new JteCompiler(relative.toString(), entry.getValue(), registry, targets).analyze(index, relative);
             for (SukoDiagnostic duplicate : duplicateDiagnostics.getOrDefault(relative, List.of())) {
                 analysis.diagnostics().add(duplicate);
             }
@@ -58,11 +99,13 @@ public class SukoProjectCompiler {
 
         Map<Path, DiagnosticCollector> diagnosticsByFile = new LinkedHashMap<>();
         Map<Path, String> generatedJteSources = new LinkedHashMap<>();
-        boolean success = duplicateDiagnostics.isEmpty();
+        List<SukoDiagnostic> project = projectDiagnostics();
+        boolean success = duplicateDiagnostics.isEmpty()
+            && project.stream().noneMatch(d -> d.severity() == SukoDiagnostic.Severity.ERROR);
 
         for (Map.Entry<Path, String> sourceEntry : sources.files().entrySet()) {
             Path relative = sourceEntry.getKey();
-            JteCompiler compiler = new JteCompiler(relative.toString(), sourceEntry.getValue());
+            JteCompiler compiler = new JteCompiler(relative.toString(), sourceEntry.getValue(), registry, targets);
             JteCompiler.CompileResult result = compiler.compile(index, relative);
             DiagnosticCollector fileDiagnostics = result.diagnostics();
             for (SukoDiagnostic duplicate : duplicateDiagnostics.getOrDefault(relative, List.of())) {
@@ -76,12 +119,16 @@ public class SukoProjectCompiler {
             }
 
             Path outputSubDir = relative.getParent() == null ? Path.of("") : relative.getParent();
-            for (var entry : result.generatedJteSources().entrySet()) {
-                generatedJteSources.put(outputSubDir.resolve(entry.getKey()), entry.getValue());
+            boolean multi = targets.size() > 1;
+            for (var targetEntry : result.generatedByTarget().entrySet()) {
+                Path base = multi ? Path.of(targetEntry.getKey()).resolve(outputSubDir) : outputSubDir;
+                for (var entry : targetEntry.getValue().entrySet()) {
+                    generatedJteSources.put(base.resolve(entry.getKey()), entry.getValue());
+                }
             }
         }
 
-        return new ProjectCompileResult(success, diagnosticsByFile, generatedJteSources);
+        return new ProjectCompileResult(success, diagnosticsByFile, generatedJteSources, project);
     }
 
     // REVISÃO FINAL (achado C): colisões de nome qualificado detetadas na

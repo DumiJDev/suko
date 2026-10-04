@@ -8,6 +8,7 @@ plugins {
 // se auto-validar (compilar e renderizar a própria biblioteca, e verificar
 // que o manifesto commitado não divergiu dos fontes).
 dependencies {
+    testImplementation(project(":suko-jte"))
     testImplementation(project(":suko-registry-generator"))
     testImplementation(testFixtures(project(":suko-core")))
     // suko-core declara jte como `implementation`, não `api` — não é

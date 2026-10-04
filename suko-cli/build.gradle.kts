@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    testImplementation(project(":suko-jte"))
     // Só o modelo do registry. NUNCA suko-core: ver Global Constraints do
     // plano do subprojeto 8 (D3/D9) — a CLI não pode arrastar o compilador,
     // ANTLR, nem gg.jte para o classpath de quem a instala.

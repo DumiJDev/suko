@@ -7,6 +7,7 @@ plugins {
 description = "Maven plugin for Suko language compilation"
 
 dependencies {
+    implementation(project(":suko-jte"))
     // NOTE: `org.apache.maven:maven-bom` não existe como artefacto publicado
     // (confirmado por 404 no Maven Central) — o script original tentava usar
     // `platform("org.apache.maven:maven-bom:3.9.6")`, o que nunca teria resolvido.

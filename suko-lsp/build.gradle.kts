@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":suko-jte"))
     // Só o compilador. NUNCA suko-cli (spec do 11a, secção Módulos): o server lê a
     // chave `sourceRoot` do suko.json com o Gson que o LSP4J já traz.
     implementation(project(":suko-core")) {

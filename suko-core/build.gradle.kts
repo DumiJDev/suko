@@ -8,8 +8,8 @@ dependencies {
     api(project(":suko-api"))
     antlr("org.antlr:antlr4:4.13.1")
 
-    implementation("gg.jte:jte:3.1.12")
-    implementation(project(":suko-jte")) // TEMPORÁRIO: removido na Task 5
+    // Core sem JTE em main (Task 5); os testes importam gg.jte (ruling R2).
+    testImplementation("gg.jte:jte:3.1.12")
 
     // testFixtures não herda as dependências `implementation` de main (o
     // plugin java-test-fixtures só partilha as classes compiladas, não o
