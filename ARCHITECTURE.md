@@ -776,8 +776,9 @@ tem origem própria nesta spec):
 11. **Suporte de IDE** (VSCode + IntelliJ) — partido em três specs
     sequenciais (**release:** decidido pelo utilizador a 2026-10-04 que a
     primeira release só sai depois do 11b, do 11c, do 13a — `suko-api`,
-    extensão `suko-jte`, core sem JTE — e da interoperabilidade Java do
-    item 12): **11a** language server +
+    extensão `suko-jte`, core sem JTE —, da interoperabilidade Java do
+    item 12 e, acrescentado no mesmo dia, do subprojeto 14 — segurança
+    por omissão): **11a** language server +
     extensão VSCode, **11b** cliente IntelliJ reutilizando o server, **11c**
     inteligência Java dentro de `${...}` (liga o `JavacTask` ao pipeline).
     - **11a — IMPLEMENTADO, verificação manual pendente.** Spec
@@ -1077,3 +1078,16 @@ tem origem própria nesta spec):
     TamboUI, da issue #7); as primitivas neutras tendem para o mínimo
     denominador comum, por isso ficam poucas e as tags nativas são a
     saída.
+
+14. **Segurança por omissão** — decidido pelo utilizador a 2026-10-04
+    ("aplica todas as medidas de segurança"); bloqueia a primeira release.
+    Spec em `docs/superpowers/specs/2026-10-04-suko-seguranca-por-omissao.md`.
+    O JTE só escapa caracteres no render; o Suko acrescenta o que depende
+    do significado do valor: allowlist de protocolos de URL em todos os
+    componentes (classe `SukoSafe` gerada, sem dependência de runtime),
+    erro `UNSAFE_SINK` para valores dinâmicos em `<script>`/`<style>`/`on*`/
+    `srcdoc`/`style`/`<base>`/..., `rel="noopener"` automático, lint de CSP
+    estrita, ativação do `OwaspHtmlPolicy` do JTE via o plugin, assinatura
+    Ed25519 do índice do registry e testes com corpus XSS e CSP/Trusted Types
+    no browser. Ordem proposta: depois de integrar o 13a, antes do item 12.
+    No fim da 13b: exemplo de e-commerce Suko + JTE + JS e pentest a ele.
