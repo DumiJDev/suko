@@ -1,10 +1,11 @@
 plugins {
-    id("java")
+    id("java-library")
     id("java-test-fixtures")
     id("antlr")
 }
 
 dependencies {
+    api(project(":suko-api"))
     antlr("org.antlr:antlr4:4.13.1")
 
     implementation("gg.jte:jte:3.1.12")
