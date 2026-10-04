@@ -60,6 +60,65 @@ class ExtensionPipelineTest {
         }
     }
 
+    static final class Faulty implements SukoExtension {
+        final boolean badVocabulary;
+
+        Faulty(boolean badVocabulary) {
+            this.badVocabulary = badVocabulary;
+        }
+
+        public String id() { return "test.faulty"; }
+        public int apiVersion() { return ExtensionApi.VERSION; }
+
+        public void register(ExtensionContext ctx) {
+            if (badVocabulary) {
+                ctx.target(new Target() {
+                    public String id() { return "bad"; }
+                    public String componentType() { return "x"; }
+                    public Set<String> vocabularies() { return Set.of("bad"); }
+                    public Emitted emit(ComponentDecl c, EmitContext e) { return new Emitted("x.bad", "", List.of()); }
+                });
+                ctx.vocabulary(new Vocabulary() {
+                    public String id() { return "bad"; }
+                    public boolean open() { return false; }
+                    public Optional<TagSpec> tag(String name) { throw new IllegalStateException("tag boom"); }
+                });
+            } else {
+                ctx.checker(new Checker() {
+                    public String id() { return "link"; }
+                    public void check(SukoFile file, CheckContext c) { throw new NoClassDefFoundError("x"); }
+                });
+            }
+        }
+    }
+
+    @Test
+    void vocabularyThatThrowsBecomesExtensionFailed(@TempDir Path root) throws Exception {
+        write(root, "Hello.sk", "component Hello() {\n  <p>x</p>\n}\n");
+        var result = new SukoProjectCompiler(registry(new Faulty(true)), List.of("jte", "bad")).compile(root);
+        assertFalse(result.success());
+        var d = result.diagnosticsByFile().get(Path.of("Hello.sk")).getErrors().get(0);
+        assertEquals("EXTENSION_FAILED", d.code());
+        assertTrue(d.message().contains("test.faulty") && d.message().contains("tag boom"), d.message());
+    }
+
+    @Test
+    void checkerThatThrowsLinkageErrorBecomesExtensionFailed(@TempDir Path root) throws Exception {
+        write(root, "Hello.sk", "component Hello() {\n  <p>x</p>\n}\n");
+        var result = new SukoProjectCompiler(registry(new Faulty(false)), List.of("jte")).compile(root);
+        assertFalse(result.success());
+        var d = result.diagnosticsByFile().get(Path.of("Hello.sk")).getErrors().get(0);
+        assertEquals("EXTENSION_FAILED", d.code());
+        assertTrue(d.message().contains("test.faulty"), d.message());
+    }
+
+    @Test
+    void singleFileUnknownTargetIsReported() {
+        var result = new JteCompiler("Hello.sk", "component Hello() {\n  <p>x</p>\n}\n", registry(), List.of("swing")).compile();
+        assertFalse(result.success());
+        assertEquals("TARGET_NOT_FOUND", result.diagnostics().getErrors().get(0).code());
+    }
+
     static ExtensionRegistry registry(SukoExtension... extra) {
         List<SukoExtension> all = new ArrayList<>(List.of(new io.suko.jte.JteExtension()));
         all.addAll(List.of(extra));

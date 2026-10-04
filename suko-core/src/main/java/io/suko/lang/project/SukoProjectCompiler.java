@@ -58,7 +58,17 @@ public class SukoProjectCompiler {
                     "TARGET_NOT_FOUND", null, io.suko.lang.ast.SourceSpan.NONE));
                 continue;
             }
-            for (String vocabulary : target.get().vocabularies()) {
+            java.util.Set<String> vocabularyIds;
+            try {
+                vocabularyIds = new java.util.TreeSet<>(target.get().vocabularies());
+            } catch (RuntimeException | LinkageError e) {
+                out.add(new SukoDiagnostic(SukoDiagnostic.Severity.ERROR,
+                    "A extensão '" + registry.ownerOf(target.get()) + "' falhou ao listar os vocabulários do alvo '"
+                        + id + "': " + io.suko.lang.ext.VocabularyChecker.describe(e),
+                    "EXTENSION_FAILED", null, io.suko.lang.ast.SourceSpan.NONE));
+                continue;
+            }
+            for (String vocabulary : vocabularyIds) {
                 if (registry.vocabulary(vocabulary).isEmpty()) {
                     out.add(new SukoDiagnostic(SukoDiagnostic.Severity.ERROR,
                         "O alvo '" + id + "' usa o vocabulário '" + vocabulary + "', que nenhuma extensão fornece",

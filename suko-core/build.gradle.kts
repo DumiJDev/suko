@@ -14,7 +14,7 @@ dependencies {
     // testFixtures não herda as dependências `implementation` de main (o
     // plugin java-test-fixtures só partilha as classes compiladas, não o
     // classpath) — JteRenderSupport usa gg.jte diretamente, por isso
-    // precisa da própria linha, igual à de main.
+    // precisa da própria linha (main já não depende de gg.jte).
     testFixturesImplementation("gg.jte:jte:3.1.12")
 
     testImplementation(project(":suko-jte"))

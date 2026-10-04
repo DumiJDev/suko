@@ -112,6 +112,17 @@ public class JteCompiler {
             return CompileResult.failure(diagnostics);
         }
 
+        for (String targetId : targets) {
+            if (registry.target(targetId).isEmpty()) {
+                diagnostics.add(new SukoDiagnostic(Severity.ERROR,
+                    "O alvo '" + targetId + "' não é fornecido por nenhuma extensão; disponíveis: "
+                        + String.join(", ", new java.util.TreeSet<>(registry.targetIds())),
+                    "TARGET_NOT_FOUND", fileName, SourceSpan.NONE));
+            }
+        }
+        if (diagnostics.hasErrors()) {
+            return CompileResult.failure(diagnostics);
+        }
         return emitAll(sukoFile, ProjectView.EMPTY, Map.of(), "");
     }
 
@@ -167,10 +178,10 @@ public class JteCompiler {
         for (Checker checker : registry.checkers()) {
             try {
                 checker.check(sukoFile, new CheckContext(fileName, project, diagnostics));
-            } catch (RuntimeException e) {
+            } catch (RuntimeException | LinkageError e) {
                 diagnostics.add(new SukoDiagnostic(Severity.ERROR,
                     "A extensão '" + registry.ownerOf(checker) + "' falhou em " + fileName + " (" + checker.id()
-                        + "): " + e.getMessage(), "EXTENSION_FAILED", fileName, SourceSpan.NONE));
+                        + "): " + VocabularyChecker.describe(e), "EXTENSION_FAILED", fileName, SourceSpan.NONE));
             }
         }
     }
@@ -190,10 +201,10 @@ public class JteCompiler {
                 try {
                     Emitted emitted = target.emit(component, ctx);
                     outputs.put(emitted.relativePath(), emitted.source());
-                } catch (RuntimeException e) {
+                } catch (RuntimeException | LinkageError e) {
                     diagnostics.add(new SukoDiagnostic(Severity.ERROR,
                         "A extensão '" + registry.ownerOf(target) + "' falhou ao emitir " + component.name()
-                            + " para o alvo '" + targetId + "': " + e.getMessage(),
+                            + " para o alvo '" + targetId + "': " + VocabularyChecker.describe(e),
                         "EXTENSION_FAILED", fileName, component.span()));
                 }
             }
