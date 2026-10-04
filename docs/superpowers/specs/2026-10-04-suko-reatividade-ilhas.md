@@ -261,6 +261,11 @@ acrescenta o que o JTE não pode ver.
   `remove`. Tudo o resto é proibido; o teste de segurança é um **varrimento por
   allowlist** do JS gerado (qualquer acesso DOM fora da lista falha), não por
   denylist.
+- **Alinhado com o subprojeto 14:** a lista abaixo é unida à M2 de
+  `docs/superpowers/specs/2026-10-04-suko-seguranca-por-omissao.md` (que inclui
+  `<script src>`, animações SVG, `x-*`/`hx-on*`, `<frame>`, ...); o 14 é a
+  referência. `onclick="${...}"` fora de componentes reativos é ERROR (14), não
+  WARNING.
 - **Erro `CLIENT_UNSAFE_SINK`** em blocos que dependem de `state` **e** no
   render do servidor de um `reactive component`: (a) elementos `script`,
   `style`, `iframe`, `frame`, `object`, `embed`, `base`, `meta`, `link`,
