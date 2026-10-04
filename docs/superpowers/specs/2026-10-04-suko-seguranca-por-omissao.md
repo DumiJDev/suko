@@ -321,8 +321,12 @@ Suko com dados reais.
   documentação.
 - `examples/invalid` (erros de propósito) passa para fixtures de teste do core;
   o golden do 13a que apontava a `examples/` é regenerado para a loja.
-- **Framework:** em aberto (pergunta feita ao utilizador: Spring Boot,
-  Quarkus ou sem framework).
+- **Framework (decidido pelo utilizador, 2026-10-04): Spring Boot** —
+  `jte-spring-boot-starter` oficial, Spring Data JDBC sobre H2 em memória
+  (`schema.sql` + `data.sql` com produtos, categorias e avaliações de exemplo),
+  consola H2 ativa só no perfil de desenvolvimento. Os templates vêm do
+  `sukoCompile` (plugin Gradle do Suko); CSRF e headers de segurança (CSP da M7)
+  configurados com Spring Security, como referência de boa prática.
 
 ## Ordem e próximos passos
 
