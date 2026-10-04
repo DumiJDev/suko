@@ -7,6 +7,7 @@ plugins {
 description = "Maven plugin for Suko language compilation"
 
 dependencies {
+    implementation(project(":suko-jte"))
     // NOTE: `org.apache.maven:maven-bom` não existe como artefacto publicado
     // (confirmado por 404 no Maven Central) — o script original tentava usar
     // `platform("org.apache.maven:maven-bom:3.9.6")`, o que nunca teria resolvido.
@@ -66,6 +67,9 @@ tasks.withType<Javadoc> {
 // Test configuration
 tasks.test {
     useJUnitPlatform()
+    val testExtJar = project(":suko-test-ext").tasks.named<Jar>("jar")
+    dependsOn(testExtJar)
+    systemProperty("suko.testExtJar", testExtJar.get().archiveFile.get().asFile.absolutePath)
 }
 
 // NOTE (subprojeto 5, Tarefa 7): este ficheiro tinha, antes desta tarefa, um

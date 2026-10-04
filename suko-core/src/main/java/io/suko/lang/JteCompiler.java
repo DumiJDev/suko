@@ -1,6 +1,10 @@
 package io.suko.lang;
 
+import io.suko.ext.*;
 import io.suko.lang.ast.*;
+import io.suko.lang.ext.ExtensionRegistry;
+import io.suko.lang.ext.VocabularyChecker;
+import io.suko.lang.project.ProjectView;
 import io.suko.lang.diagnostic.DiagnosticCollector;
 import io.suko.lang.diagnostic.SukoDiagnostic;
 import io.suko.lang.diagnostic.SukoDiagnostic.Severity;
@@ -23,17 +27,36 @@ public class JteCompiler {
 
     private final String fileName;
     private final String sukoSource;
+    private final ExtensionRegistry registry;
+    private final List<String> targets;
 
     public JteCompiler(String fileName, String sukoSource) {
+        this(fileName, sukoSource, ExtensionRegistry.defaults(), List.of("jte"));
+    }
+
+    /** Sem duplicados (ordem preservada); lista vazia vale ["jte"]. Partilhado por Gradle, Maven e LSP. */
+    public static List<String> normalizeTargets(List<String> requested) {
+        List<String> distinct = requested.stream().distinct().toList();
+        return distinct.isEmpty() ? List.of("jte") : distinct;
+    }
+
+    public JteCompiler(String fileName, String sukoSource, ExtensionRegistry registry, List<String> targets) {
         this.fileName = fileName;
         this.sukoSource = sukoSource;
+        this.registry = registry;
+        this.targets = normalizeTargets(targets);
     }
 
     public record CompileResult(
         boolean success,
         DiagnosticCollector diagnostics,
-        Map<String, String> generatedJteSources
+        Map<String, String> generatedJteSources,
+        Map<String, Map<String, String>> generatedByTarget
     ) {
+        public CompileResult(boolean success, DiagnosticCollector diagnostics, Map<String, String> generatedJteSources) {
+            this(success, diagnostics, generatedJteSources, Map.of());
+        }
+
         public static CompileResult success(Map<String, String> jteSources) {
             return new CompileResult(true, new DiagnosticCollector(), jteSources);
         }
@@ -90,11 +113,23 @@ public class JteCompiler {
 
         SymbolTable symbolTable = new SymbolTable();
         new SemanticChecker(symbolTable, diagnostics, fileName).check(sukoFile);
+        runExtensionChecks(sukoFile, ProjectView.EMPTY, diagnostics);
         if (diagnostics.hasErrors()) {
             return CompileResult.failure(diagnostics);
         }
 
-        return emitAll(sukoFile, new JteEmitter(sukoFile.components()));
+        for (String targetId : targets) {
+            if (registry.target(targetId).isEmpty()) {
+                diagnostics.add(new SukoDiagnostic(Severity.ERROR,
+                    "O alvo '" + targetId + "' não é fornecido por nenhuma extensão; disponíveis: "
+                        + String.join(", ", new java.util.TreeSet<>(registry.targetIds())),
+                    "TARGET_NOT_FOUND", fileName, SourceSpan.NONE));
+            }
+        }
+        if (diagnostics.hasErrors()) {
+            return CompileResult.failure(diagnostics);
+        }
+        return emitAll(sukoFile, ProjectView.EMPTY, Map.of(), "");
     }
 
     /** Parse + verificação semântica consciente de projeto, sem emissão.
@@ -112,6 +147,7 @@ public class JteCompiler {
         }
         SymbolTable symbolTable = new SymbolTable();
         new SemanticChecker(symbolTable, diagnostics, fileName, projectIndex, fileRelativePath).check(sukoFile);
+        runExtensionChecks(sukoFile, projectIndex, diagnostics);
         return new Analysis(sukoFile, diagnostics);
     }
 
@@ -139,15 +175,53 @@ public class JteCompiler {
         // correto o valor é idêntico (PACKAGE_DIRECTORY_MISMATCH garante-o).
         String currentPackagePrefix = ProjectIndex.relativeDirToPackagePrefix(
             fileRelativePath.getParent() == null ? Path.of("") : fileRelativePath.getParent());
-        return emitAll(sukoFile, new JteEmitter(sukoFile.components(), importedByShortName, currentPackagePrefix));
+        return emitAll(sukoFile, projectIndex, importedByShortName, currentPackagePrefix);
     }
 
-    private CompileResult emitAll(SukoFile sukoFile, JteEmitter emitter) {
-        Map<String, String> jteSources = new LinkedHashMap<>();
-        for (ComponentDecl component : sukoFile.components()) {
-            JteEmitter.EmitResult result = emitter.emitWithSourceMap(component);
-            jteSources.put(component.name() + ".jte", result.jteSource());
+    private void runExtensionChecks(SukoFile sukoFile, ProjectView project, DiagnosticCollector diagnostics) {
+        List<Target> resolved = targets.stream().flatMap(id -> registry.target(id).stream()).toList();
+        VocabularyChecker.check(sukoFile, fileName, resolved, registry, diagnostics);
+        for (Checker checker : registry.checkers()) {
+            try {
+                checker.check(sukoFile, new CheckContext(fileName, project, diagnostics));
+            } catch (Throwable e) {
+                io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
+                diagnostics.add(new SukoDiagnostic(Severity.ERROR,
+                    "A extensão '" + registry.ownerOf(checker) + "' falhou em " + fileName + " (" + checker.id()
+                        + "): " + VocabularyChecker.describe(e), "EXTENSION_FAILED", fileName, SourceSpan.NONE));
+            }
         }
-        return CompileResult.success(jteSources);
+    }
+
+    private CompileResult emitAll(SukoFile sukoFile, ProjectView project,
+                                  Map<String, ProjectIndexEntry> importedByShortName, String packagePrefix) {
+        DiagnosticCollector diagnostics = new DiagnosticCollector();
+        Map<String, Map<String, String>> byTarget = new LinkedHashMap<>();
+        EmitContext ctx = new EmitContext(sukoFile, project, importedByShortName, packagePrefix);
+        for (String targetId : targets) {
+            Target target = registry.target(targetId).orElse(null);
+            if (target == null) {
+                continue; // TARGET_NOT_FOUND é diagnóstico de projeto (SukoProjectCompiler)
+            }
+            Map<String, String> outputs = new LinkedHashMap<>();
+            for (ComponentDecl component : sukoFile.components()) {
+                try {
+                    Emitted emitted = target.emit(component, ctx);
+                    outputs.put(emitted.relativePath(), emitted.source());
+                } catch (Throwable e) {
+                    io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
+                    diagnostics.add(new SukoDiagnostic(Severity.ERROR,
+                        "A extensão '" + registry.ownerOf(target) + "' falhou ao emitir " + component.name()
+                            + " para o alvo '" + targetId + "': " + VocabularyChecker.describe(e),
+                        "EXTENSION_FAILED", fileName, component.span()));
+                }
+            }
+            byTarget.put(targetId, outputs);
+        }
+        if (diagnostics.hasErrors()) {
+            return CompileResult.failure(diagnostics);
+        }
+        Map<String, String> first = byTarget.isEmpty() ? Map.of() : byTarget.values().iterator().next();
+        return new CompileResult(true, new DiagnosticCollector(), first, byTarget);
     }
 }

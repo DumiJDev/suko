@@ -3,6 +3,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":suko-jte"))
     // Só o compilador. NUNCA suko-cli (spec do 11a, secção Módulos): o server lê a
     // chave `sourceRoot` do suko.json com o Gson que o LSP4J já traz.
     implementation(project(":suko-core")) {
@@ -64,6 +65,9 @@ tasks.named("assemble") {
 tasks.test {
     useJUnitPlatform()
     dependsOn(fatJar)
+    val testExtJar = project(":suko-test-ext").tasks.named<Jar>("jar")
+    dependsOn(testExtJar)
+    systemProperty("suko.testExtJar", testExtJar.get().archiveFile.get().asFile.absolutePath)
     doFirst {
         systemProperty("suko.lsp.fatJar", fatJar.get().archiveFile.get().asFile.absolutePath)
     }

@@ -5,6 +5,7 @@ plugins {
 }
 
 dependencies {
+    implementation(project(":suko-jte"))
     implementation(project(":suko-core"))
     implementation(project(":suko-registry"))
     implementation("gg.jte:jte:3.1.12")

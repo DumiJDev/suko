@@ -104,12 +104,17 @@ final class TestSupport {
     private int version = 1;
 
     TestSupport(Path folder) throws IOException {
+        this(folder, null);
+    }
+
+    TestSupport(Path folder, Object initializationOptions) throws IOException {
         this.folder = folder;
         this.root = Files.createDirectories(folder.resolve("src/main/suko"));
         this.server = new SukoLanguageServer(scheduler, DiagnosticsService.DEBOUNCE_MILLIS);
         server.connect(client);
         InitializeParams params = new InitializeParams();
         params.setWorkspaceFolders(List.of(new WorkspaceFolder(folder.toUri().toString(), "ws")));
+        params.setInitializationOptions(initializationOptions);
         server.initialize(params).join();
     }
 

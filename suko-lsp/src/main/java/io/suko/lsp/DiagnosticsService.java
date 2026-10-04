@@ -121,7 +121,41 @@ final class DiagnosticsService {
             Path absolute = project.root().resolve(relative).toAbsolutePath().normalize();
             result.put(absolute, new Published(uris.uriOf(absolute), diagnostics));
         }
+        publishProjectLevel(project, result);
         return result;
+    }
+
+    /**
+     * O LSP não tem um URI de "projeto": os diagnósticos de projeto (extensão que falhou a
+     * carregar, alvo em falta) vão no 0:0 do primeiro ficheiro aberto; sem ficheiro aberto só log.
+     */
+    private void publishProjectLevel(Project project, Map<Path, Published> result) {
+        List<SukoDiagnostic> projectLevel = project.projectDiagnostics();
+        if (projectLevel.isEmpty()) {
+            return;
+        }
+        Path open = project.firstOpen()
+            .map(r -> project.root().resolve(r).toAbsolutePath().normalize()).orElse(null);
+        Published target = open == null ? null : result.get(open);
+        if (target == null) {
+            LanguageClient c = client.get();
+            if (c != null) {
+                for (SukoDiagnostic d : projectLevel) {
+                    c.logMessage(new org.eclipse.lsp4j.MessageParams(
+                        org.eclipse.lsp4j.MessageType.Warning, "Suko: " + d.code() + ": " + d.message()));
+                }
+            }
+            return;
+        }
+        List<Diagnostic> merged = new ArrayList<>(target.diagnostics());
+        org.eclipse.lsp4j.Range origin = new org.eclipse.lsp4j.Range(
+            new org.eclipse.lsp4j.Position(0, 0), new org.eclipse.lsp4j.Position(0, 0));
+        for (SukoDiagnostic d : projectLevel) {
+            Diagnostic out = new Diagnostic(origin, d.message(), severity(d.severity()), "suko");
+            out.setCode(d.code());
+            merged.add(out);
+        }
+        result.put(open, new Published(target.uri(), merged));
     }
 
     static Diagnostic toLsp(SukoDiagnostic d, PositionMapper mapper) {

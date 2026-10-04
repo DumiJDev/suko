@@ -132,6 +132,9 @@ public final class WebsiteGenerator {
                     sb.append("    - ").append(d.message()).append('\n');
                 }
             }
+            for (var d : compileResult.projectDiagnostics()) {
+                sb.append("  projeto: ").append(d.code()).append(": ").append(d.message()).append('\n');
+            }
             // Do NOT delete tempSourceRoot on failure to allow inspection of generated files
             throw new IllegalStateException(sb.toString());
         }

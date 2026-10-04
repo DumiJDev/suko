@@ -1,19 +1,24 @@
 plugins {
-    id("java")
+    id("java-library")
     id("java-test-fixtures")
     id("antlr")
 }
 
 dependencies {
+    api(project(":suko-api"))
     antlr("org.antlr:antlr4:4.13.1")
 
-    implementation("gg.jte:jte:3.1.12")
+    // Core sem JTE em main (Task 5); os testes importam gg.jte (ruling R2).
+    testImplementation("gg.jte:jte:3.1.12")
 
     // testFixtures não herda as dependências `implementation` de main (o
     // plugin java-test-fixtures só partilha as classes compiladas, não o
     // classpath) — JteRenderSupport usa gg.jte diretamente, por isso
-    // precisa da própria linha, igual à de main.
+    // precisa da própria linha (main já não depende de gg.jte).
     testFixturesImplementation("gg.jte:jte:3.1.12")
+
+    testImplementation(project(":suko-jte"))
+    testFixturesImplementation(project(":suko-jte"))
 
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -81,4 +86,5 @@ tasks.compileJava {
 tasks.test {
     useJUnitPlatform()
     dependsOn(generateSukoParser)
+    systemProperty("suko.updateGolden", System.getProperty("suko.updateGolden") ?: "false")
 }

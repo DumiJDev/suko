@@ -18,6 +18,7 @@ gradlePlugin {
 }
 
 dependencies {
+    implementation(project(":suko-jte"))
     implementation(project(":suko-core"))
 
     // compileOnly(gradleApi()) deixou de ser necessário: java-gradle-plugin
@@ -32,4 +33,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    val testExtJar = project(":suko-test-ext").tasks.named<Jar>("jar")
+    dependsOn(testExtJar)
+    systemProperty("suko.testExtJar", testExtJar.get().archiveFile.get().asFile.absolutePath)
 }

@@ -1,0 +1,7 @@
+Card.sk|ERROR|COMPONENT_NOT_VISIBLE|1:0|Componente 'layout.Layout' não é public — não pode ser importado
+Card.sk|ERROR|IMPORT_NOT_FOUND|2:0|Import não encontrado: 'com.example.model.Item'
+dashboard/Dashboard.sk|ERROR|COMPONENT_NOT_VISIBLE|3:0|Componente 'layout.Layout' não é public — não pode ser importado
+dashboard/Dashboard.sk|ERROR|IMPORT_NOT_FOUND|4:0|Import não encontrado: 'com.example.model.Item'
+forms/Forms.sk|ERROR|COMPONENT_NOT_VISIBLE|3:0|Componente 'layout.Button' não é public — não pode ser importado
+forms/Forms.sk|ERROR|COMPONENT_NOT_VISIBLE|4:0|Componente 'layout.Input' não é public — não pode ser importado
+forms/Forms.sk|ERROR|COMPONENT_NOT_VISIBLE|5:0|Componente 'layout.Select' não é public — não pode ser importado

@@ -12,6 +12,40 @@ import java.nio.file.Path;
 public abstract class SukoBaseTask extends DefaultTask {
 
     protected SukoExtension extension;
+    protected org.gradle.api.file.FileCollection extensionClasspath;
+
+    @org.gradle.api.tasks.Classpath
+    public org.gradle.api.file.FileCollection getExtensionClasspath() {
+        return extensionClasspath;
+    }
+
+    @Input
+    public java.util.List<String> getTargets() {
+        return resolvedTargets();
+    }
+
+    /** Alvos pedidos; sem extensão Gradle (tasks soltas em testes) vale o default "jte". */
+    protected java.util.List<String> resolvedTargets() {
+        return extension == null ? java.util.List.of("jte") : io.suko.lang.JteCompiler.normalizeTargets(extension.getTargets().get());
+    }
+
+    protected java.util.List<java.io.File> extensionFiles() {
+        return extensionClasspath == null ? java.util.List.of()
+            : new java.util.ArrayList<>(extensionClasspath.getFiles());
+    }
+
+    /** ClassLoader com os jars de sukoExtensions por cima do classpath do plugin; quem chama fecha. */
+    protected java.net.URLClassLoader openExtensionLoader() {
+        java.util.List<java.net.URL> urls = new java.util.ArrayList<>();
+        for (java.io.File f : extensionFiles()) {
+            try {
+                urls.add(f.toURI().toURL());
+            } catch (java.net.MalformedURLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return new java.net.URLClassLoader(urls.toArray(new java.net.URL[0]), SukoBaseTask.class.getClassLoader());
+    }
 
     @Input
     public String getSourceDir() {

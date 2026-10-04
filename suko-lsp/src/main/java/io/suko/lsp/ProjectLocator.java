@@ -27,22 +27,46 @@ final class ProjectLocator {
     static Optional<Path> locate(Path workspaceFolder, String settingSourceRoot) {
         Optional<String> fromConfig = readSourceRoot(workspaceFolder.resolve(CONFIG_FILE));
         if (fromConfig.isPresent()) {
-            Path candidate = workspaceFolder.resolve(fromConfig.get()).normalize();
-            if (Files.isDirectory(candidate)) {
-                return Optional.of(candidate);
+            Optional<Path> candidate = insideWorkspace(workspaceFolder, fromConfig.get());
+            if (candidate.isPresent()) {
+                return candidate;
             }
         }
-        Path conventional = workspaceFolder.resolve(DEFAULT_SOURCE_ROOT);
-        if (Files.isDirectory(conventional)) {
-            return Optional.of(conventional.normalize());
+        Optional<Path> conventional = insideWorkspace(workspaceFolder, DEFAULT_SOURCE_ROOT);
+        if (conventional.isPresent()) {
+            return conventional;
         }
         if (settingSourceRoot != null && !settingSourceRoot.isBlank()) {
-            Path candidate = workspaceFolder.resolve(settingSourceRoot.strip()).normalize();
-            if (Files.isDirectory(candidate)) {
-                return Optional.of(candidate);
-            }
+            return insideWorkspace(workspaceFolder, settingSourceRoot.strip());
         }
         return Optional.empty();
+    }
+
+    /**
+     * Um source root tem de ficar dentro da pasta do workspace: valores absolutos, UNC ou com
+     * {@code ..} que saiam dela são ignorados (cai para a descoberta por omissão). A verificação
+     * léxica vem antes de qualquer acesso ao disco — um caminho UNC nunca é consultado (no
+     * Windows isso fugiria credenciais NTLM) — e, se a pasta existe, o caminho real também tem
+     * de ficar dentro (symlinks).
+     */
+    static Optional<Path> insideWorkspace(Path workspaceFolder, String value) {
+        try {
+            if (value.startsWith("\\\\") || value.startsWith("//") || Path.of(value).isAbsolute()
+                    || Path.of(value).getRoot() != null) {
+                return Optional.empty();
+            }
+            Path base = workspaceFolder.toAbsolutePath().normalize();
+            Path candidate = workspaceFolder.resolve(value).normalize();
+            if (!candidate.toAbsolutePath().normalize().startsWith(base) || !Files.isDirectory(candidate)) {
+                return Optional.empty();
+            }
+            if (!candidate.toRealPath().startsWith(workspaceFolder.toRealPath())) {
+                return Optional.empty();
+            }
+            return Optional.of(candidate);
+        } catch (IOException | RuntimeException e) {
+            return Optional.empty();
+        }
     }
 
     /** {@code sourceRoot} do {@code suko.json}; vazio se o ficheiro não existe, não é JSON ou não tem a chave. */

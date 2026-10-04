@@ -31,7 +31,7 @@ import java.util.Optional;
  * ficheiros são percorridos por ordem lexicográfica do caminho relativo,
  * pelo que "o primeiro" de dois componentes duplicados é determinístico.
  */
-public class ProjectIndex {
+public class ProjectIndex implements ProjectView {
 
     /**
      * Colisão de nome qualificado detetada na Fase 1 (revisão final do
@@ -137,10 +137,12 @@ public class ProjectIndex {
     }
 
     /** Todos os componentes indexados, por ordem de indexação (determinística). */
+    @Override
     public java.util.Collection<ProjectIndexEntry> entries() {
         return java.util.Collections.unmodifiableCollection(byQualifiedName.values());
     }
 
+    @Override
     public Optional<ProjectIndexEntry> resolveQualified(String qualifiedName) {
         return Optional.ofNullable(byQualifiedName.get(qualifiedName));
     }
@@ -149,6 +151,7 @@ public class ProjectIndex {
      * quando existe, senão o nome curto do alvo. Imports que não resolvem
      * (alvo inexistente) são simplesmente omitidos aqui — a Tarefa 4
      * (SemanticChecker) é quem decide reportar IMPORT_NOT_FOUND. */
+    @Override
     public Map<String, ProjectIndexEntry> resolveImports(List<ImportDecl> imports) {
         Map<String, ProjectIndexEntry> byShortName = new LinkedHashMap<>();
         for (ImportDecl imp : imports) {

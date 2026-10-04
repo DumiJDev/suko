@@ -65,7 +65,7 @@ gradle sukoWatch
 
 ### Maven
 
-⚠️ Not yet functional end-to-end: `suko-maven-plugin` compiles and has unit tests, but doesn't yet produce a usable plugin descriptor (`META-INF/maven/plugin.xml`) — see the roadmap ressalva in [ARCHITECTURE.md](ARCHITECTURE.md). The snippet documents the intended usage once that's added.
+`suko-maven-plugin` ships a hand-written plugin descriptor (`META-INF/maven/plugin.xml`, goal `compile`, 6 parameters) and was verified once with a real `mvn` run (before 13a added `targets`/`buildDirectory`), but it is not published to a Maven repository and no automated test runs a real `mvn` (only Mojo- and descriptor-level tests) — see ARCHITECTURE.md, roadmap item 4.
 
 ```xml
 <plugin>
@@ -180,13 +180,77 @@ examples/
     └── LayoutComponents.sk
 ```
 
+### Extensions (targets, vocabularies, checkers)
+
+Compile-time extensions (subprojeto 13a) add compilation targets, tag
+vocabularies and extra checkers. They run only in the build and in the LSP
+and are discovered via `ServiceLoader`; the contract is in
+[`suko-api/README.md`](suko-api/README.md). The built-in `jte` target is
+implemented through the same API. Without extensions nothing changes: the
+default is `targets = ["jte"]` and the output is byte-for-byte what it was.
+There is no release yet and no third-party extension is published; the
+example below uses a placeholder artifact.
+
+```kotlin
+// build.gradle.kts of a project
+dependencies { "sukoExtensions"("io.exemplo:suko-minha-extensao:1.0.0") }
+suko { targets.set(listOf("jte", "demo")) }
+```
+
+```xml
+<!-- pom.xml: extensions go in the plugin's own <dependencies> -->
+<plugin>
+  <groupId>io.suko</groupId>
+  <artifactId>suko-maven-plugin</artifactId>
+  <configuration><targets><target>jte</target><target>demo</target></targets></configuration>
+  <dependencies>
+    <dependency><groupId>io.exemplo</groupId><artifactId>suko-minha-extensao</artifactId><version>1.0.0</version></dependency>
+  </dependencies>
+</plugin>
+```
+
+- With more than one target, output goes to `<outputDir>/<target>/<package dirs>/`;
+  with a single target the layout is unchanged. Maven also accepts `-Dsuko.targets=...`.
+- An unknown target fails with `TARGET_NOT_FOUND` (the message lists the
+  available ones). Other new codes: `EXTENSION_CONFLICT`,
+  `EXTENSION_API_MISMATCH`, `VOCABULARY_NOT_FOUND`, `UNKNOWN_TAG`,
+  `EXTENSION_FAILED` (an extension that throws is reported with its id and
+  the file; the build continues) — see ARCHITECTURE.md, item 13.
+- Each build writes `build/suko/extensions.json` (Gradle) or
+  `target/suko/extensions.json` (Maven) — the extension jars (absolute paths)
+  and the targets — so the language server can load the same extensions.
+  It is not written when there are no sources, nor by `sukoWatch`, and the
+  write is not atomic. With a customised Gradle `buildDirectory` the LSP does
+  not find it (it only looks in `build/suko` and `target/suko`); with no
+  `extensions.json` the LSP stays silent.
+- Going from one target to several moves templates from `<out>/pkg/X.jte` to
+  `<out>/jte/pkg/X.jte` (repoint the JTE root, e.g. Spring's `src/main/jte`);
+  neither `sukoCompile` nor `suko:compile` deletes orphaned outputs.
+- Gradle writes the whole `sukoExtensions` configuration (transitive deps
+  included) to `extensions.json`; Maven only the jars that carry a provider
+  file, so an extension with runtime dependencies works under `mvn` but fails
+  in the LSP of Maven projects (`EXTENSION_FAILED`). Follow-up.
+- **Trust rule (LSP / VSCode):** extensions are third-party code. The language
+  server loads them only when VSCode reports the workspace as trusted. In an
+  untrusted workspace only the built-in `jte` runs and `extensions.json` is
+  never read. The manifest is ignored above 1 MiB; classpath entries must be
+  absolute, existing `.jar` files (UNC paths are rejected); `extensions.json`
+  is watched and reloaded when it changes; granting trust restarts the server;
+  `sourceRoot` from `suko.json` must stay inside the workspace folder. There
+  is no IntelliJ support yet (11b).
+- Known limitation: a successful `sukoCompile`/`suko:compile` does not print
+  warnings (e.g. a checker's `WARNING`) — only the LSP shows them. Pre-existing bug.
+
 ## Project Structure
 
 ```
 suko/
 ├── build.gradle.kts              # Root aggregator — no source of its own
-├── settings.gradle.kts           # Declares the 8 modules below
-├── suko-core/                    # The compiler
+├── settings.gradle.kts           # Declares the modules below
+├── suko-api/                     # Extension contract (io.suko.ext.*), JDK only
+├── suko-jte/                     # Built-in JTE target, registered through the extension API
+├── suko-test-ext/                # Example extension (DemoExtension), tests only
+├── suko-core/                    # The compiler (no JTE; ExtensionRegistry)
 │   ├── src/main/antlr/io/suko/lang/   # ANTLR grammar files
 │   ├── src/main/java/io/suko/lang/    # Core compiler
 │   │   ├── JteCompiler.java      # Main compilation pipeline
@@ -198,7 +262,7 @@ suko/
 │   │   └── symbol/               # Symbol table
 │   └── src/test/                 # Unit and integration tests
 ├── suko-gradle-plugin/           # Gradle plugin (io.suko.lang.gradle.*), discoverable ID "io.suko.lang" (not Portal-published)
-├── suko-maven-plugin/            # Maven plugin module (no plugin.xml yet — not end-to-end usable)
+├── suko-maven-plugin/            # Maven plugin module (hand-written plugin.xml; not published; no automated real-`mvn` test)
 ├── suko-registry/                # Registry data model + JSON I/O (registry.json/manifest), no suko-core dependency
 ├── suko-registry-generator/      # Generates the manifest from suko-components' .sk sources
 ├── suko-components/              # Component library: 8 real .sk components + generated registry.json/manifest

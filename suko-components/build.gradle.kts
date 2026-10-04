@@ -8,10 +8,11 @@ plugins {
 // se auto-validar (compilar e renderizar a própria biblioteca, e verificar
 // que o manifesto commitado não divergiu dos fontes).
 dependencies {
+    testImplementation(project(":suko-jte"))
     testImplementation(project(":suko-registry-generator"))
     testImplementation(testFixtures(project(":suko-core")))
-    // suko-core declara jte como `implementation`, não `api` — não é
-    // transitivo. Versão pinada igual à de suko-core.
+    // suko-core já não declara jte em main (só nos testes), por isso
+    // não é transitivo. Versão pinada igual à de suko-core.
     testImplementation("gg.jte:jte:3.1.12")
 
     testImplementation(platform("org.junit:junit-bom:5.10.2"))

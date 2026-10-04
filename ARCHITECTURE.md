@@ -14,7 +14,8 @@ Análise semântica [subprojeto 2 — CONCLUÍDO]
         │  - tabela de símbolos de componentes
         │  - valida chamadas de componente
         │  - valida slots (presença/cardinalidade/parâmetros)
-        │  - valida estrutura HTML, escape e URLs perigosas
+        │  - (não valida estrutura HTML nem URLs perigosas: nada o faz
+        │    hoje; o escape é feito pelo JTE em runtime, ContentType.Html)
         │  - rejeita o que não é suportado (generics, nomes de
         │    componente compostos), delegando tipagem Java profunda
         │    ao javac na fase seguinte (subprojeto 3)
@@ -25,7 +26,12 @@ Análise semântica [subprojeto 2 — CONCLUÍDO]
         │    testado, mas ainda NÃO está ligado ao pipeline; ver
         │    roadmap, item 3 — fica para o subprojeto 11c)
         ▼
-  JteEmitter (Visitor sobre o AST)
+  Checkers e vocabulários das extensões [subprojeto 13a — CONCLUÍDO]
+       │  corre depois do SemanticChecker: UNKNOWN_TAG por alvo
+       │  (vocabulários fechados) e os Checker registados
+       ▼
+  Emissão por alvo (Target, fornecido por uma extensão)
+       │  o JteEmitter (módulo suko-jte) é o alvo embutido "jte";
        │  produz: arquivo .jte equivalente, 1:1 por componente
        ▼
  .jte (arquivo intermediário, gerado e versionável)
@@ -46,14 +52,20 @@ define `group`/`version`/`repositories` partilhados via `subprojects {}`,
 mais o plugin `base` (só para dar um `:clean` a nível de raiz, que também
 apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
 
+- **`suko-api/`** — o contrato das extensões (13a): `io.suko.ext.*`
+  (`SukoExtension`, `Target`, `Vocabulary`, `Checker`, `ExtensionApi.VERSION`,
+  contextos e `Emitted`). Só JDK; é o único módulo que uma extensão de
+  terceiros precisa de ver. Ver `suko-api/README.md`.
 - **`suko-core/`** — o compilador: gramática ANTLR, AST, `SukoAstBuilder`,
-  `SemanticChecker`, `JteEmitter`, `JteCompiler`,
-  `io.suko.lang.project.*` (`ProjectIndex`, `SukoProjectCompiler`). Sem
-  dependência de nenhum outro módulo.
+  `SemanticChecker`, `JteCompiler`, `io.suko.lang.ext.*` (`ExtensionRegistry`,
+  `VocabularyChecker`, `ExtensionManifest`, `ExtensionFailures`),
+  `io.suko.lang.project.*` (`ProjectIndex`, `SukoProjectCompiler`). **Sem
+  JTE**: já não conhece o `JteEmitter` (o 13a moveu-o para `suko-jte`);
+  depende de `suko-api`.
 - **`suko-gradle-plugin/`** — `io.suko.lang.gradle.*`
   (`SukoGradlePlugin`, `SukoCompileTask`, `SukoWatchTask`) extraído do
   antigo módulo raiz sem mudança de comportamento. Depende de
-  `suko-core`. Aplica `java-gradle-plugin` e declara
+  `suko-core` e `suko-jte`. Aplica `java-gradle-plugin` e declara
   `gradlePlugin { plugins { create("suko") { id = "io.suko.lang" } } }`
   (subprojeto 8, tarefa 4) — `plugins { id("io.suko.lang") }` já resolve
   via composite build (`includeBuild`) e via TestKit; deixou de existir só
@@ -62,10 +74,18 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   um `plugins { id("io.suko.lang") version "..." }` isolado — publicação
   real fica em aberto, dependente da mesma questão de D1 do subprojeto 7.
 - **`suko-maven-plugin/`** — plugin Maven (`SukoCompileMojo`), depende de
-  `suko-core`. Ver a ressalva já documentada no item 4 do roadmap sobre o
-  descritor de plugin Maven não estar completo — **este lado permanece
-  sem ID descobrível**, ao contrário do `suko-gradle-plugin` acima
-  (assimetria não fechada pelo subprojeto 8, ver item 4 do roadmap).
+  `suko-core` e `suko-jte`. Tem um `META-INF/maven/plugin.xml` escrito à mão
+  (goal `compile`, 6 parâmetros), ver "Ressalva fechada" no item 4 do roadmap.
+  Não está publicado num repositório Maven; só há testes ao nível da Mojo e do
+  descritor, nenhum teste automático corre um `mvn` real.
+- **`suko-jte/`** — o alvo JTE embutido (`JteEmitter`, `JteExtension`,
+  vocabulário HTML aberto), registado por `ServiceLoader` através da mesma
+  API que uma extensão externa usa. Critério de aceitação do 13a: o `.jte`
+  gerado e os source maps ficam byte a byte iguais (`GoldenParityTest`).
+  Os plugins Gradle/Maven e o LSP trazem-no embutido.
+- **`suko-test-ext/`** — extensão de exemplo (`DemoExtension`: alvo `demo`,
+  vocabulário fechado `demo`, checker `demo-check`), **só para testes** —
+  não é publicada nem faz parte de nenhum fat jar.
 - **`suko-registry/`** — modelo de dados do manifesto da biblioteca
   (`RegistryIndex`/`ComponentManifest`/`ComponentFile`/
   `ExternalRequirement`) e leitor/escritor JSON (`RegistryJson`, Gson
@@ -90,14 +110,14 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   declarada em `main`. Contém `src/main/suko/io/suko/ui/*.sk` (8
   componentes: `Button`, `Input`, `Label`, `Badge`, `Alert`, `Card`,
   `Field`, `Dialog`) mais `registry.json`/`components/*.json`
-  gerados e commitados. As dependências em `src/test` (`suko-registry`,
+  gerados e commitados. As dependências em `src/test` (`suko-jte`, `suko-registry-generator`,
   `testFixtures(suko-core)`, `gg.jte` pinado) existem só para o módulo
   se auto-validar — compilar e renderizar a própria biblioteca com o
   motor `gg.jte` real, e falhar se o manifesto commitado divergir dos
   fontes (`RegistryGoldenTest`).
 - **`suko-cli/`** — a ferramenta de linha de comandos `suko` (subprojeto 8):
   `init`/`list`/`add`/`diff`/`update`. Depende de `suko-registry` (modelo +
-  JSON) e Gson; **nunca depende de `suko-core`** em produção (`testFixtures(suko-core)`
+  JSON) e Gson; **nunca depende de `suko-core`** em produção (`testFixtures(suko-core)`, `suko-jte`
   e `gg.jte` pinado entram só em `testImplementation`, para o
   `FullCycleTest` de ponta-a-ponta) — o compilador não faz parte do que a
   CLI precisa para copiar ficheiros. Empacotada num único fat jar
@@ -109,7 +129,7 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   publicado por este projeto. Ver `suko-cli/README.md` para a referência
   de comandos e o desenho de duplo hash do `suko.lock.json`.
 - **`suko-lsp/`** — language server do Suko (subprojeto 11a): LSP4J sobre
-  stdio, depende só de `suko-core` (exclui o ANTLR *tool* que o plugin
+  stdio, depende de `suko-core` e `suko-jte` (exclui o ANTLR *tool* que o plugin
   `antlr` põe no `api` do core; usa `antlr4-runtime`). Fat jar à mão, como o
   da CLI. Lê o `sourceRoot` do `suko.json` com Gson, sem depender do
   `suko-cli`. Ver `suko-lsp/README.md`.
@@ -641,11 +661,12 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
 2. **Verificador Suko** — CONCLUÍDO. `DiagnosticCollector`,
    `SukoErrorListener`, `SymbolTable`, `SemanticChecker`.
    Validadores de componentes e slots implementados.
-3. **Verificação Java** — PARCIAL. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` (compilar stubs Java e mapear erros para `.sk`) existe e está coberto por `JavacTaskTest`, **mas não está ligado ao pipeline**: nenhum código de produção o chama (verificado 2026-09-28), por isso o `sukoCompile` não verifica os tipos Java das expressões — um `List` cru com `for (String item : items)` passa o build e só falha quando o JTE compila o template. Ligá-lo fica para o subprojeto 11c (inteligência Java em `${...}`), que precisa da mesma análise.
+3. **Verificação Java** — PARCIAL. `JteCompiler` orquestra o pipeline completo (parse → semantic check → JTE emit). `JavacTask` (compilar stubs Java e mapear erros para `.sk`) existe e está coberto por `JavacTaskTest`, **mas não está ligado ao pipeline**: nenhum código de produção o chama (verificado 2026-09-28), por isso o `sukoCompile` não verifica os tipos Java das expressões — um `List` cru com `for (String item : items)` passa o build e só falha quando o JTE compila o template. Ligá-lo fica para o subprojeto 11c (inteligência Java em `${...}`), que precisa da mesma análise. **Regra (spec do 13a):** a análise Java independente do alvo fica no core; os stubs específicos do JTE pertencem ao `suko-jte`. Hoje o `JavacTask` ainda tem `gg.jte.Content` fixo (`JavacTask.java:189`) e chaves `.jte` (`:220`) — ao ligá-lo no 11c isto tem de passar para o alvo.
 4. **Integração no build** — CONCLUÍDO. Plugin Gradle (`sukoCompile`, `sukoWatch`), plugin Maven (`suko:compile`), modo watch com `WatchService`, E2E tests.
    **Ressalva fechada:** o módulo `suko-maven-plugin` agora tem um
    `META-INF/maven/plugin.xml` completo e correto (goal `compile`,
-   implementation, phase `generate-sources`, os 4 parâmetros com
+   implementation, phase `generate-sources`, os 6 parâmetros (`project`, `sourceDir`,
+   `outputDir`, `generatedPackage`, `targets`, `buildDirectory`) com
    `<configuration>`/`default-value` a espelhar os campos `@Parameter`
    de `SukoCompileMojo`), mantido à mão em vez de gerado pelo
    `maven-plugin-plugin` — a tentativa anterior de o gerar via uma tarefa
@@ -660,7 +681,9 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
    `io.suko:suko-maven-plugin:<version>:compile`, e pelo atalho
    `mvn suko:compile` com `io.suko` em `pluginGroups`) contra um projeto
    consumidor de fora do repositório — `mvn suko:compile` **é executável
-   end-to-end**. **Caminho Gradle** (contexto que se mantém): `suko-gradle-plugin`
+   end-to-end** (verificação manual feita uma vez, antes do 13a; **não há
+   teste automático que corra um `mvn` real** — só `PluginDescriptorConsistencyTest`
+   e testes ao nível da Mojo). **Caminho Gradle** (contexto que se mantém): `suko-gradle-plugin`
    aplica `java-gradle-plugin` e declara
    `gradlePlugin { plugins { create("suko") { id = "io.suko.lang" } } }`,
    com `plugins { id("io.suko.lang") }` a resolver de verdade via
@@ -753,8 +776,9 @@ tem origem própria nesta spec):
 11. **Suporte de IDE** (VSCode + IntelliJ) — partido em três specs
     sequenciais (**release:** decidido pelo utilizador a 2026-10-04 que a
     primeira release só sai depois do 11b, do 11c, do 13a — `suko-api`,
-    extensão `suko-jte`, core sem JTE — e da interoperabilidade Java do
-    item 12): **11a** language server +
+    extensão `suko-jte`, core sem JTE —, da interoperabilidade Java do
+    item 12 e, acrescentado no mesmo dia, do subprojeto 14 — segurança
+    por omissão): **11a** language server +
     extensão VSCode, **11b** cliente IntelliJ reutilizando o server, **11c**
     inteligência Java dentro de `${...}` (liga o `JavacTask` ao pipeline).
     - **11a — IMPLEMENTADO, verificação manual pendente.** Spec
@@ -855,7 +879,7 @@ tem origem própria nesta spec):
     entre outras, e decidir onde se escolhe o alvo (opção em
     `suko.json`/no plugin Gradle/Maven, por ficheiro ou por projeto);
     (b) **modelo de elementos** — as tags de hoje são HTML
-    (o `SemanticChecker` valida estrutura HTML e URLs perigosas); é
+    (o `SemanticChecker` **não** valida estrutura HTML nem URLs perigosas — nada o faz hoje; o escape é feito pelo JTE em runtime, `ContentType.Html`); é
     preciso decidir se os alvos nativos usam um vocabulário próprio de
     widgets (`<Button>`, `<VBox>`, ...), um vocabulário comum mapeado
     para cada toolkit, ou tags HTML mapeadas para widgets, e como o
@@ -886,6 +910,100 @@ tem origem própria nesta spec):
     real (BuildCLI); Swing e JavaFX depois, porque exigem mutações
     dirigidas de uma árvore retida.
 
+    **13a — API de extensões: CONCLUÍDO (2026-10-04)** (primeira fatia
+    do item; ainda sem release — a release espera por 11b, 11c, 13a e 12).
+    Spec: `docs/superpowers/specs/2026-10-04-suko-api-extensoes.md`;
+    plano: `docs/superpowers/plans/2026-10-04-suko-api-extensoes.md`.
+    Entregou os módulos `suko-api`, `suko-jte` e `suko-test-ext` (ver
+    "Estrutura de módulos"), o `ExtensionRegistry` no core, o parâmetro
+    de alvos (`suko { targets }` no Gradle, `<targets>` no Maven; por
+    omissão `jte`), a configuração Gradle `sukoExtensions`, as extensões
+    nas `<dependencies>` do plugin Maven, o ficheiro
+    `build/suko/extensions.json` (Gradle) / `target/suko/extensions.json`
+    (Maven) e o carregamento no LSP, só em workspaces confiáveis. Com
+    vários alvos o output vai para `<out>/<alvo>/<package>/`; com um só
+    (o caso de hoje) o layout não muda. Projeto sem extensões declaradas
+    compila byte a byte como antes. Códigos de erro novos:
+    `EXTENSION_CONFLICT` (mesmo id de alvo/vocabulário fornecido por duas
+    extensões: fica o da extensão de id menor), `EXTENSION_API_MISMATCH`
+    (extensão compilada para outro major de `ExtensionApi.VERSION`),
+    `TARGET_NOT_FOUND` (alvo pedido que ninguém fornece),
+    `VOCABULARY_NOT_FOUND` (alvo que declara um vocabulário não
+    registado), `UNKNOWN_TAG` (tag fora dos vocabulários de um alvo
+    fechado) e `EXTENSION_FAILED` (código de extensão que lança — incluindo
+    `LinkageError` e a maioria dos `Error`, mas não os `VirtualMachineError`
+    à exceção de `StackOverflowError` — ou que falha ao carregar/registar;
+    o compilador regista o id da extensão e continua).
+
+    *Lacunas da spec resolvidas neste plano:* (1) **tag fora de um
+    vocabulário fechado** → `UNKNOWN_TAG` (ERROR): para cada alvo pedido,
+    a tag tem de ser aceite por pelo menos um dos seus vocabulários; um
+    vocabulário `open()` aceita tudo, por isso com só o `jte` nunca
+    dispara e nenhum diagnóstico existente muda; (2) **alvo que declara
+    um vocabulário que ninguém registou** → `VOCABULARY_NOT_FOUND` (ERROR,
+    nível de projeto); (3) **source maps no golden** — o
+    `SukoProjectCompiler` não devolve source maps, por isso o golden dos
+    source maps chama o `JteEmitter` diretamente sobre a análise do
+    projeto.
+
+    *Segurança e confiança no LSP:* extensões são código de terceiros.
+    O LSP só as carrega quando o VSCode diz que o workspace é confiável;
+    num workspace não confiável corre só o JTE embutido e o
+    `extensions.json` nem é lido. Um manifesto com mais de 1 MiB é
+    ignorado; as entradas do classpath têm de ser caminhos absolutos para
+    ficheiros `.jar` existentes (diretórios e UNC rejeitados); o
+    `sourceRoot` do `suko.json` fica confinado à pasta do workspace;
+    conceder confiança reinicia o servidor e o `extensions.json` é
+    vigiado e recarregado quando muda. O jar do JTE listado no manifesto
+    é ignorado (já vem embutido). Extensões **não** estão em sandbox: no
+    build correm com os privilégios do Gradle/Maven.
+
+    *Limitações conhecidas do 13a (não escondidas):* (a) o
+    `sukoCompile`/`suko:compile` **não mostra avisos** (ex.: `WARNING` de
+    um checker) quando a compilação tem sucesso — bug anterior ao 13a, só o
+    LSP os mostra; (b) o `extensions.json` **não é escrito** quando não há
+    fontes (Gradle: nenhum `.sk`; Maven: a pasta de fontes não existe) nem
+    pelo `sukoWatch`, e a escrita não é atómica, logo o LSP pode ver um
+    manifesto antigo ou truncado (este último é ignorado); (c)
+    `Target.componentType()` é o gancho do item 12 e hoje nada no
+    compilador o consome; (d) não há extensão externa publicada nem
+    suporte IntelliJ (11b); (e) o Gradle escreve no `extensions.json` toda a
+    configuração `sukoExtensions` (incluindo dependências transitivas), o
+    Maven só os jars com ficheiro de serviço — uma extensão com dependências de
+    runtime funciona no `mvn` mas falha no LSP de projetos Maven
+    (`EXTENSION_FAILED`); follow-up; (f) passar de um para dois alvos move os
+    templates de `<out>/pkg/X.jte` para `<out>/jte/pkg/X.jte` (reapontar a raiz
+    JTE, ex. `src/main/jte` do Spring), e nem `sukoCompile` nem `suko:compile`
+    apagam saídas órfãs; (g) o LSP sem `extensions.json` fica **em silêncio**
+    (a spec dizia avisar uma vez; desvio deliberado para evitar ruído); (h) com
+    um `buildDirectory` personalizado no Gradle, o LSP só procura
+    `build/suko` e `target/suko`; (i) `TagSpec.attributeTypes` e
+    `allowsChildren` ainda não são aplicados pelo core; (j) o `JavacTask` ainda está no core com
+    `"gg.jte.Content"` e as chaves `.jte` fixas — pela regra do item 3, os
+    stubs específicos do JTE passam para o `suko-jte` (antes do 11c).
+
+    *`ExtensionApi` v1 é provisória até à primeira release.* Qualquer mudança
+    incompatível (novo subtipo selado de `Statement`/`Expr`/`Param`, novo
+    componente de record num contexto ou em `ProjectIndexEntry`, mudança de
+    assinatura) incrementa `VERSION`. Checklist antes do item 12: `Target.emit`
+    devolve um único `Emitted` (jte+js/html+js e o item 12 precisam de várias
+    saídas por componente); `EmitContext` não tem resolvedor de chamadas (a spec
+    prometia um equivalente de `CallResolver`; hoje só `importedByShortName` +
+    `packagePrefix`); `CheckContext` não expõe os alvos ativos; contextos e
+    `ProjectIndexEntry` são records (considerar interfaces).
+
+    *Follow-ups arrumados (sem dono):* descoberta que termina em `hasNext()`
+    a falhar; rollback parcial de registo; avisos descartados em sucesso
+    (**item do portão de release**); `extensions.json` não atómico; manifesto
+    não escrito sem fontes nem pelo `sukoWatch`; `stat` com seguimento de
+    symlinks antes da verificação UNC no Windows; fallback silencioso do
+    `sourceRoot`; chamadas a extensões sem guarda dentro de handlers de
+    `catch`; jars bloqueados no Windows pelo classloader do LSP; fat jar com
+    `DuplicatesStrategy.EXCLUDE` pode perder o ficheiro de serviços de um
+    segundo built-in; clash de nome entre `io.suko.ext.SukoExtension` e o
+    `SukoExtension` do DSL Gradle (decidir antes da release); pacotes divididos
+    entre jars excluem JPMS.
+
     **Direção decidida pelo utilizador (2026-10-03): extensões em
     compile-time, não crescimento do core.** Os alvos e vocabulários
     entram como *extensões* que correm só no build e no LSP, sobre uma
@@ -902,8 +1020,9 @@ tem origem própria nesta spec):
     e o host genérico do LSP. **Extensões:** os alvos (o JTE embutido mas
     implementado pela mesma API — critério: `.jte` gerado byte a byte
     igual —, o gerador de HTML estático do site, TamboUI, Swing,
-    JavaFX), os vocabulários (o HTML, com as regras de escape e de URLs
-    perigosas, acompanha o alvo JTE e mantém revisão de segurança), os
+    JavaFX), os vocabulários (o HTML acompanha o alvo JTE; as regras de escape e de
+    URLs perigosas **ainda não existem** — hoje o escape é do JTE em
+    runtime — e, quando existirem, mantêm revisão de segurança), os
     namespaces de atributos, verificadores extra (a11y, i18n),
     origens de registry, comandos da CLI e contribuições ao LSP. **A
     reatividade também é resolvida em compile-time** (modelo
@@ -948,9 +1067,27 @@ tem origem própria nesta spec):
     compile-time gera JS vanilla mínimo só para os componentes com
     estado/eventos (HTML renderizado no servidor + "ilhas" interativas,
     modelo Svelte), sem framework no cliente; é o alvo mais sensível em
-    segurança (gerar JS a partir de expressões mantendo o escape) e
+    segurança. **Revisto a 2026-10-04 (13b):** não há variantes `+js`
+    separadas — o suporte a JS vive no `suko-jte` (o alvo continua `jte`),
+    com `reactive component`, `state`/`derived` (com `var`), `on:evento=${lambda}`
+    e `bind:`; spec em
+    `docs/superpowers/specs/2026-10-04-suko-reatividade-ilhas.md`,
+    implementação depois do item 12; (gerar JS a partir de expressões mantendo o escape) e
     exige revisão do `security-specialist`. Riscos: a matriz de testes
     cresce com cada alvo (começar com dois — JTE, já existente, e
     TamboUI, da issue #7); as primitivas neutras tendem para o mínimo
     denominador comum, por isso ficam poucas e as tags nativas são a
     saída.
+
+14. **Segurança por omissão** — decidido pelo utilizador a 2026-10-04
+    ("aplica todas as medidas de segurança"); bloqueia a primeira release.
+    Spec em `docs/superpowers/specs/2026-10-04-suko-seguranca-por-omissao.md`.
+    O JTE só escapa caracteres no render; o Suko acrescenta o que depende
+    do significado do valor: allowlist de protocolos de URL em todos os
+    componentes (classe `SukoSafe` gerada, sem dependência de runtime),
+    erro `UNSAFE_SINK` para valores dinâmicos em `<script>`/`<style>`/`on*`/
+    `srcdoc`/`style`/`<base>`/..., `rel="noopener"` automático, lint de CSP
+    estrita, ativação do `OwaspHtmlPolicy` do JTE via o plugin, assinatura
+    Ed25519 do índice do registry e testes com corpus XSS e CSP/Trusted Types
+    no browser. Ordem proposta: depois de integrar o 13a, antes do item 12.
+    No fim da 13b: exemplo de e-commerce Suko + JTE + JS e pentest a ele.
