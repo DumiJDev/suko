@@ -69,6 +69,16 @@ final class SukoWorkspaceService implements WorkspaceService {
         });
     }
 
+    /** {@code {"trusted": true}} nas opções de inicialização; ausente ou não-booleano conta como não confiável. */
+    static boolean trustedFrom(Object initializationOptions) {
+        if (!(initializationOptions instanceof JsonObject object)) {
+            return false;
+        }
+        JsonElement value = object.get("trusted");
+        return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean()
+            && value.getAsBoolean();
+    }
+
     /** Aceita {@code {"suko":{"sourceRoot":"..."}}} e {@code {"sourceRoot":"..."}}. */
     static String sourceRootFrom(Object settings) {
         if (!(settings instanceof JsonObject object)) {

@@ -2,6 +2,8 @@ package io.suko.lsp;
 
 import org.eclipse.lsp4j.InitializeParams;
 import org.eclipse.lsp4j.InitializeResult;
+import org.eclipse.lsp4j.MessageParams;
+import org.eclipse.lsp4j.MessageType;
 import org.eclipse.lsp4j.ServerCapabilities;
 import org.eclipse.lsp4j.ServerInfo;
 import org.eclipse.lsp4j.TextDocumentSyncKind;
@@ -34,6 +36,7 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
     private List<Path> folders = List.of();
     private String sourceRootSetting = "";
     private boolean shutdownRequested;
+    private final java.util.Set<String> loggedNotices = new java.util.HashSet<>();
 
     public SukoLanguageServer() {
         this(new Scheduler.Threaded(), DiagnosticsService.DEBOUNCE_MILLIS);
@@ -52,7 +55,8 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
         if (sourceRootSetting == null) {
             sourceRootSetting = "";
         }
-        workspace.configure(folders, sourceRootSetting);
+        workspace.configure(folders, sourceRootSetting, SukoWorkspaceService.trustedFrom(params.getInitializationOptions()));
+        logNotices();
 
         ServerCapabilities capabilities = new ServerCapabilities();
         // Sincronização Full (spec do 11a): o server recebe o texto inteiro a cada alteração.
@@ -103,6 +107,22 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
     private void sourceRootSettingChanged(String value) {
         sourceRootSetting = value;
         workspace.configure(folders, value);
+        logNotices();
+    }
+
+    /** Cada aviso de extensões vai uma única vez para o log do cliente. */
+    private void logNotices() {
+        LanguageClient target = client;
+        if (target == null) {
+            return;
+        }
+        for (Project project : workspace.projects()) {
+            project.notice().ifPresent(notice -> {
+                if (loggedNotices.add(notice)) {
+                    target.logMessage(new MessageParams(MessageType.Warning, notice));
+                }
+            });
+        }
     }
 
     private static List<Path> workspaceFolders(InitializeParams params) {

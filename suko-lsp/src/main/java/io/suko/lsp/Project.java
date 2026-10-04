@@ -6,9 +6,13 @@ import io.suko.lang.project.ProjectAnalysis;
 import io.suko.lang.project.SukoProjectCompiler;
 import io.suko.lang.project.SukoSources;
 
+import io.suko.lang.diagnostic.SukoDiagnostic;
+
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Um source root e o seu estado: o snapshot do disco mais os buffers abertos
@@ -25,8 +29,46 @@ final class Project {
     private SukoSources cachedSources;
     private final Map<Path, SukoFile> tolerantAsts = new LinkedHashMap<>();
 
+    private ProjectExtensions.Loaded extensions;
+
     Project(Path root) {
+        this(root, ProjectExtensions.builtIn(Optional.empty()));
+    }
+
+    Project(Path root, ProjectExtensions.Loaded extensions) {
         this.root = root;
+        this.extensions = extensions;
+    }
+
+    /** Troca as extensões (recarga): fecha o classloader anterior e invalida a verificação. */
+    synchronized void setExtensions(ProjectExtensions.Loaded next) {
+        ProjectExtensions.Loaded old = extensions;
+        extensions = next;
+        invalidate();
+        old.close();
+    }
+
+    /** Liberta o classloader das extensões (projeto descartado). */
+    synchronized void dispose() {
+        extensions.close();
+    }
+
+    synchronized Optional<String> notice() {
+        return extensions.notice();
+    }
+
+    private SukoProjectCompiler compiler() {
+        return new SukoProjectCompiler(extensions.registry(), extensions.targets());
+    }
+
+    /** Problemas ao nível do projeto (extensão que falhou a carregar, alvo em falta). */
+    synchronized List<SukoDiagnostic> projectDiagnostics() {
+        return compiler().projectDiagnostics();
+    }
+
+    /** Um ficheiro aberto no editor (onde se mostram os diagnósticos de projeto), se houver. */
+    synchronized Optional<Path> firstOpen() {
+        return overlays.keySet().stream().findFirst();
     }
 
     Path root() {
@@ -78,7 +120,7 @@ final class Project {
     /** Verificação do root inteiro, com cache; os diagnósticos são os do {@code sukoCompile}. */
     synchronized ProjectAnalysis analysis() {
         if (cached == null) {
-            cached = new SukoProjectCompiler().analyze(sources());
+            cached = compiler().analyze(sources());
         }
         return cached;
     }

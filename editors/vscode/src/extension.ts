@@ -88,7 +88,11 @@ async function start(context: vscode.ExtensionContext): Promise<void> {
     documentSelector: [{ scheme: 'file', language: 'suko' }],
     outputChannel: output,
     traceOutputChannel: traceOutput,
-    initializationOptions: { sourceRoot: config.get<string>('sourceRoot', '') },
+    initializationOptions: {
+      sourceRoot: config.get<string>('sourceRoot', ''),
+      // O server só carrega extensões do projeto (código de terceiros) se o workspace for confiável.
+      trusted: vscode.workspace.isTrusted,
+    },
     synchronize: {
       // O server só relê do disco o que o editor não tem aberto: precisa de saber quando
       // ficheiros .sk ou o suko.json mudam fora dele (git checkout, suko add, ...).

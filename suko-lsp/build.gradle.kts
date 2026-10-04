@@ -65,6 +65,9 @@ tasks.named("assemble") {
 tasks.test {
     useJUnitPlatform()
     dependsOn(fatJar)
+    val testExtJar = project(":suko-test-ext").tasks.named<Jar>("jar")
+    dependsOn(testExtJar)
+    systemProperty("suko.testExtJar", testExtJar.get().archiveFile.get().asFile.absolutePath)
     doFirst {
         systemProperty("suko.lsp.fatJar", fatJar.get().archiveFile.get().asFile.absolutePath)
     }

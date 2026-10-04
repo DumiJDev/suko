@@ -18,9 +18,15 @@ final class Workspace {
     private final Map<Path, Project> projectsByRoot = new LinkedHashMap<>();
     private List<Path> folders = List.of();
     private String sourceRootSetting = "";
+    private boolean trusted;
 
     /** (Re)descobre os projetos; reaproveita os que continuam no mesmo root (mantém buffers abertos). */
     synchronized void configure(List<Path> workspaceFolders, String sourceRootSetting) {
+        configure(workspaceFolders, sourceRootSetting, trusted);
+    }
+
+    synchronized void configure(List<Path> workspaceFolders, String sourceRootSetting, boolean trusted) {
+        this.trusted = trusted;
         this.folders = List.copyOf(workspaceFolders);
         this.sourceRootSetting = sourceRootSetting == null ? "" : sourceRootSetting;
         rediscover();
@@ -32,9 +38,23 @@ final class Workspace {
         for (Path folder : folders) {
             ProjectLocator.locate(folder, sourceRootSetting).ifPresent(root -> {
                 Project existing = projectsByRoot.get(root);
-                next.putIfAbsent(root, existing != null ? existing : new Project(root));
+                if (next.containsKey(root)) {
+                    return;
+                }
+                ProjectExtensions.Loaded loaded = ProjectExtensions.forProject(root, folder, trusted);
+                if (existing != null) {
+                    existing.setExtensions(loaded);
+                    next.put(root, existing);
+                } else {
+                    next.put(root, new Project(root, loaded));
+                }
             });
         }
+        projectsByRoot.forEach((root, project) -> {
+            if (!next.containsKey(root)) {
+                project.dispose();
+            }
+        });
         projectsByRoot.clear();
         projectsByRoot.putAll(next);
     }
