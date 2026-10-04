@@ -1066,7 +1066,12 @@ tem origem própria nesta spec):
     compile-time gera JS vanilla mínimo só para os componentes com
     estado/eventos (HTML renderizado no servidor + "ilhas" interativas,
     modelo Svelte), sem framework no cliente; é o alvo mais sensível em
-    segurança (gerar JS a partir de expressões mantendo o escape) e
+    segurança. **Revisto a 2026-10-04 (13b):** não há variantes `+js`
+    separadas — o suporte a JS vive no `suko-jte` (o alvo continua `jte`),
+    com `reactive component`, `state`/`derived` (com `var`), `on:evento=${lambda}`
+    e `bind:`; spec em
+    `docs/superpowers/specs/2026-10-04-suko-reatividade-ilhas.md`,
+    implementação depois do item 12; (gerar JS a partir de expressões mantendo o escape) e
     exige revisão do `security-specialist`. Riscos: a matriz de testes
     cresce com cada alvo (começar com dois — JTE, já existente, e
     TamboUI, da issue #7); as primitivas neutras tendem para o mínimo
