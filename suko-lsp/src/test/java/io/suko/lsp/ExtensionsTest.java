@@ -100,4 +100,72 @@ class ExtensionsTest {
         t.scheduler.fire();
         assertTrue(codes(t, "Hello.sk").contains("DEMO_CHECK"), "o server continua vivo depois da falha");
     }
+
+    @Test
+    void oversizedManifestFallsBackToBuiltInWithNotice(@TempDir Path root) throws Exception {
+        Files.createDirectories(root.resolve("src/main/suko"));
+        Path manifest = root.resolve("build/suko/extensions.json");
+        Files.createDirectories(manifest.getParent());
+        Files.writeString(manifest, "{\"classpath\":[\"" + "x".repeat((int) ProjectExtensions.MAX_MANIFEST_BYTES + 10) + "\"]}");
+        var loaded = ProjectExtensions.forProject(root.resolve("src/main/suko"), root, true);
+        assertEquals(List.of("jte"), loaded.targets());
+        assertTrue(loaded.registry().target("demo").isEmpty());
+        assertTrue(loaded.notice().orElseThrow().contains("ignorado"), loaded.notice().toString());
+    }
+
+    @Test
+    void invalidEntriesAreRejectedAndTheNoticeIsBounded(@TempDir Path root) throws Exception {
+        Files.createDirectories(root.resolve("src/main/suko"));
+        List<String> bad = new java.util.ArrayList<>(List.of("relative.jar", "\\\\host\\share\\a.jar", "//host/share/a.jar",
+            root.resolve("missing.jar").toString(), root.toString()));
+        for (int i = 0; i < 20; i++) {
+            bad.add("y".repeat(500) + i);
+        }
+        io.suko.lang.ext.ExtensionManifest.write(root.resolve("build/suko/extensions.json"),
+            bad.stream().map(Path::of).toList(), List.of("jte"));
+        var loaded = ProjectExtensions.forProject(root.resolve("src/main/suko"), root, true);
+        String notice = loaded.notice().orElseThrow();
+        assertTrue(notice.length() < 3000, "" + notice.length());
+        assertTrue(notice.contains("e mais"), notice);
+        assertTrue(loaded.registry().loadDiagnostics().isEmpty());
+    }
+
+    @Test
+    void trustedFromOnlyAcceptsBooleanTrue() {
+        com.google.gson.JsonObject o = new com.google.gson.JsonObject();
+        assertFalse(SukoWorkspaceService.trustedFrom(o));
+        assertFalse(SukoWorkspaceService.trustedFrom(null));
+        o.addProperty("trusted", "true");
+        assertFalse(SukoWorkspaceService.trustedFrom(o));
+        o.addProperty("trusted", 1);
+        assertFalse(SukoWorkspaceService.trustedFrom(o));
+        o.addProperty("trusted", true);
+        assertTrue(SukoWorkspaceService.trustedFrom(o));
+    }
+
+    @Test
+    void fingerprintChangesWithManifestAndTrust(@TempDir Path root) throws Exception {
+        projectWithManifest(root, List.of(extJar()));
+        Path src = root.resolve("src/main/suko");
+        String a = ProjectExtensions.fingerprint(src, root, true);
+        assertEquals(a, ProjectExtensions.fingerprint(src, root, true));
+        assertNotEquals(a, ProjectExtensions.fingerprint(src, root, false));
+        Files.writeString(root.resolve("build/suko/extensions.json"), "{\"classpath\":[],\"targets\":[\"jte\"],\"x\":1}");
+        assertNotEquals(a, ProjectExtensions.fingerprint(src, root, true));
+    }
+
+    @Test
+    void sourceRootOutsideTheWorkspaceIsIgnored(@TempDir Path tmp) throws Exception {
+        Path folder = Files.createDirectories(tmp.resolve("a/ws"));
+        Files.createDirectories(tmp.resolve("a/other"));
+        Path absolute = Files.createDirectories(tmp.resolve("abs"));
+        for (String value : List.of("../..", "../other", absolute.toString(), "\\\\host\\share")) {
+            Files.writeString(folder.resolve("suko.json"), new com.google.gson.Gson().toJson(java.util.Map.of("sourceRoot", value)));
+            assertTrue(ProjectLocator.locate(folder, "").isEmpty(), value);
+            assertTrue(ProjectLocator.locate(folder, value).isEmpty(), "setting " + value);
+        }
+        Files.createDirectories(folder.resolve("lib"));
+        Files.writeString(folder.resolve("suko.json"), "{\"sourceRoot\":\"lib\"}");
+        assertEquals(folder.resolve("lib").normalize(), ProjectLocator.locate(folder, "").orElseThrow());
+    }
 }

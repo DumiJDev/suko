@@ -44,7 +44,8 @@ public final class VocabularyChecker {
                 Set<String> ids;
                 try {
                     ids = new TreeSet<>(target.vocabularies());
-                } catch (RuntimeException | LinkageError e) {
+                } catch (Throwable e) {
+                    io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
                     throw new ContributionFailure(target, e);
                 }
                 List<Vocabulary> vocabularies = ids.stream()
@@ -53,7 +54,8 @@ public final class VocabularyChecker {
                     boolean open;
                     try {
                         open = v.open();
-                    } catch (RuntimeException | LinkageError e) {
+                    } catch (Throwable e) {
+                        io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
                         throw new ContributionFailure(v, e);
                     }
                     if (open) {
@@ -72,7 +74,8 @@ public final class VocabularyChecker {
                     "A extensão '" + registry.ownerOf(f.contribution) + "' falhou em " + fileName
                         + " (alvo '" + target.id() + "'): " + describe(f.getCause()),
                     "EXTENSION_FAILED", fileName, SourceSpan.NONE));
-            } catch (RuntimeException | LinkageError e) {
+            } catch (Throwable e) {
+                io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
                 diagnostics.add(new SukoDiagnostic(SukoDiagnostic.Severity.ERROR,
                     "A extensão '" + registry.ownerOf(target) + "' falhou em " + fileName
                         + " (alvo '" + target.id() + "'): " + describe(e),
@@ -87,7 +90,8 @@ public final class VocabularyChecker {
                 if (v.tag(tag).isPresent()) {
                     return true;
                 }
-            } catch (RuntimeException | LinkageError e) {
+            } catch (Throwable e) {
+                io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
                 throw new ContributionFailure(v, e);
             }
         }

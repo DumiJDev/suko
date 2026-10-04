@@ -21,6 +21,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<SukoAp
     output,
     traceOutput,
     vscode.commands.registerCommand('suko.restartServer', () => restart(context)),
+    // Confiar no workspace depois de aberto: reinicia para o server passar a carregar as extensões.
+    vscode.workspace.onDidGrantWorkspaceTrust(() => void restart(context)),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (event.affectsConfiguration('suko.java.home') || event.affectsConfiguration('suko.sourceRoot')) {
         void restart(context);
@@ -99,6 +101,8 @@ async function start(context: vscode.ExtensionContext): Promise<void> {
       fileEvents: [
         vscode.workspace.createFileSystemWatcher('**/*.sk'),
         vscode.workspace.createFileSystemWatcher('**/suko.json'),
+        // escrito pelo build: o server recarrega as extensões do projeto quando muda
+        vscode.workspace.createFileSystemWatcher('**/suko/extensions.json'),
       ],
       configurationSection: 'suko',
     },

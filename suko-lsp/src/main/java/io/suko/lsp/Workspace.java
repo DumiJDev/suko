@@ -35,20 +35,39 @@ final class Workspace {
     /** Volta a procurar roots (ex.: um {@code suko.json} foi criado/alterado). */
     synchronized void rediscover() {
         Map<Path, Project> next = new LinkedHashMap<>();
-        for (Path folder : folders) {
-            ProjectLocator.locate(folder, sourceRootSetting).ifPresent(root -> {
-                Project existing = projectsByRoot.get(root);
-                if (next.containsKey(root)) {
-                    return;
+        List<ProjectExtensions.Loaded> created = new ArrayList<>();
+        try {
+            for (Path folder : folders) {
+                Optional<Path> located = ProjectLocator.locate(folder, sourceRootSetting);
+                if (located.isEmpty() || next.containsKey(located.get())) {
+                    continue;
                 }
-                ProjectExtensions.Loaded loaded = ProjectExtensions.forProject(root, folder, trusted);
+                Path root = located.get();
+                Project existing = projectsByRoot.get(root);
+                String key = ProjectExtensions.fingerprint(root, folder, trusted);
+                if (existing != null && key.equals(existing.extensionsKey())) {
+                    next.put(root, existing); // manifesto e confiança iguais: não recarregar
+                    continue;
+                }
+                ProjectExtensions.Loaded loaded;
+                try {
+                    loaded = ProjectExtensions.forProject(root, folder, trusted);
+                } catch (Throwable e) {
+                    io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
+                    loaded = ProjectExtensions.builtIn(Optional.of("Suko: falha ao carregar extensões de " + root + ": " + e));
+                }
+                created.add(loaded);
                 if (existing != null) {
-                    existing.setExtensions(loaded);
+                    existing.setExtensions(loaded, key);
                     next.put(root, existing);
                 } else {
-                    next.put(root, new Project(root, loaded));
+                    next.put(root, new Project(root, loaded, key));
                 }
-            });
+            }
+        } catch (Throwable fatal) {
+            // erro fatal da JVM a meio: não deixar os classloaders já criados abertos
+            created.forEach(ProjectExtensions.Loaded::close);
+            throw fatal;
         }
         projectsByRoot.forEach((root, project) -> {
             if (!next.containsKey(root)) {

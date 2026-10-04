@@ -117,6 +117,25 @@ class ExtensionRegistryTest {
     }
 
     @Test
+    void assertionAndStackOverflowInRegisterBecomeExtensionFailedButOomIsFatal() {
+        for (Error error : new Error[] {new AssertionError("a"), new StackOverflowError()}) {
+            SukoExtension broken = new SukoExtension() {
+                public String id() { return "err.ext"; }
+                public int apiVersion() { return ExtensionApi.VERSION; }
+                public void register(ExtensionContext ctx) { throw error; }
+            };
+            var registry = ExtensionRegistry.of(List.of(broken));
+            assertEquals("EXTENSION_FAILED", registry.loadDiagnostics().get(0).code());
+        }
+        SukoExtension oom = new SukoExtension() {
+            public String id() { return "oom.ext"; }
+            public int apiVersion() { return ExtensionApi.VERSION; }
+            public void register(ExtensionContext ctx) { throw new OutOfMemoryError("x"); }
+        };
+        assertThrows(OutOfMemoryError.class, () -> ExtensionRegistry.of(List.of(oom)));
+    }
+
+    @Test
     void linkageErrorInRegisterBecomesExtensionFailed() {
         SukoExtension broken = new SukoExtension() {
             public String id() { return "linkage.ext"; }

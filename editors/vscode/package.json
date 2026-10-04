@@ -110,7 +110,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "Num workspace não confiável o language server não arranca: a extensão executaria o Java indicado pelas settings do workspace.",
+      "description": "Num workspace não confiável o language server arranca só com as extensões embutidas e sem as settings restritas: não carrega as extensões do projeto (código de terceiros) nem executa o Java indicado pelas settings do workspace.",
       "restrictedConfigurations": [
         "suko.java.home",
         "suko.sourceRoot"

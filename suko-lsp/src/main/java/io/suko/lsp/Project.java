@@ -30,22 +30,33 @@ final class Project {
     private final Map<Path, SukoFile> tolerantAsts = new LinkedHashMap<>();
 
     private ProjectExtensions.Loaded extensions;
+    private String extensionsKey = "";
 
     Project(Path root) {
         this(root, ProjectExtensions.builtIn(Optional.empty()));
     }
 
     Project(Path root, ProjectExtensions.Loaded extensions) {
+        this(root, extensions, "");
+    }
+
+    Project(Path root, ProjectExtensions.Loaded extensions, String extensionsKey) {
         this.root = root;
         this.extensions = extensions;
+        this.extensionsKey = extensionsKey;
     }
 
     /** Troca as extensões (recarga): fecha o classloader anterior e invalida a verificação. */
-    synchronized void setExtensions(ProjectExtensions.Loaded next) {
+    synchronized void setExtensions(ProjectExtensions.Loaded next, String key) {
         ProjectExtensions.Loaded old = extensions;
         extensions = next;
+        extensionsKey = key;
         invalidate();
         old.close();
+    }
+
+    synchronized String extensionsKey() {
+        return extensionsKey;
     }
 
     /** Liberta o classloader das extensões (projeto descartado). */

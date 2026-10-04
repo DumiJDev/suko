@@ -61,7 +61,8 @@ public class SukoProjectCompiler {
             java.util.Set<String> vocabularyIds;
             try {
                 vocabularyIds = new java.util.TreeSet<>(target.get().vocabularies());
-            } catch (RuntimeException | LinkageError e) {
+            } catch (Throwable e) {
+                io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
                 out.add(new SukoDiagnostic(SukoDiagnostic.Severity.ERROR,
                     "A extensão '" + registry.ownerOf(target.get()) + "' falhou ao listar os vocabulários do alvo '"
                         + id + "': " + io.suko.lang.ext.VocabularyChecker.describe(e),

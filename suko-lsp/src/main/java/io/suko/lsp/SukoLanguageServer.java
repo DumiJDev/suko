@@ -36,7 +36,7 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
     private List<Path> folders = List.of();
     private String sourceRootSetting = "";
     private boolean shutdownRequested;
-    private final java.util.Set<String> loggedNotices = new java.util.HashSet<>();
+    private final java.util.Set<String> loggedNotices = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
     public SukoLanguageServer() {
         this(new Scheduler.Threaded(), DiagnosticsService.DEBOUNCE_MILLIS);
@@ -45,7 +45,8 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
     SukoLanguageServer(Scheduler scheduler, long debounceMillis) {
         this.diagnostics = new DiagnosticsService(() -> client, scheduler, uris, debounceMillis);
         this.textDocuments = new SukoTextDocumentService(workspace, uris, diagnostics);
-        this.workspaceService = new SukoWorkspaceService(workspace, diagnostics, this::sourceRootSettingChanged);
+        this.workspaceService = new SukoWorkspaceService(workspace, diagnostics, this::sourceRootSettingChanged,
+            this::logNotices);
     }
 
     @Override
@@ -111,17 +112,21 @@ public class SukoLanguageServer implements LanguageServer, LanguageClientAware {
     }
 
     /** Cada aviso de extensões vai uma única vez para o log do cliente. */
-    private void logNotices() {
+    private synchronized void logNotices() {
         LanguageClient target = client;
         if (target == null) {
             return;
         }
+        java.util.Set<String> active = new java.util.LinkedHashSet<>();
         for (Project project : workspace.projects()) {
-            project.notice().ifPresent(notice -> {
-                if (loggedNotices.add(notice)) {
-                    target.logMessage(new MessageParams(MessageType.Warning, notice));
-                }
-            });
+            project.notice().ifPresent(active::add);
+        }
+        // só os avisos ativos ficam lembrados: um problema corrigido e que volte é reenviado
+        loggedNotices.retainAll(active);
+        for (String notice : active) {
+            if (loggedNotices.add(notice)) {
+                target.logMessage(new MessageParams(MessageType.Warning, notice));
+            }
         }
     }
 

@@ -22,8 +22,11 @@ final class SukoWorkspaceService implements WorkspaceService {
     private final Workspace workspace;
     private final DiagnosticsService diagnostics;
     private final Consumer<String> onSourceRootSetting;
+    private final Runnable afterRediscover;
 
-    SukoWorkspaceService(Workspace workspace, DiagnosticsService diagnostics, Consumer<String> onSourceRootSetting) {
+    SukoWorkspaceService(Workspace workspace, DiagnosticsService diagnostics, Consumer<String> onSourceRootSetting,
+                         Runnable afterRediscover) {
+        this.afterRediscover = afterRediscover;
         this.workspace = workspace;
         this.diagnostics = diagnostics;
         this.onSourceRootSetting = onSourceRootSetting;
@@ -42,7 +45,8 @@ final class SukoWorkspaceService implements WorkspaceService {
             if (file == null) {
                 continue;
             }
-            if (file.getFileName() != null && ProjectLocator.CONFIG_FILE.equals(file.getFileName().toString())) {
+            if (file.getFileName() != null && (ProjectLocator.CONFIG_FILE.equals(file.getFileName().toString())
+                    || isExtensionsManifest(file))) {
                 configChanged = true;
                 continue;
             }
@@ -53,9 +57,17 @@ final class SukoWorkspaceService implements WorkspaceService {
         }
         if (configChanged) {
             workspace.rediscover();
+            afterRediscover.run();
             touched.addAll(workspace.projects());
         }
         touched.forEach(diagnostics::request);
+    }
+
+    /** {@code build/suko/extensions.json} ou {@code target/suko/extensions.json}. */
+    private static boolean isExtensionsManifest(Path file) {
+        Path parent = file.getParent();
+        return "extensions.json".equals(file.getFileName().toString())
+            && parent != null && parent.getFileName() != null && "suko".equals(parent.getFileName().toString());
     }
 
     @Override

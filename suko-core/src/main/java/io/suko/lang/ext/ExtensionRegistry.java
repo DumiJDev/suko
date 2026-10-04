@@ -67,7 +67,8 @@ public final class ExtensionRegistry {
                     continue;
                 }
                 entries.add(new Entry(id, extension.apiVersion(), extension));
-            } catch (RuntimeException | LinkageError e) {
+            } catch (Throwable e) {
+                io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
                 registry.error("EXTENSION_FAILED", "Uma extensão (" + extension.getClass().getName()
                     + ") falhou ao ler id/apiVersion: " + describe(e));
             }
@@ -112,7 +113,8 @@ public final class ExtensionRegistry {
                     owners.put(checker, id);
                 }
             });
-        } catch (RuntimeException | LinkageError e) {
+        } catch (Throwable e) {
+            io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
             error("EXTENSION_FAILED", "A extensão '" + id + "' falhou ao registar-se: " + describe(e));
         }
     }
