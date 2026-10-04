@@ -46,8 +46,23 @@ public class SukoCompileTask extends SukoBaseTask {
             throw new RuntimeException("Failed to create output directory: " + outputDir, e);
         }
 
-        io.suko.lang.project.SukoProjectCompiler.ProjectCompileResult result =
-            new io.suko.lang.project.SukoProjectCompiler().compile(sourceDir);
+        try (java.net.URLClassLoader loader = openExtensionLoader()) {
+            io.suko.lang.ext.ExtensionRegistry registry = io.suko.lang.ext.ExtensionRegistry.load(loader);
+            java.util.List<String> targets = resolvedTargets();
+            // Escrito mesmo com a lista vazia: o LSP distingue "sem extensões" de "sem build".
+            io.suko.lang.ext.ExtensionManifest.write(getExtension().getExtensionManifestPath(),
+                extensionFiles().stream().map(java.io.File::toPath).toList(), targets);
+            var compiler = new io.suko.lang.project.SukoProjectCompiler(registry, targets);
+            for (var d : compiler.projectDiagnostics()) {
+                getLogger().error("[{}] {}: {}", d.severity(), d.code(), d.message());
+            }
+            writeAndReport(compiler.compile(sourceDir), outputDir);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void writeAndReport(io.suko.lang.project.SukoProjectCompiler.ProjectCompileResult result, Path outputDir) {
 
         for (var entry : result.generatedJteSources().entrySet()) {
             Path jteFile = outputDir.resolve(entry.getKey());

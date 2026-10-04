@@ -45,12 +45,14 @@ public class SukoWatchTask extends SukoBaseTask {
         getLogger().lifecycle("Starting watch mode for Suko in {}", sourceDir);
         getLogger().lifecycle("Press Ctrl+C to stop.");
 
-        try {
+        try (java.net.URLClassLoader loader = openExtensionLoader()) {
+            SukoProjectCompiler compiler = new SukoProjectCompiler(
+                io.suko.lang.ext.ExtensionRegistry.load(loader), resolvedTargets());
             WatchService watchService = FileSystems.getDefault().newWatchService();
             registerRecursively(sourceDir, watchService);
 
             // Initial compilation
-            compileAll(sourceDir, outputDir);
+            compileAll(sourceDir, outputDir, compiler);
 
             while (!Thread.currentThread().isInterrupted()) {
                 WatchKey key;
@@ -100,7 +102,7 @@ public class SukoWatchTask extends SukoBaseTask {
                 // escrito anteriormente — limpeza de outputs órfãos fica
                 // fora do escopo desta tarefa.)
                 if (relevantChange) {
-                    compileAll(sourceDir, outputDir);
+                    compileAll(sourceDir, outputDir, compiler);
                 }
 
                 boolean valid = key.reset();
@@ -146,7 +148,19 @@ public class SukoWatchTask extends SukoBaseTask {
      * </p>
      */
     public void compileAll(Path sourceDir, Path outputDir) {
-        SukoProjectCompiler.ProjectCompileResult result = new SukoProjectCompiler().compile(sourceDir);
+        try (java.net.URLClassLoader loader = openExtensionLoader()) {
+            compileAll(sourceDir, outputDir, new SukoProjectCompiler(
+                io.suko.lang.ext.ExtensionRegistry.load(loader), resolvedTargets()));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void compileAll(Path sourceDir, Path outputDir, SukoProjectCompiler compiler) {
+        for (var d : compiler.projectDiagnostics()) {
+            getLogger().error("[{}] {}: {}", d.severity(), d.code(), d.message());
+        }
+        SukoProjectCompiler.ProjectCompileResult result = compiler.compile(sourceDir);
 
         for (var entry : result.generatedJteSources().entrySet()) {
             Path jteFile = outputDir.resolve(entry.getKey());

@@ -33,4 +33,7 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    val testExtJar = project(":suko-test-ext").tasks.named<Jar>("jar")
+    dependsOn(testExtJar)
+    systemProperty("suko.testExtJar", testExtJar.get().archiveFile.get().asFile.absolutePath)
 }

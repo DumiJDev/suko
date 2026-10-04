@@ -34,17 +34,25 @@ public class SukoGradlePlugin implements Plugin<Project> {
         // Spring Boot que precisava de outputDir = "src/main/jte".)
         extension.getSourceDir().convention("src/main/suko");
         extension.getOutputDir().convention("build/generated-src/suko");
+        extension.getTargets().convention(java.util.List.of("jte"));
+        var sukoExtensions = project.getConfigurations().create("sukoExtensions", c -> {
+            c.setCanBeConsumed(false);
+            c.setCanBeResolved(true);
+            c.setDescription("Extensões de compile-time do Suko (alvos, vocabulários, checkers)");
+        });
 
         project.getTasks().register("sukoCompile", SukoCompileTask.class, task -> {
             task.setDescription("Compila arquivos .sk para .jte");
             task.setGroup("build");
             task.extension = project.getExtensions().getByType(SukoExtension.class);
+            task.extensionClasspath = sukoExtensions;
         });
 
         project.getTasks().register("sukoWatch", SukoWatchTask.class, task -> {
             task.setDescription("Modo watch: recompila .sk em alterações");
             task.setGroup("build");
             task.extension = project.getExtensions().getByType(SukoExtension.class);
+            task.extensionClasspath = sukoExtensions;
         });
     }
 }

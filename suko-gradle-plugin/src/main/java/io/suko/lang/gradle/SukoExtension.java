@@ -2,6 +2,7 @@ package io.suko.lang.gradle;
 
 import org.gradle.api.file.ProjectLayout;
 import org.gradle.api.model.ObjectFactory;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 
 import javax.inject.Inject;
@@ -12,6 +13,7 @@ public class SukoExtension {
     private final ProjectLayout projectLayout;
     private final Property<String> sourceDir;
     private final Property<String> outputDir;
+    private final ListProperty<String> targets;
 
     // D11: o construtor sem argumentos que existia aqui (com uma
     // implementação manual de Property<T>, TestProperty, só para servir
@@ -31,10 +33,19 @@ public class SukoExtension {
         this.projectLayout = projectLayout;
         this.sourceDir = objectFactory.property(String.class);
         this.outputDir = objectFactory.property(String.class);
+        this.targets = objectFactory.listProperty(String.class);
     }
 
     public Property<String> getSourceDir() {
         return sourceDir;
+    }
+
+    public ListProperty<String> getTargets() {
+        return targets;
+    }
+
+    public Path getExtensionManifestPath() {
+        return projectLayout.getBuildDirectory().file("suko/extensions.json").get().getAsFile().toPath();
     }
 
     public Property<String> getOutputDir() {
