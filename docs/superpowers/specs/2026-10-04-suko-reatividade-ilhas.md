@@ -227,6 +227,29 @@ Revisão obrigatória do `security-specialist` **antes do plano** (feita a
 2026-10-04 sobre esta spec; achados C1, H1–H4, M1–M4 incorporados abaixo) e
 **no fim da implementação**.
 
+### O que se delega ao JTE (decisão do utilizador: não reinventar a roda)
+
+Princípio: tudo o que o JTE já faz no servidor continua a ser do JTE; o Suko só
+acrescenta o que o JTE não pode ver.
+
+- **Fica no JTE:** todo o output do servidor passa por `${...}` com o escape
+  contextual do `ContentType.Html` (conteúdo HTML, atributo, bloco `<script>` e
+  atributo `on*` — `Escape.htmlContent`/`htmlAttribute`/`javaScriptBlock`/
+  `javaScriptAttribute`, verificados no `jte-runtime` 3.1.12), incluindo
+  `data-suko-props` e `data-suko-mount`; nunca `$unsafe{}`. A documentação
+  recomenda ativar o `OwaspHtmlPolicy` do JTE no `TemplateEngine` da aplicação
+  (inclui `PreventInlineEventHandlers` e `PreventOutputInTagsAndAttributes`),
+  que reforça em compile-time do JTE as mesmas regras que o Suko verifica.
+- **Não pode ficar no JTE, e por isso é do Suko:** (1) o JS que corre no
+  browser depois do render — o JTE não o vê, por isso a allowlist de operações
+  DOM, o `sanitizeUrl` do cliente, a validação de props e o token de montagem
+  são do código gerado; (2) a verificação de protocolos de URL, que o JTE não
+  faz (escapar `javascript:alert(1)` não o torna inofensivo); (3) o JSON de
+  `data-suko-props`, porque o JTE não serializa JSON — o Suko gera o
+  serializador e o JTE escapa o resultado como atributo; (4) as regras de
+  compile-time sobre o `.sk` (`CLIENT_UNSAFE_SINK`), porque o `OwaspHtmlPolicy`
+  é configuração da aplicação e o Suko não a controla.
+
 ### Operações DOM e sinks (C1)
 
 - O JS gerado só usa esta **lista fechada** de operações DOM:
@@ -276,7 +299,7 @@ Ameaça: HTML de utilizador renderizado na mesma página (Markdown com HTML,
 sanitizadores que mantêm `data-*`, como o DOMPurify por omissão) pode plantar
 `<div data-suko="ui.Counter" data-suko-props='{...}'>` e fazer um componente
 confiável montar com props escolhidas por quem ataca ("script gadget").
-**Decisão em aberto para o utilizador** — proposta:
+**Decidido pelo utilizador a 2026-10-04: opção A (token de montagem).**
 
 - Cada ponto de entrada de ilha recebe no servidor um **token de montagem**
   aleatório (`SecureRandom`, ≥128 bits, gerado no `.jte`, só JDK) em
