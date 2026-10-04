@@ -9,12 +9,16 @@ dependencies {
     antlr("org.antlr:antlr4:4.13.1")
 
     implementation("gg.jte:jte:3.1.12")
+    implementation(project(":suko-jte")) // TEMPORÁRIO: removido na Task 5
 
     // testFixtures não herda as dependências `implementation` de main (o
     // plugin java-test-fixtures só partilha as classes compiladas, não o
     // classpath) — JteRenderSupport usa gg.jte diretamente, por isso
     // precisa da própria linha, igual à de main.
     testFixturesImplementation("gg.jte:jte:3.1.12")
+
+    testImplementation(project(":suko-jte"))
+    testFixturesImplementation(project(":suko-jte"))
 
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
