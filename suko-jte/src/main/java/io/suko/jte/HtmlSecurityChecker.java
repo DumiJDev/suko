@@ -163,7 +163,7 @@ public final class HtmlSecurityChecker implements Checker {
 
         Map<String, Statement.Attribute> attrs = new LinkedHashMap<>();
         for (Statement.Attribute a : e.attributes()) {
-            attrs.put(lower(a.name()), a);
+            attrs.putIfAbsent(lower(a.name()), a);   // o browser usa a PRIMEIRA ocorrência
         }
 
         if (CONTENT_SINKS.contains(tag) && hasDynamicContent(e.children())) {
@@ -329,7 +329,12 @@ public final class HtmlSecurityChecker implements Checker {
             return HtmlSecurityRules.styleDeclarations(v).isPresent() ? null
                 : "style dinâmico só é aceite na forma 'propriedade: ${valor}'";
         }
-        if (attr.startsWith("x-") || attr.startsWith("hx-on") || attr.startsWith(":") || attr.startsWith("@")
+        // htmx/Alpine aceitam o prefixo data- (data-hx-on-click, data-x-data)
+        String code = attr.startsWith("data-") ? attr.substring(5) : attr;
+        if (code.equals("hx-vals") || code.equals("hx-headers") || code.equals("hx-trigger")) {
+            return "O atributo '" + attr + "' pode ser avaliado como JavaScript pelo htmx (js:/javascript:/filtros)";
+        }
+        if (code.startsWith("x-") || code.startsWith("hx-on") || attr.startsWith(":") || attr.startsWith("@")
             || options.codeAttributes().contains(attr)) {
             return "O atributo '" + attr + "' é avaliado como código pelo framework do cliente";
         }

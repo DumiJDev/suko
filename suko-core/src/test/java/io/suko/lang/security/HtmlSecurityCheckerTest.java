@@ -243,6 +243,35 @@ class HtmlSecurityCheckerTest {
         assertSink(sk);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "component A(String x) { <div data-hx-on-click=${x}>b</div> }",
+        "component A(String x) { <div data-hx-on=${x}>b</div> }",
+        "component A(String x) { <div data-x-data=${x}>b</div> }",
+        "component A(String x) { <div data-x-html=${x}>b</div> }",
+        "component A(String x) { <div hx-vals=${x}>b</div> }",
+        "component A(String x) { <div hx-headers=${x}>b</div> }",
+        "component A(String x) { <div hx-trigger=${x}>b</div> }",
+        "component A(String x) { <div data-hx-vals=${x}>b</div> }",
+        "component A(String x) { <div data-hx-headers=\"${x}\">b</div> }",
+        "component A(String x) { <div data-hx-trigger=${x}>b</div> }",
+        "component A(String x) { <link rel=\"stylesheet\" rel=\"canonical\" href=${x}> }",
+        "component A(String x) { <meta name=\"referrer\" name=\"viewport\" content=${x}> }"
+    })
+    void hardeningDataPrefixHtmxEvaluatedAttributesAndDuplicateAttributes(String sk) {
+        assertSink(sk);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "component A() { <div hx-vals=\"abc\" hx-headers=\"abc\" hx-trigger=\"click\">b</div> }",
+        "component A() { <div data-hx-vals=\"abc\" data-hx-trigger=\"load\">b</div> }",
+        "component A(String x) { <div data-title=${x} data-hx-x=${x}>b</div> }"
+    })
+    void hardeningLiteralHtmxAttributesAreAccepted(String sk) {
+        assertClean(sk);
+    }
+
     @Test
     void scriptAndStyleContentThroughControlFlowIsRejected() {
         assertSink("component A(String u, boolean b) { <script>if (b) { <p>${u}</p> }</script> }");

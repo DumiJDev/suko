@@ -72,6 +72,12 @@ class EmitterSecurityTest {
     }
 
     @Test
+    void styleDeclarationValueIsWrappedInCssValue() {
+        String out = jte("component A(String x) { <div style=\"background: ${x}\">x</div> }");
+        assertTrue(out.contains("style=\"${\"background: \" + " + PKG + ".SukoSafe.cssValue(x) + \"\"}\"") || out.contains(PKG + ".SukoSafe.cssValue(x)"), out);
+    }
+
+    @Test
     void styleDeclarationsUseCssValue() {
         String out = jte("component A(int p) { <div style=\"--pct: ${p}%; color: red\">x</div> }");
         assertTrue(out.contains(PKG + ".SukoSafe.cssValue(p)"), out);
