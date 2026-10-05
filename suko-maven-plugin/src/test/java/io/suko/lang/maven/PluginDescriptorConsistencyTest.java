@@ -41,7 +41,9 @@ class PluginDescriptorConsistencyTest {
         // tipo de campo existe na classe), por isso comparamos por nome de campo.
         Set<String> annotatedFieldNames = new HashSet<>();
         for (Field field : SukoCompileMojo.class.getDeclaredFields()) {
-            if (!field.isSynthetic() && !field.getName().endsWith("ForTests")) { // ganchos de teste, não parâmetros
+            if (!field.isSynthetic() && !field.getName().endsWith("ForTests")) {
+                // Convenção: campos package-private terminados em "ForTests" são ganchos para
+                // testes de Mojo construída à mão (project == null); não são @Parameter.
                 annotatedFieldNames.add(field.getName());
             }
         }

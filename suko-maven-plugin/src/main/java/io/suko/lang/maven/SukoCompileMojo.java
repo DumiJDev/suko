@@ -113,13 +113,25 @@ public class SukoCompileMojo extends AbstractMojo {
             if (!"gg.jte".equals(p.getGroupId()) || !"jte-maven-plugin".equals(p.getArtifactId())) {
                 continue;
             }
-            Object cfg = p.getConfiguration();
-            boolean has = cfg instanceof org.codehaus.plexus.util.xml.Xpp3Dom dom && dom.getChild("htmlPolicyClass") != null;
+            boolean has = hasHtmlPolicy(p.getConfiguration());
+            if (!has && p.getExecutions() != null) {
+                for (org.apache.maven.model.PluginExecution ex : p.getExecutions()) {
+                    has |= hasHtmlPolicy(ex.getConfiguration());
+                }
+            }
             if (!has) {
-                log.warn("jte-maven-plugin sem htmlPolicyClass: configure <htmlPolicyClass>gg.jte.html.OwaspHtmlPolicy</htmlPolicyClass> "
+                log.warn("htmlPolicyClass não encontrado na configuração do jte-maven-plugin: configure <htmlPolicyClass>gg.jte.html.OwaspHtmlPolicy</htmlPolicyClass> "
                     + "para que o JTE rejeite em runtime atributos/tags HTML perigosos (defesa em profundidade do Suko).");
             }
         }
+    }
+
+    private static boolean hasHtmlPolicy(Object cfg) {
+        if (cfg instanceof org.codehaus.plexus.util.xml.Xpp3Dom dom) {
+            org.codehaus.plexus.util.xml.Xpp3Dom child = dom.getChild("htmlPolicyClass");
+            return child != null && child.getValue() != null && !child.getValue().isBlank();
+        }
+        return false;
     }
 
     private void deleteStaleAudit() throws java.io.IOException {

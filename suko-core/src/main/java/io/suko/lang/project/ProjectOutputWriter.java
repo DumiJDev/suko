@@ -4,6 +4,7 @@ import io.suko.lang.project.SukoProjectCompiler.ProjectCompileResult;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -45,7 +46,7 @@ public final class ProjectOutputWriter {
                 Files.createDirectories(file.getParent());
                 Files.writeString(file, out.source());
             } catch (IOException e) {
-                throw new RuntimeException("Failed to write " + file, e);
+                throw new java.io.UncheckedIOException("Failed to write " + file, e);
             }
         }
 
@@ -53,7 +54,7 @@ public final class ProjectOutputWriter {
             Files.createDirectories(manifest.toAbsolutePath().getParent());
             Files.write(manifest, emittedJava.stream().map(p -> p.toAbsolutePath().toString()).toList());
         } catch (IOException e) {
-            throw new RuntimeException("Failed to write " + manifest, e);
+            throw new java.io.UncheckedIOException("Failed to write " + manifest, e);
         }
     }
 
@@ -63,25 +64,41 @@ public final class ProjectOutputWriter {
         }
         try {
             Set<Path> keepAbs = new LinkedHashSet<>();
-            keep.forEach(p -> keepAbs.add(p.toAbsolutePath()));
+            keep.forEach(p -> keepAbs.add(p.toAbsolutePath().normalize()));
             Path root = javaDir.toAbsolutePath().normalize();
+            // Sem raiz real (ainda não existe) não há nada que o manifesto possa legitimamente apagar.
+            Path realRoot = Files.isDirectory(root) ? root.toRealPath() : null;
+            if (realRoot == null) {
+                return;
+            }
             for (String line : Files.readAllLines(manifest)) {
                 if (line.isBlank()) {
                     continue;
                 }
-                Path old = Path.of(line).normalize();
-                if (keepAbs.contains(old) || !old.startsWith(root)) {
+                Path raw = Path.of(line);
+                if (!raw.isAbsolute()) {
                     continue;
                 }
-                Files.deleteIfExists(old);
+                Path old = raw.normalize();
+                if (keepAbs.contains(old) || old.equals(root) || !old.startsWith(root)) {
+                    continue;
+                }
+                if (!Files.isRegularFile(old, LinkOption.NOFOLLOW_LINKS)) {
+                    continue;
+                }
+                // Ancestrais simbólicos podem fazer um caminho "dentro" da raiz apontar para fora dela.
+                if (!old.getParent().toRealPath().startsWith(realRoot)) {
+                    continue;
+                }
+                Files.delete(old);
                 Path dir = old.getParent();
-                while (dir != null && !dir.equals(root) && isEmptyDir(dir)) {
+                while (dir != null && dir.startsWith(root) && !dir.equals(root) && isEmptyDir(dir)) {
                     Files.delete(dir);
                     dir = dir.getParent();
                 }
             }
         } catch (IOException e) {
-            throw new RuntimeException("Failed to clean stale generated sources listed in " + manifest, e);
+            throw new java.io.UncheckedIOException("Failed to clean stale generated sources listed in " + manifest, e);
         }
     }
 
