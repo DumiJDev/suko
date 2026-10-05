@@ -656,4 +656,23 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
         assertTrue(html.contains("<p>Título</p>"), html);
         assertTrue(html.contains("<i>a</i>") && html.contains("<i>b</i>"), html);
     }
+
+    @Test
+    void qualifiesMapInsideArrayParamTypes() throws Exception {
+        // Subprojeto 14, Task 13 (revisão da Task 12): o caso array de javaType —
+        // `Map<String, String>[]` tem de sair como `java.util.Map<String, String>[]`.
+        String source = """
+            component Rows(Map<String, String>[] rows) {
+              for (Map<String, String> r : rows) {
+                <i>${r.get("k")}</i>
+              }
+            }
+            """;
+
+        @SuppressWarnings("unchecked")
+        Map<String, String>[] rows = new Map[] {Map.of("k", "a"), Map.of("k", "b")};
+        String html = JteRenderSupport.render(source, "Rows", Map.of("rows", rows));
+
+        assertTrue(html.contains("<i>a</i>") && html.contains("<i>b</i>"), html);
+    }
 }

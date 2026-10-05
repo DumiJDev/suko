@@ -50,6 +50,7 @@ class GoldenParityTest {
 
     static Map<String, String> snapshot(Path root) {
         Map<String, String> out = new TreeMap<>();
+        // TODO(Task 14): remove withoutShop filter (quando o golden apontar para as novas raízes).
         SukoSources sources = withoutShop(SukoSources.fromDirectory(root));
         var result = new SukoProjectCompiler().compile(sources);
         result.generatedJteSources().forEach((path, jte) -> out.put("jte/" + slash(path), jte));
