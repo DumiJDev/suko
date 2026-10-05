@@ -76,7 +76,7 @@ class SecurityOptionsTest {
     void sanitizePackageSegment() {
         assertEquals("suko_shop", SecurityOptions.sanitizePackageSegment("suko-shop"));
         assertEquals("_9lives", SecurityOptions.sanitizePackageSegment("9lives"));
-        assertEquals("_", SecurityOptions.sanitizePackageSegment(""));
+        assertEquals("_project", SecurityOptions.sanitizePackageSegment(""));
         assertEquals("_class", SecurityOptions.sanitizePackageSegment("class"));
         assertEquals("_default", SecurityOptions.sanitizePackageSegment("default"));
         assertEquals("classes", SecurityOptions.sanitizePackageSegment("classes"));
@@ -94,5 +94,20 @@ class SecurityOptionsTest {
         SecurityOptions o = SecurityOptions.DEFAULT.withCodeAttributes(Set.of("Data-Eval")).withUrlAttributes(Set.of("Data-Href"));
         assertEquals(Set.of("data-eval"), o.codeAttributes());
         assertEquals(Set.of("data-href"), o.urlAttributes());
+    }
+
+    @Test
+    void emptyPackageSegmentSanitizesToAValidIdentifier() {
+        assertEquals("_project", SecurityOptions.sanitizePackageSegment(""));
+        assertEquals("_project", SecurityOptions.sanitizePackageSegment(null));
+        assertEquals("_project", SecurityOptions.sanitizePackageSegment("_"));
+        assertEquals("_1a", SecurityOptions.sanitizePackageSegment("1a"));
+    }
+
+    @Test
+    void underscoreOnlyPackageSegmentIsRejected() {
+        assertThrows(IllegalArgumentException.class, () -> SecurityOptions.DEFAULT.withGeneratedPackage("com._"));
+        assertThrows(IllegalArgumentException.class, () -> SecurityOptions.DEFAULT.withGeneratedPackage("_"));
+        assertEquals("a._b", SecurityOptions.DEFAULT.withGeneratedPackage("a._b").generatedPackage());
     }
 }

@@ -39,12 +39,14 @@ component GettingStarted() {
 
           <p class="text-slate-700 mb-3 max-w-2xl">
             Para copiar componentes do registry, gere a CLI e corra-a na raiz do seu projeto.
-            <code>init</code> configura o diretório atual; até haver uma release, aponte o registry para o clone:
+            <code>init</code> configura o diretório atual; até haver uma release, aponte o registry para o clone.
+            Esse registry local não está assinado, por isso <code>list</code> e <code>add</code> precisam de
+            <code>--allow-unsigned</code> em cada execução (só é aceite para registries locais):
           </p>
           <pre class="code-block mb-6">(cd ../suko &amp;&amp; ./gradlew :suko-cli:fatJar)
 ../suko/scripts/suko init --base-package components --registry ../suko/suko-components --yes
-../suko/scripts/suko list
-../suko/scripts/suko add button</pre>
+../suko/scripts/suko list --allow-unsigned
+../suko/scripts/suko add button --allow-unsigned</pre>
 
           <p class="text-slate-600 text-sm max-w-2xl">
             Maven: o plugin (<code>mvn suko:compile</code>) funciona ponta-a-ponta nos testes do repositório,

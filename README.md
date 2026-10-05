@@ -222,8 +222,8 @@ suko { targets.set(listOf("jte", "demo")) }
   is watched and reloaded when it changes; granting trust restarts the server;
   `sourceRoot` from `suko.json` must stay inside the workspace folder. There
   is no IntelliJ support yet (11b).
-- Known limitation: a successful `sukoCompile`/`suko:compile` does not print
-  warnings (e.g. a checker's `WARNING`) — only the LSP shows them. Pre-existing bug.
+- A successful `sukoCompile`/`suko:compile` now prints warnings and info
+  diagnostics (e.g. a checker's `WARNING`), as the LSP does.
 
 ## Security
 

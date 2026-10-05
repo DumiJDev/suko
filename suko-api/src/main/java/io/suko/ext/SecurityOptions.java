@@ -26,7 +26,7 @@ public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, S
         "default", "do", "double", "else", "enum", "extends", "final", "finally", "float", "for", "goto", "if",
         "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "package", "private",
         "protected", "public", "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this",
-        "throw", "throws", "transient", "try", "void", "volatile", "while", "true", "false", "null");
+        "throw", "throws", "transient", "try", "void", "volatile", "while", "true", "false", "null", "_");
 
     public static final SecurityOptions DEFAULT = new SecurityOptions(
         "io.suko.generated", DEFAULT_URL_SCHEMES, Set.of(), false, Set.of(), Set.of());
@@ -105,7 +105,10 @@ public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, S
     /** Troca {@code [^A-Za-z0-9_]} por {@code _} e prefixa {@code _} se começar por dígito, ficar vazio ou for uma palavra reservada do Java. */
     public static String sanitizePackageSegment(String raw) {
         String s = raw == null ? "" : raw.replaceAll("[^A-Za-z0-9_]", "_");
-        if (s.isEmpty() || Character.isDigit(s.charAt(0))) {
+        if (s.isEmpty() || s.equals("_")) {
+            return "_project";
+        }
+        if (Character.isDigit(s.charAt(0))) {
             s = "_" + s;
         }
         if (JAVA_KEYWORDS.contains(s)) {

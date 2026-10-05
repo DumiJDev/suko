@@ -317,4 +317,16 @@ class HtmlSecurityCheckerTest {
             assertFalse(has(d, "RESERVED_NAME"), sk + " -> " + d);
         }
     }
+
+    @Test
+    void legacyThreeArgCheckContextStillRunsTheChecker() {
+        String sk = "component A(String x) { <button onclick=${x}>b</button> }";
+        var parser = new io.suko.lang.SukoParser(new org.antlr.v4.runtime.CommonTokenStream(
+            new io.suko.lang.SukoLexer(org.antlr.v4.runtime.CharStreams.fromString(sk))));
+        var ast = new io.suko.lang.SukoAstBuilder(sk).build(parser.compilationUnit());
+        var collector = new io.suko.lang.diagnostic.DiagnosticCollector();
+        var legacy = new io.suko.ext.CheckContext("T.sk", io.suko.lang.project.ProjectView.EMPTY, collector);
+        new io.suko.jte.HtmlSecurityChecker().check(ast, legacy);
+        assertTrue(has(collector.getDiagnostics(), "UNSAFE_SINK"), collector.getDiagnostics().toString());
+    }
 }

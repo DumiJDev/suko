@@ -150,7 +150,7 @@ Erros (CLI): `REGISTRY_UNSIGNED`, `REGISTRY_BAD_SIGNATURE`, `REGISTRY_MISMATCH`,
 `REGISTRY_EXPIRED`, `REGISTRY_ROLLBACK`, `REGISTRY_MANIFEST_HASH` e `REGISTRY_INVALID`
 (estrutura: schema, datas ilegíveis, caminho de manifesto inválido; não está na spec).
 
-- **Chave por registry.** Cada chave está ligada a um `registryId` e nunca valida outro. O
+- **Chave por registry.** Cada chave está ligada a um `registryId` e nunca valida outro. O template oficial da base (`https://raw.githubusercontent.com/DumiJDev/suko/<ref>/suko-components/`) mapeia para o `registryId` oficial `https://raw.githubusercontent.com/DumiJDev/suko/`; uma base personalizada mapeia para a base normalizada. O
   `registryId` esperado vem da configuração, nunca do índice. As chaves vêm do recurso
   `/io/suko/cli/trusted-keys.json` da CLI e de `registry.publicKeys` no `suko.json`
   (`[{"keyid","publicKey"}]`, base64 X.509).
