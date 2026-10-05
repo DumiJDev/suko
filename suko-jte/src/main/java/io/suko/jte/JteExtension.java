@@ -17,5 +17,6 @@ public final class JteExtension implements SukoExtension {
     public void register(ExtensionContext ctx) {
         ctx.target(new JteTarget());
         ctx.vocabulary(new HtmlVocabulary());
+        ctx.checker(new HtmlSecurityChecker());
     }
 }

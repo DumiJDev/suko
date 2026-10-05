@@ -115,18 +115,34 @@ class EmitterSecurityTest {
         assertTrue(html.contains("a@b.com @if(true) X @endif"), html);
     }
 
+    /** Só o alvo e o vocabulário JTE, sem o HtmlSecurityChecker: este teste fixa o que o EMISSOR faz
+     *  com usos indevidos de trusted*, que o checker (HtmlSecurityCheckerTest) recusa antes. */
+    static String jteWithoutChecker(String sk) {
+        var ext = new io.suko.ext.SukoExtension() {
+            public String id() { return "io.suko.jte"; }
+            public int apiVersion() { return io.suko.ext.ExtensionApi.VERSION; }
+            public void register(io.suko.ext.ExtensionContext ctx) {
+                ctx.target(new io.suko.jte.JteTarget());
+                ctx.vocabulary(new io.suko.jte.HtmlVocabulary());
+            }
+        };
+        var result = new JteCompiler("T.sk", sk, ExtensionRegistry.of(List.of(ext)), List.of("jte"), SecurityOptions.DEFAULT).compile();
+        assertTrue(result.success(), result.diagnostics().toString());
+        return result.generatedJteSources().values().iterator().next();
+    }
+
     @Test
     void trustedFunctionsAreOnlyHonouredOnTheirOwnAttributes() {
-        assertFalse(jte("component A(String u) { <a href=${trustedUrl(u)}>x</a> }").contains("SukoSafe"));
-        String onclick = jte("component A(String u) { <a href=\"/\" onclick=${trustedUrl(u)}>x</a> }");
+        assertFalse(jteWithoutChecker("component A(String u) { <a href=${trustedUrl(u)}>x</a> }").contains("SukoSafe"));
+        String onclick = jteWithoutChecker("component A(String u) { <a href=\"/\" onclick=${trustedUrl(u)}>x</a> }");
         assertTrue(onclick.contains("onclick=\"${trustedUrl(u)}\""), onclick);
-        String style = jte("component A(String s) { <div style=${trustedStyle(s)}>x</div> }");
+        String style = jteWithoutChecker("component A(String s) { <div style=${trustedStyle(s)}>x</div> }");
         assertTrue(style.contains("style=\"${s}\"") && !style.contains("SukoSafe"), style);
-        String styleOnHref = jte("component A(String s) { <a href=${trustedStyle(s)}>x</a> }");
+        String styleOnHref = jteWithoutChecker("component A(String s) { <a href=${trustedStyle(s)}>x</a> }");
         assertTrue(styleOnHref.contains("SukoSafe.url(trustedStyle(s))"), styleOnHref);
-        String urlOnStyle = jte("component A(String s) { <div style=${trustedUrl(s)}>x</div> }");
+        String urlOnStyle = jteWithoutChecker("component A(String s) { <div style=${trustedUrl(s)}>x</div> }");
         assertTrue(urlOnStyle.contains("style=\"${trustedUrl(s)}\""), urlOnStyle);
-        String html = jte("component A(String s) { <a href=${trustedHtml(s)}>x</a> <p title=${trustedHtml(s)}>y</p> }");
+        String html = jteWithoutChecker("component A(String s) { <a href=${trustedHtml(s)}>x</a> <p title=${trustedHtml(s)}>y</p> }");
         assertTrue(html.contains("SukoSafe.url(trustedHtml(s))") && html.contains("title=\"${trustedHtml(s)}\""), html);
     }
 
