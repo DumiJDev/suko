@@ -50,7 +50,8 @@ class GoldenParityTest {
 
     static Map<String, String> snapshot(Path root) {
         Map<String, String> out = new TreeMap<>();
-        var result = new SukoProjectCompiler().compile(root);
+        SukoSources sources = withoutShop(SukoSources.fromDirectory(root));
+        var result = new SukoProjectCompiler().compile(sources);
         result.generatedJteSources().forEach((path, jte) -> out.put("jte/" + slash(path), jte));
 
         List<String> diagnostics = new ArrayList<>();
@@ -64,7 +65,7 @@ class GoldenParityTest {
         diagnostics.sort(null);
         out.put("diagnostics.txt", String.join("\n", diagnostics) + "\n");
 
-        ProjectAnalysis analysis = new SukoProjectCompiler().analyze(SukoSources.fromDirectory(root));
+        ProjectAnalysis analysis = new SukoProjectCompiler().analyze(sources);
         StringBuilder maps = new StringBuilder();
         analysis.files().forEach((file, fa) -> {
             if (fa.ast() == null || fa.diagnostics().hasErrors()) {
@@ -84,6 +85,21 @@ class GoldenParityTest {
             }
         });
         out.put("sourcemaps.txt", maps.toString());
+        return out;
+    }
+
+    /**
+     * Temporário (subprojeto 14, Task 12): a loja de exemplo vive em examples/shop, um build
+     * separado com a sua própria raiz Suko (examples/shop/src/main/suko). Não faz parte da raiz
+     * "examples" deste golden; a Task 14 aponta este teste para as novas raízes e remove isto.
+     */
+    private static SukoSources withoutShop(SukoSources sources) {
+        SukoSources out = sources;
+        for (Path p : sources.files().keySet()) {
+            if (p.startsWith("shop")) {
+                out = out.without(p);
+            }
+        }
         return out;
     }
 

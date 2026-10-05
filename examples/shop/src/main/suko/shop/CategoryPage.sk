@@ -1,0 +1,15 @@
+package shop;
+
+import shop.Layout;
+import shop.ProductGrid;
+
+public component CategoryPage(String title, int cartCount, List<Map<String, String>> categories, Map<String, String> category, List<Map<String, String>> products) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>${category.get("name")}</h1>
+    if (products.isEmpty()) {
+      <p class="empty">Ainda não há produtos nesta categoria.</p>
+    } else {
+      ProductGrid(products = products)
+    }
+  }
+}

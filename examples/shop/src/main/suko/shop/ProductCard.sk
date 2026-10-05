@@ -1,0 +1,11 @@
+package shop;
+
+public component ProductCard(Map<String, String> p) {
+  <li class="product-card">
+    <a href="/p/${p.get("id")}">
+      <img src=${p.get("imageUrl")} alt=${p.get("name")} width="320" height="200" />
+      <h2>${p.get("name")}</h2>
+      <span class="price">${p.get("price")}</span>
+    </a>
+  </li>
+}

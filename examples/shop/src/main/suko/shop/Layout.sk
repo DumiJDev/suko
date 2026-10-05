@@ -1,0 +1,26 @@
+package shop;
+
+public component Layout(String title, int cartCount, List<Map<String, String>> categories, Component children) {
+  // Sem <!DOCTYPE html>: a gramática ainda não o aceita (PARSE_ERROR em "<!") — lacuna registada na Task 15.
+  <html lang="pt">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>${title}</title>
+      <link rel="stylesheet" href="/css/shop.css" />
+    </head>
+    <body>
+      <header class="site-header">
+        <a class="brand" href="/">Suko Shop</a>
+        <nav class="site-nav">
+          for (Map<String, String> c : categories) {
+            <a href="/c/${c.get("slug")}">${c.get("name")}</a>
+          }
+        </nav>
+        <a class="cart-link" href="/cart">Carrinho ${cartCount}</a>
+      </header>
+      <main>${children}</main>
+      <footer class="site-footer">Loja de exemplo do Suko, com dados fictícios.</footer>
+    </body>
+  </html>
+}
