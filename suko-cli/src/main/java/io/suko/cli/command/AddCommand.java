@@ -294,7 +294,7 @@ public final class AddCommand {
             componentsByName.put(manifest.name(), new LockEntry(manifest.name(), manifest.version(), reason, files));
         }
 
-        return new Lockfile(Lockfile.SCHEMA_VERSION, new Lockfile.Registry(registryBase, registryRef,
+        return new Lockfile(Lockfile.SCHEMA_VERSION, new Lockfile.Registry(VerifiedIndex.normalizeBase(registryBase), registryRef,
                         verified.index().registryVersion(), verified.signed(), verified.keyId(), verified.index().issuedAt()),
                 config.basePackage(), config.sourceRoot(), new ArrayList<>(componentsByName.values()));
     }

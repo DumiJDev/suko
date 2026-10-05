@@ -140,7 +140,7 @@
   ],
   "resources": [
     {
-      "glob": "trusted-keys.json"
+      "glob": "io/suko/cli/trusted-keys.json"
     }
   ]
 }

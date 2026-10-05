@@ -12,7 +12,9 @@ import io.suko.registry.TrustedKeys;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.InvalidPathException;
 import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Optional;
@@ -66,14 +68,32 @@ public final class VerifiedIndex {
     /**
      * Identidade canónica de um registry configurado: o {@code registryId} oficial se {@code base} for exatamente o
      * URL oficial para {@code ref} (a ref está no meio do URL, por isso o URL em si nunca podia ser igual ao
-     * {@code registryId} assinado); senão o próprio {@code base}, normalizado com um {@code /} final.
+     * {@code registryId} assinado); senão {@link #normalizeBase(String)} com um {@code /} final — para um caminho,
+     * {@code reg}, {@code ./reg}, {@code /abs/reg} e {@code reg/../reg} são o mesmo registry (anti-strip).
      */
     public static String canonicalId(String base, String ref) {
-        String normalized = base.endsWith("/") ? base : base + "/";
+        String normalized = normalizeBase(base);
+        normalized = normalized.endsWith("/") ? normalized : normalized + "/";
         if (ref != null && normalized.equals(String.format(OFFICIAL_BASE_TEMPLATE, ref))) {
             return OFFICIAL_REGISTRY_ID;
         }
         return normalized;
+    }
+
+    /**
+     * A forma do {@code base} que se grava no lockfile e com que se compara: URLs ficam como estão; um caminho de
+     * sistema de ficheiros passa a absoluto e normalizado ({@code toAbsolutePath().normalize()}, relativo ao mesmo
+     * diretório de trabalho com que {@link RegistrySources} o lê).
+     */
+    public static String normalizeBase(String base) {
+        if (base.contains("://") || isNetworkPath(base)) {
+            return base;
+        }
+        try {
+            return Path.of(base).toAbsolutePath().normalize().toString();
+        } catch (InvalidPathException e) {
+            return base;
+        }
     }
 
     public static Result load(RegistrySource source, String registryBase, String registryRef, Optional<Lockfile> lock,
@@ -203,6 +223,15 @@ public final class VerifiedIndex {
     }
 
     public static boolean isLocal(RegistrySource source, String base) {
+        // Partilhas de rede (UNC "\\host\share", "//host/share", "\\?\UNC\...") nunca são locais, mesmo lidas
+        // como sistema de ficheiros: --allow-unsigned é recusado como para um registry remoto.
+        if (isNetworkPath(base) || (source != null && source.base() != null && isNetworkPath(source.base()))) {
+            return false;
+        }
+        String lower = base.toLowerCase(java.util.Locale.ROOT);
+        if (base.contains("://") && !lower.startsWith("http://") && !lower.startsWith("https://")) {
+            return false; // file://host/..., smb://, ...: nunca local
+        }
         if (source instanceof FileSystemRegistrySource) {
             return true;
         }
@@ -225,6 +254,12 @@ public final class VerifiedIndex {
             }
         }
         return !base.contains("://");
+    }
+
+    /** Caminho que começa por duas barras de qualquer tipo ({@code \\}, {@code //}, {@code \/}, {@code /\}): UNC/rede. */
+    static boolean isNetworkPath(String base) {
+        return base.length() >= 2 && (base.charAt(0) == '/' || base.charAt(0) == '\\')
+            && (base.charAt(1) == '/' || base.charAt(1) == '\\');
     }
 
     private static Instant instant(String value, String field) {

@@ -131,4 +131,21 @@ class SignedRegistryCommandTest {
         other.reissue("main", null, null);
         assertCode("REGISTRY_BAD_SIGNATURE", () -> run(projectDir, "list", "--registry", other.dir().toString()));
     }
+
+    @Test
+    void anotherSpellingOfTheSamePathCannotStripTheSignature(@TempDir Path tempDir) throws IOException {
+        SignedRegistryFixture registry = signedRegistry(tempDir);
+        Path projectDir = project(tempDir, registry);
+        run(projectDir, "add", "label");
+        Path absolute = registry.dir().toAbsolutePath();
+        assertEquals(absolute.normalize().toString(), Lockfile.load(projectDir).orElseThrow().registry().base());
+
+        Files.delete(registry.dir().resolve("registry.json.sig"));
+
+        String relative = Path.of("").toAbsolutePath().relativize(absolute).toString();
+        for (String spelling : java.util.List.of(relative, "./" + relative, relative + "/../" + absolute.getFileName(),
+                absolute + "/")) {
+            assertCode("REGISTRY_UNSIGNED", () -> run(projectDir, "update", "--registry", spelling, "--allow-unsigned"));
+        }
+    }
 }

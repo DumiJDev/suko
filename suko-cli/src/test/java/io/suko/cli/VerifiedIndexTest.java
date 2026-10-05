@@ -323,6 +323,40 @@ class VerifiedIndexTest {
         assertTrue(VerifiedIndex.compareVersions("0.2.0-rc.2", "0.2.0-rc.10") < 0);
     }
 
+    // --- Fix round 1: network paths are not local; filesystem ids are normalised; namespaced resource ---
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\\\\host\\share\\reg", "//host/share/reg", "\\\\?\\UNC\\host\\share", "/\\host/share",
+        "file://host/share/reg", "smb://host/share/reg"})
+    void networkAndNonHttpSchemeRootsAreNeverLocal(String base, @TempDir Path d) throws Exception {
+        assertFalse(VerifiedIndex.isLocal(new FileSystemRegistrySource(d), base), base);
+        assertFalse(VerifiedIndex.isLocal(null, base), base);
+        var s = registry(d, BASE, "v1", "2026-10-05T00:00:00Z", null, "0.2.0", false);
+        CliException e = assertThrows(CliException.class, () -> VerifiedIndex.load(s, base, "v1", Optional.empty(),
+            true, false, trusted(), new PrintStream(warnings)));
+        assertTrue(e.getMessage().startsWith("REGISTRY_UNSIGNED") && e.getMessage().contains("--allow-unsigned"), e.getMessage());
+    }
+
+    @Test
+    void differentSpellingsOfTheSameFilesystemRegistryHaveTheSameCanonicalId(@TempDir Path d) throws Exception {
+        Path cwd = Path.of("").toAbsolutePath();
+        Path reg = Files.createDirectories(d.resolve("reg"));
+        String relative = cwd.relativize(reg).toString();
+        String expected = reg.toAbsolutePath().normalize() + "/";
+        for (String spelling : List.of(reg.toString(), relative, "./" + relative, relative + "/../reg", reg + "/")) {
+            assertEquals(expected, VerifiedIndex.canonicalId(spelling, "v1"), spelling);
+        }
+        assertEquals(reg.toAbsolutePath().normalize().toString(), VerifiedIndex.normalizeBase("./" + relative));
+        assertEquals(BASE, VerifiedIndex.normalizeBase(BASE));
+    }
+
+    @Test
+    void embeddedTrustedKeysLiveUnderTheCliNamespace() {
+        assertEquals("/io/suko/cli/trusted-keys.json", Trust.RESOURCE);
+        assertNotNull(Trust.class.getResource(Trust.RESOURCE), "the embedded trusted-keys resource must be on the classpath");
+        assertNull(Trust.class.getResource("/trusted-keys.json"), "the old un-namespaced path must be gone");
+    }
+
     private static RegistrySource remote(String base, Map<String, byte[]> files) {
         return new RegistrySource() {
             public byte[] resolve(String p) throws IOException {
