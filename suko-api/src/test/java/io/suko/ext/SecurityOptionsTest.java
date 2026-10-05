@@ -41,6 +41,15 @@ class SecurityOptionsTest {
     }
 
     @Test
+    void schemesMustBeValidUrlSchemeSyntax() {
+        for (String bad : new String[] {"1abc", "a b", "a\"b", "a;b", "", "-x", "h\u00e9"}) {
+            assertThrows(IllegalArgumentException.class,
+                () -> SecurityOptions.DEFAULT.withUrlSchemes(Set.of("https", bad)), bad);
+        }
+        assertEquals(Set.of("git+ssh", "x-y.z1"), SecurityOptions.DEFAULT.withUrlSchemes(Set.of("GIT+SSH", "x-y.z1")).urlSchemes());
+    }
+
+    @Test
     void generatedPackageMustBeAJavaPackage() {
         assertThrows(IllegalArgumentException.class, () -> SecurityOptions.DEFAULT.withGeneratedPackage("a-b.c"));
         assertThrows(IllegalArgumentException.class, () -> SecurityOptions.DEFAULT.withGeneratedPackage("1abc"));

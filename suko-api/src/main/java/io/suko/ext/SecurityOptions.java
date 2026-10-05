@@ -18,6 +18,7 @@ public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, S
     public static final Set<String> DEFAULT_URL_SCHEMES = sorted(Set.of("http", "https", "mailto", "tel"));
     private static final Set<String> FORBIDDEN_SCHEMES = Set.of("javascript", "vbscript", "data", "blob", "filesystem");
     private static final Set<String> RASTER_IMAGE_TYPES = Set.of("png", "gif", "jpeg", "webp", "avif");
+    private static final Pattern SCHEME = Pattern.compile("[a-z][a-z0-9+.-]*");
     private static final Pattern PACKAGE = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*");
 
     public static final SecurityOptions DEFAULT = new SecurityOptions(
@@ -32,6 +33,9 @@ public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, S
             throw new IllegalArgumentException("urlSchemes não pode ser vazio");
         }
         for (String scheme : urlSchemes) {
+            if (!SCHEME.matcher(scheme).matches()) {
+                throw new IllegalArgumentException("urlSchemes: esquema inválido (esperado [a-z][a-z0-9+.-]*): '" + scheme + "'");
+            }
             if (FORBIDDEN_SCHEMES.contains(scheme)) {
                 throw new IllegalArgumentException("O esquema '" + scheme
                     + "' nunca pode ser permitido em urlSchemes (javascript, vbscript, data, blob, filesystem)");

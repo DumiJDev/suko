@@ -92,14 +92,17 @@ public final class SukoSafe {
         return "unset";
     }
 
-    /** Junta {@code noopener} ao rel; um rel com o token {@code opener} é um opt-out explícito. */
+    /**
+     * Garante sempre o token {@code noopener} (sem distinção de maiúsculas), mantendo os tokens existentes.
+     * O opt-out via {@code rel="opener"} só vale para um {@code rel} literal e é decidido em compile-time.
+     */
     public static String rel(Object v) {
         String s = v == null ? "" : String.valueOf(v).trim();
         if (s.isEmpty()) {
             return "noopener";
         }
         for (String token : s.toLowerCase(Locale.ROOT).split("[ \\t\\n\\r\\f]+")) {
-            if (token.equals("opener") || token.equals("noopener")) {
+            if (token.equals("noopener")) {
                 return s;
             }
         }
@@ -217,14 +220,15 @@ public final class SukoSafe {
                 url = url.substring(0, e);
             } else {
                 int ds = i;
-                int depth = 0;
+                // WHATWG: '(' liga a flag, ')' desliga; não há aninhamento nem contador.
+                boolean inParens = false;
                 while (i < n) {
                     char c = s.charAt(i);
                     if (c == '(') {
-                        depth++;
-                    } else if (c == ')' && depth > 0) {
-                        depth--;
-                    } else if (c == ',' && depth == 0) {
+                        inParens = true;
+                    } else if (c == ')') {
+                        inParens = false;
+                    } else if (c == ',' && !inParens) {
                         break;
                     }
                     i++;

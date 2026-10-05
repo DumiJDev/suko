@@ -32,7 +32,7 @@ class SukoSafeTest {
         "java\tscript:alert(1)", "java\nscript:alert(1)", "\u0001javascript:alert(1)", "\u0000javascript:alert(1)",
         "java\u0000script:alert(1)", "javascript\n:alert(1)", "ｊａｖａｓｃｒｉｐｔ:alert(1)",
         "vbscript:msgbox(1)", "data:text/html,<script>alert(1)</script>", "blob:https://x/abc", "file:///etc/passwd",
-        "  \t javascript:alert(1)"
+        "  \t javascript:alert(1)", "\u000bjavascript:alert(1)", "\fjavascript:alert(1)", "\u00a0javascript:alert(1)"
         // "javascript&#58;alert(1)x:y" fica de fora: o '#' precede o ':', logo é URL relativo inofensivo (WHATWG).
     })
     void hostileSchemesAreBlocked(String value) throws Exception {
@@ -92,7 +92,7 @@ class SukoSafeTest {
             safe.call("srcset", "/a.png 1x, javascript:alert(1) 1.5x, https://x.com/b.png 2x"));
         assertEquals("", safe.call("srcset", "data:image/png;base64,AAA 1x"));
         assertEquals("/a.png, /b.png", safe.call("srcset", "/a.png,, /b.png,"));
-        assertEquals("/a.png 100w", safe.call("srcset", "/a.png 100w, javascript:x 200w".replace("javascript:x 200w", "javascript:x 200w")));
+        assertEquals("/a.png 100w", safe.call("srcset", "/a.png 100w, javascript:x 200w"));
         assertNull(safe.call("srcset", null));
     }
 
@@ -134,11 +134,39 @@ class SukoSafeTest {
     }
 
     @Test
-    void relAddsNoopenerUnlessOptedOut() throws Exception {
+    void relAlwaysAddsNoopener() throws Exception {
         assertEquals("noopener", safe.call("rel", null));
         assertEquals("noopener", safe.call("rel", "  "));
         assertEquals("nofollow noopener", safe.call("rel", "nofollow"));
         assertEquals("nofollow noopener", safe.call("rel", "nofollow noopener"));
-        assertEquals("opener", safe.call("rel", "opener"));
+        assertEquals("NOOPENER", safe.call("rel", "NOOPENER"));
+        assertEquals("opener noopener", safe.call("rel", "opener"));
+        assertEquals("OPENER noopener", safe.call("rel", "OPENER"));
+    }
+
+    @Test
+    void srcsetParenthesesDoNotNest() throws Exception {
+        assertEquals("/a.png ((1x)", safe.call("srcset", "/a.png ((1x), javascript:alert(1) 2x"));
+    }
+
+    @Test
+    void imageSrcsetKeepsDataUrlWithCommaWhole() throws Exception {
+        try (CompiledSukoSafe png = new CompiledSukoSafe(SecurityOptions.DEFAULT.withImageDataTypes(Set.of("png")))) {
+            assertEquals("data:image/png;base64,AAA,BBB 1x", png.call("imageSrcset", "data:image/png;base64,AAA,BBB 1x"));
+            assertEquals("DATA:IMAGE/PNG;base64,AAA 1x", png.call("imageSrcset", "DATA:IMAGE/PNG;base64,AAA 1x"));
+            assertEquals("DATA:IMAGE/PNG;base64,AAA", png.call("imageUrl", "DATA:IMAGE/PNG;base64,AAA"));
+        }
+    }
+
+    @Test
+    void pingEmptyOrBlank() throws Exception {
+        assertEquals("", safe.call("ping", ""));
+        assertEquals("", safe.call("ping", "   "));
+    }
+
+    @Test
+    void pathSegmentEncodesSurrogatePairsAndSpaces() throws Exception {
+        assertEquals("%F0%9F%98%80", safe.call("pathSegment", "\uD83D\uDE00"));
+        assertEquals("a%20b", safe.call("pathSegment", "a b"));
     }
 }
