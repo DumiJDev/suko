@@ -82,6 +82,8 @@ public class JteEmitter {
     // escrito, por isso é a pasta que tem de determinar o prefixo emitido.
     private final String currentPackagePrefix;
 
+    private final io.suko.ext.SecurityOptions options;
+
     // DESVIO DO BRIEF (documentado, tarefa 10): ver `shouldWrapInToString`
     // mais abaixo para a razão de existir este campo — não faz parte do
     // brief original, que só previa `isContentTyped`. Reatribuído no início
@@ -111,6 +113,13 @@ public class JteEmitter {
      * pacote real do ficheiro sendo emitido. */
     public JteEmitter(List<ComponentDecl> allComponents, Map<String, ProjectIndexEntry> importedByShortName,
             String currentPackagePrefix) {
+        this(allComponents, importedByShortName, currentPackagePrefix, io.suko.ext.SecurityOptions.DEFAULT);
+    }
+
+    /** Subprojeto 14: o emissor precisa das opções de segurança (esquemas de URL, package da SukoSafe). */
+    public JteEmitter(List<ComponentDecl> allComponents, Map<String, ProjectIndexEntry> importedByShortName,
+            String currentPackagePrefix, io.suko.ext.SecurityOptions options) {
+        this.options = options;
         this.componentsByName = allComponents.stream()
             .collect(Collectors.toMap(ComponentDecl::name, Function.identity()));
         this.importedByShortName = importedByShortName;
@@ -324,7 +333,7 @@ public class JteEmitter {
 
     private void emitStatement(Statement statement, StringBuilder out, java.util.Set<String> slotNames) {
         switch (statement) {
-            case Statement.TextRun textRun -> out.append(textRun.text());
+            case Statement.TextRun textRun -> out.append(io.suko.jte.HtmlSecurityRules.neutralizeJteSyntax(textRun.text()));
             case Statement.Interpolation interpolation -> {
                 Expr expr = interpolation.expr();
                 if (shouldWrapInToString(expr, slotNames)) {
@@ -596,9 +605,21 @@ public class JteEmitter {
 
     private void emitHtmlElement(Statement.HtmlElement element, StringBuilder out, java.util.Set<String> slotNames) {
         out.append('<').append(element.tagName());
+        boolean noopener = io.suko.jte.HtmlSecurityRules.needsNoopener(element);
+        boolean hasRel = false;
         for (Statement.Attribute attribute : element.attributes()) {
-            out.append(' ').append(attribute.name()).append("=\"")
-                .append("${").append(emitExpr(attribute.value(), slotNames)).append('}').append('"');
+            String name = io.suko.jte.HtmlSecurityRules.lower(attribute.name());
+            String value;
+            if (noopener && name.equals("rel")) {
+                hasRel = true;
+                value = noopenerRel(attribute.value(), slotNames);
+            } else {
+                value = attributeValue(element, attribute, slotNames);
+            }
+            out.append(' ').append(attribute.name()).append("=\"").append("${").append(value).append('}').append('"');
+        }
+        if (noopener && !hasRel) {
+            out.append(" rel=\"${\"noopener\"}\"");
         }
         if (element.selfClosing()) {
             out.append("/>");
@@ -609,6 +630,98 @@ public class JteEmitter {
             emitStatement(child, out, slotNames);
         }
         out.append("</").append(element.tagName()).append('>');
+    }
+
+    private String safe() {
+        return options.generatedPackage() + ".SukoSafe";
+    }
+
+    private String noopenerRel(Expr value, java.util.Set<String> slotNames) {
+        if (io.suko.jte.HtmlSecurityRules.isLiteral(value) && value instanceof Expr.StringLiteralExpr s) {
+            String text = Expr.pretty(s.parts());
+            // Opt-out só para `rel` LITERAL com o token `opener` (decidido aqui, em compile-time);
+            // `noopener` já presente não se repete. O runtime SukoSafe.rel nunca tem opt-out.
+            boolean optOut = java.util.Arrays.stream(text.toLowerCase(java.util.Locale.ROOT).split("\\s+"))
+                .anyMatch(t -> t.equals("opener") || t.equals("noopener"));
+            return "\"" + text + (optOut ? "" : " noopener") + "\"";
+        }
+        return safe() + ".rel(" + emitExpr(value, slotNames) + ")";
+    }
+
+    private String attributeValue(Statement.HtmlElement el, Statement.Attribute a, java.util.Set<String> slotNames) {
+        Expr v = a.value();
+        String tag = io.suko.jte.HtmlSecurityRules.lower(el.tagName());
+        String attr = io.suko.jte.HtmlSecurityRules.lower(a.name());
+
+        for (String fn : new String[] {"trustedUrl", "trustedStyle", "trustedHtml"}) {
+            var trusted = io.suko.jte.HtmlSecurityRules.trustedArgument(v, fn);
+            if (trusted.isPresent()) {
+                return emitExpr(trusted.get(), slotNames);
+            }
+        }
+        if (io.suko.jte.HtmlSecurityRules.isLiteral(v)) {
+            return emitExpr(v, slotNames);
+        }
+        if (attr.equals("style")) {
+            var chunks = io.suko.jte.HtmlSecurityRules.styleDeclarations(v);
+            if (chunks.isPresent()) {
+                return emitChunks(chunks.get(), ".cssValue(", slotNames);
+            }
+        }
+        if (io.suko.jte.HtmlSecurityRules.originConstant(tag, attr, v, options)) {
+            return emitOriginConstant((Expr.StringLiteralExpr) v, slotNames);
+        }
+        boolean image = io.suko.jte.HtmlSecurityRules.isImageContext(tag, attr) && !options.imageDataTypes().isEmpty();
+        if (io.suko.jte.HtmlSecurityRules.isSrcset(attr)) {
+            return safe() + (image ? ".imageSrcset(" : ".srcset(") + emitExpr(v, slotNames) + ")";
+        }
+        if (io.suko.jte.HtmlSecurityRules.isPing(attr)) {
+            return safe() + ".ping(" + emitExpr(v, slotNames) + ")";
+        }
+        if (io.suko.jte.HtmlSecurityRules.isUrlAttribute(tag, attr, options)) {
+            return safe() + (image ? ".imageUrl(" : ".url(") + emitExpr(v, slotNames) + ")";
+        }
+        return emitExpr(v, slotNames);
+    }
+
+    /** Pedaços literal/interpolação → {@code "lit" + SukoSafe.<fn>(expr) + "lit"}. */
+    private String emitChunks(java.util.List<io.suko.jte.HtmlSecurityRules.StyleChunk> chunks, String fn,
+                              java.util.Set<String> slotNames) {
+        StringBuilder sb = new StringBuilder();
+        for (var c : chunks) {
+            if (sb.length() > 0) {
+                sb.append(" + ");
+            }
+            sb.append('"').append(c.literal()).append('"');
+            if (c.interpolation() != null) {
+                sb.append(" + ").append(safe()).append(fn).append(emitExpr(c.interpolation(), slotNames)).append(')');
+            }
+        }
+        return sb.toString();
+    }
+
+    private String emitOriginConstant(Expr.StringLiteralExpr s, java.util.Set<String> slotNames) {
+        StringBuilder sb = new StringBuilder();
+        StringBuilder literal = new StringBuilder();
+        for (Expr.StringPart p : s.parts()) {
+            switch (p) {
+                case Expr.StringPart.Literal l -> literal.append(l.javaEscapedText());
+                case Expr.StringPart.Interp i -> appendSegment(sb, literal, emitExpr(i.expr(), slotNames));
+                case Expr.StringPart.SimpleInterp si -> appendSegment(sb, literal, si.identifier());
+            }
+        }
+        if (sb.length() > 0) {
+            sb.append(" + ");
+        }
+        return sb.append('"').append(literal).append('"').toString();
+    }
+
+    private void appendSegment(StringBuilder sb, StringBuilder literal, String expr) {
+        if (sb.length() > 0) {
+            sb.append(" + ");
+        }
+        sb.append('"').append(literal).append('"').append(" + ").append(safe()).append(".pathSegment(").append(expr).append(')');
+        literal.setLength(0);
     }
 
     String emitExpr(Expr expr, java.util.Set<String> slotNames) {
