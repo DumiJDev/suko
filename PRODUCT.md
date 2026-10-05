@@ -96,7 +96,7 @@ typography, or symbol to preserve. The name "Suko" itself is fixed.
 ## Evidence on Hand
 
 - Real, working example source exists and can be shown verbatim:
-  `examples/` (Dashboard.sk, Forms.sk, LayoutComponents.sk) and the 8
+  `examples/shop` (a runnable e-commerce shop in Suko) and the 8
   registry components under `suko-components/`, all on GitHub
   (`DumiJDev/suko`).
 - No real user testimonials, adoption numbers, or case studies exist —

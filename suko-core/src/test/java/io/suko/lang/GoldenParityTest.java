@@ -22,10 +22,10 @@ import java.util.TreeMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Prova central do 13a: o output do compilador (os .jte, os source maps e os
- * diagnósticos) para três raízes reais fica byte a byte igual antes e depois
- * de o JTE passar para trás da API de extensões. Regenerar só com
- * -Dsuko.updateGolden=true, e só na Task 1.
+ * Golden do output do compilador (os .jte, os source maps e os diagnósticos) para as
+ * raízes invalid, components, shop (a loja de examples/shop) e website. Regenerado na
+ * Task 4 do subprojeto 14 e, com a loja, na Task 14. Regenerar só com
+ * -Dsuko.updateGolden=true.
  */
 class GoldenParityTest {
 
@@ -34,8 +34,9 @@ class GoldenParityTest {
 
     @ParameterizedTest
     @CsvSource({
-        "examples, ../examples",
+        "invalid, src/test/resources/fixtures/invalid",
         "components, ../suko-components/src/main/suko",
+        "shop, ../examples/shop/src/main/suko",
         "website, ../suko-website/src/main/suko"
     })
     void outputMatchesGolden(String name, String root) throws IOException {
@@ -50,8 +51,7 @@ class GoldenParityTest {
 
     static Map<String, String> snapshot(Path root) {
         Map<String, String> out = new TreeMap<>();
-        // TODO(Task 14): remove withoutShop filter (quando o golden apontar para as novas raízes).
-        SukoSources sources = withoutShop(SukoSources.fromDirectory(root));
+        SukoSources sources = SukoSources.fromDirectory(root);
         var result = new SukoProjectCompiler().compile(sources);
         result.generatedJteSources().forEach((path, jte) -> out.put("jte/" + slash(path), jte));
 
@@ -86,21 +86,6 @@ class GoldenParityTest {
             }
         });
         out.put("sourcemaps.txt", maps.toString());
-        return out;
-    }
-
-    /**
-     * Temporário (subprojeto 14, Task 12): a loja de exemplo vive em examples/shop, um build
-     * separado com a sua própria raiz Suko (examples/shop/src/main/suko). Não faz parte da raiz
-     * "examples" deste golden; a Task 14 aponta este teste para as novas raízes e remove isto.
-     */
-    private static SukoSources withoutShop(SukoSources sources) {
-        SukoSources out = sources;
-        for (Path p : sources.files().keySet()) {
-            if (p.startsWith("shop")) {
-                out = out.without(p);
-            }
-        }
         return out;
     }
 

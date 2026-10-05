@@ -159,26 +159,9 @@ component Page() {
 
 ### Examples
 
-The `examples/` directory contains Suko programs that demonstrate real usage patterns. Their `package`/`import` declarations match the multi-file compiler's directory convention (subproject 5), but they are not exercised by any automated test as a full multi-file project — `Forms.sk` in particular calls `Button`/`Input`/`Select` (declared in `LayoutComponents.sk`) with HTML-tag-style syntax and arguments that don't match those components' real signatures, a known pre-existing inconsistency, not something introduced by the directory-convention fix.
+The `examples/shop` directory is a runnable e-commerce shop (Spring Boot + H2) written in Suko: catalogue, product page, search, reviews, cart and checkout, with Spring Security (CSRF, session handling) and an XSS corpus. It is a separate Gradle build that uses the `io.suko.lang` plugin through `includeBuild("../..")`, so it is not part of the root build. Run its tests with `./gradlew -p examples/shop test`. Its `.sk` sources (`examples/shop/src/main/suko`) are also a root of the compiler's golden test (`GoldenParityTest`).
 
-- **`Card.sk`** - reference surface of the language: a concrete `Card` component, `NavLink`, a `Page` using the `Layout` component with named slots (`header`, `sidebar`, `body`, `footer`), and a conditional `AdminPanel`.
-- **`dashboard/Dashboard.sk`** - a dashboard layout with role-based panels (`AdminPanel`/`ManagerPanel`), sidebar navigation, and a conditional items list.
-- **`forms/Forms.sk`** - login and registration forms using imported `Button`, `Input`, and `Select` components, with `Map<String, String>` validation errors.
-- **`layout/LayoutComponents.sk`** - reusable layout components (`Layout`, `Card`, `Modal`, `Button`, `Input`, `Select`) with slot parameters.
-- **`invalid/Card.sk`** - the rejected generic `Card<T>` case, kept as a fixture documenting the current generics limitation.
-
-```
-examples/
-├── Card.sk
-├── dashboard/
-│   └── Dashboard.sk
-├── forms/
-│   └── Forms.sk
-├── invalid/
-│   └── Card.sk
-└── layout/
-    └── LayoutComponents.sk
-```
+The earlier loose reference files (`Card.sk`, `dashboard/`, `forms/`, `layout/`, `invalid/Card.sk`) now live under `suko-core/src/test/resources/fixtures/` as parser and compiler test fixtures, not as examples.
 
 ### Extensions (targets, vocabularies, checkers)
 
@@ -268,7 +251,7 @@ suko/
 ├── suko-components/              # Component library: 8 real .sk components + generated registry.json/manifest
 ├── suko-cli/                     # `suko` CLI: init/list/add/diff/update, copy-source distribution
 ├── suko-website/                 # Future docs site built in Suko (empty scaffold)
-├── examples/                     # Example .sk files
+├── examples/shop/                # Runnable example shop (Spring Boot + H2), separate Gradle build
 └── docs/superpowers/             # Specs and plans
 ```
 

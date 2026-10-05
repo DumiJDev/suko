@@ -18,11 +18,11 @@ class SemanticCheckerTest {
     void cardSkPassesWithoutErrors() {
         DiagnosticCollector diagnostics = new DiagnosticCollector();
         SymbolTable symbolTable = new SymbolTable();
-        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "examples/Card.sk");
+        SemanticChecker checker = new SemanticChecker(symbolTable, diagnostics, "fixtures/legacy/Card.sk");
 
         // Build AST from Card.sk using SukoAstBuilder
         // Reuse existing JteRenderSupport to parse Card.sk
-        String sukoSource = new java.io.File("examples/Card.sk").toString();
+        String sukoSource = new java.io.File("fixtures/legacy/Card.sk").toString();
         // Since parsing requires the ANTLR setup, we test with a simple valid structure
         // The real Card.sk test is in JteEmitterGoldenFileTest
         // Here we verify the SemanticChecker infrastructure works
