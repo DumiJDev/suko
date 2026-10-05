@@ -52,8 +52,7 @@ public final class JteRenderSupport {
         Path tempDir = Files.createTempDirectory("suko-jte-render");
         Files.writeString(tempDir.resolve(componentName + ".jte"), jteSource);
 
-        CodeResolver codeResolver = new DirectoryCodeResolver(tempDir);
-        TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Html);
+        TemplateEngine templateEngine = SukoSafeSupport.engine(tempDir);
 
         TemplateOutput output = new StringOutput();
         templateEngine.render(componentName + ".jte", params, output);
@@ -73,8 +72,7 @@ public final class JteRenderSupport {
             Files.writeString(tempDir.resolve(component.name() + ".jte"), emitter.emit(component));
         }
 
-        CodeResolver codeResolver = new DirectoryCodeResolver(tempDir);
-        TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Html);
+        TemplateEngine templateEngine = SukoSafeSupport.engine(tempDir);
 
         TemplateOutput output = new StringOutput();
         templateEngine.render(entryComponent + ".jte", params, output);
@@ -97,8 +95,7 @@ public final class JteRenderSupport {
             Files.writeString(jteFile, entry.getValue());
         }
 
-        CodeResolver codeResolver = new DirectoryCodeResolver(tempDir);
-        TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Html);
+        TemplateEngine templateEngine = SukoSafeSupport.engine(tempDir);
 
         TemplateOutput output = new StringOutput();
         templateEngine.render(entryRelativePath + ".jte", params, output);
@@ -125,9 +122,16 @@ public final class JteRenderSupport {
      *                          {@code jteDir}, without the {@code .jte}
      *                          extension (e.g. {@code "com/acme/web/ui/Field"})
      */
+    private static TemplateEngine uncheckedEngine(Path dir) {
+        try {
+            return SukoSafeSupport.engine(dir);
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+    }
+
     public static String renderFromDirectory(Path jteDir, String entryRelativePath, Map<String, Object> params) {
-        CodeResolver codeResolver = new DirectoryCodeResolver(jteDir);
-        TemplateEngine templateEngine = TemplateEngine.create(codeResolver, ContentType.Html);
+        TemplateEngine templateEngine = uncheckedEngine(jteDir);
 
         TemplateOutput output = new StringOutput();
         templateEngine.render(entryRelativePath + ".jte", params, output);
