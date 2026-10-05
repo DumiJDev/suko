@@ -18,6 +18,7 @@ Suko is a template language designed for building UI components in Java/Kotlin w
 - **Source maps** - Errors mapped back to original `.sk` files
 - **Gradle plugin** - `sukoCompile` and `sukoWatch` tasks
 - **Maven plugin** - `suko:compile` goal
+- **Secure by default** - URL allowlist, `UNSAFE_SINK` errors, signed registry index (see [Security](#security))
 
 ## Quick Start
 
@@ -159,26 +160,9 @@ component Page() {
 
 ### Examples
 
-The `examples/` directory contains Suko programs that demonstrate real usage patterns. Their `package`/`import` declarations match the multi-file compiler's directory convention (subproject 5), but they are not exercised by any automated test as a full multi-file project — `Forms.sk` in particular calls `Button`/`Input`/`Select` (declared in `LayoutComponents.sk`) with HTML-tag-style syntax and arguments that don't match those components' real signatures, a known pre-existing inconsistency, not something introduced by the directory-convention fix.
+The `examples/shop` directory is a runnable e-commerce shop (Spring Boot + H2) written in Suko: catalogue, product page, search, reviews, cart and checkout, with Spring Security (CSRF, session handling) and an XSS corpus. It is a separate Gradle build that uses the `io.suko.lang` plugin through `includeBuild("../..")`, so it is not part of the root build. Run its tests with `./gradlew -p examples/shop test`. Its `.sk` sources (`examples/shop/src/main/suko`) are also a root of the compiler's golden test (`GoldenParityTest`).
 
-- **`Card.sk`** - reference surface of the language: a concrete `Card` component, `NavLink`, a `Page` using the `Layout` component with named slots (`header`, `sidebar`, `body`, `footer`), and a conditional `AdminPanel`.
-- **`dashboard/Dashboard.sk`** - a dashboard layout with role-based panels (`AdminPanel`/`ManagerPanel`), sidebar navigation, and a conditional items list.
-- **`forms/Forms.sk`** - login and registration forms using imported `Button`, `Input`, and `Select` components, with `Map<String, String>` validation errors.
-- **`layout/LayoutComponents.sk`** - reusable layout components (`Layout`, `Card`, `Modal`, `Button`, `Input`, `Select`) with slot parameters.
-- **`invalid/Card.sk`** - the rejected generic `Card<T>` case, kept as a fixture documenting the current generics limitation.
-
-```
-examples/
-├── Card.sk
-├── dashboard/
-│   └── Dashboard.sk
-├── forms/
-│   └── Forms.sk
-├── invalid/
-│   └── Card.sk
-└── layout/
-    └── LayoutComponents.sk
-```
+The earlier loose reference files (`Card.sk`, `dashboard/`, `forms/`, `layout/`, `invalid/Card.sk`) now live under `suko-core/src/test/resources/fixtures/` as parser and compiler test fixtures, not as examples.
 
 ### Extensions (targets, vocabularies, checkers)
 
@@ -238,8 +222,72 @@ suko { targets.set(listOf("jte", "demo")) }
   is watched and reloaded when it changes; granting trust restarts the server;
   `sourceRoot` from `suko.json` must stay inside the workspace folder. There
   is no IntelliJ support yet (11b).
-- Known limitation: a successful `sukoCompile`/`suko:compile` does not print
-  warnings (e.g. a checker's `WARNING`) — only the LSP shows them. Pre-existing bug.
+- A successful `sukoCompile`/`suko:compile` now prints warnings and info
+  diagnostics (e.g. a checker's `WARNING`), as the LSP does.
+
+## Security
+
+Subprojeto 14 makes the compiler secure by default for components that use the
+`html` vocabulary (the `jte` target). Threat model, configuration and the registry
+trust model are in [`docs/security.md`](docs/security.md); the spec is in
+`docs/superpowers/specs/2026-10-04-suko-seguranca-por-omissao.md`. There is no
+release yet and no pentest has been done (the shop below is the planned target).
+
+- **URLs:** dynamic values in URL attributes (`href`, `src`, `action`, `srcset`, ...) go
+  through a generated `SukoSafe` class (JDK only, written into your project). Only
+  `urlSchemes` (default `http`, `https`, `mailto`, `tel`) and relative URLs pass;
+  anything else becomes `about:invalid#suko-blocked`.
+- **Sinks:** a dynamic value in `<script>`/`<style>` content, `on*`, `srcdoc`, `style`,
+  `<base>`, dynamic embeds, `x-*`/`hx-on*`, ... is a compile error, `UNSAFE_SINK`.
+- **Automatic:** `target` adds `rel="noopener"`; `UPPERCASE_NAME` catches names the JTE
+  `OwaspHtmlPolicy` refuses; with `strictCsp`, `CSP_INLINE` warns about inline code.
+- **Explicit escapes:** `trustedUrl(...)` (URL attributes only) and `trustedStyle(...)`
+  (`style` only) report `TRUSTED_URL`/`TRUSTED_STYLE` (INFO) and are listed in
+  `build/suko/security-audit.json` (Maven: `target/suko/`). Misusing them, or declaring
+  that name, is `RESERVED_NAME`. `trustedHtml` does not exist.
+- **JTE policy:** with the `gg.jte.gradle` plugin applied, the Suko Gradle plugin sets
+  `htmlPolicyClass` to `gg.jte.html.OwaspHtmlPolicy` unless `jtePolicy = false` or you set
+  your own. Maven only warns.
+- **Registry:** `suko-cli` verifies an Ed25519 signature of `registry.json`, per-manifest
+  hashes, expiry and rollback (`REGISTRY_UNSIGNED`, `REGISTRY_BAD_SIGNATURE`,
+  `REGISTRY_MISMATCH`, `REGISTRY_EXPIRED`, `REGISTRY_ROLLBACK`, `REGISTRY_MANIFEST_HASH`,
+  `REGISTRY_INVALID`). The embedded key list is empty until the first release, so the
+  default `suko add` against the official HTTPS registry fails with `REGISTRY_UNSIGNED`
+  for now; use `--registry <local path> --allow-unsigned` or `registry.publicKeys` in
+  `suko.json`. `--allow-unsigned` only works for local registries.
+
+```kotlin
+suko {
+  security {
+    urlSchemes.set(listOf("http", "https", "mailto", "tel"))  // default
+    imageDataTypes.set(listOf("png", "webp"))  // subset of png,gif,jpeg,webp,avif
+    strictCsp.set(true)
+    codeAttributes.add("x-custom")
+    urlAttributes.add("data-url")
+    jtePolicy.set(true)                        // default
+  }
+}
+```
+
+```xml
+<configuration>
+  <security>
+    <urlSchemes><urlScheme>https</urlScheme></urlSchemes>
+    <strictCsp>true</strictCsp>
+  </security>
+</configuration>
+```
+
+`generatedPackage` and `generatedJavaDir` place `SukoSafe` (Gradle defaults:
+`io.suko.generated.<project>`, `build/generated-src/suko-java`; Maven:
+`target/generated-sources/suko-java`, package derived from the `artifactId`).
+Forbidden schemes in `urlSchemes` (`javascript`, `vbscript`, `data`, `blob`,
+`filesystem`) fail the build. CSRF, authentication, response headers and sanitising
+third-party HTML remain the application's job; `examples/shop` shows one way.
+
+Known gaps (see ARCHITECTURE.md, item 14): the LSP ignores the build's
+`suko.security`; `<!DOCTYPE html>` does not parse yet; `:`/`@` are not allowed in attribute
+names (`x-on:click`, `@click`); components only take library parameter types.
 
 ## Project Structure
 
@@ -268,7 +316,7 @@ suko/
 ├── suko-components/              # Component library: 8 real .sk components + generated registry.json/manifest
 ├── suko-cli/                     # `suko` CLI: init/list/add/diff/update, copy-source distribution
 ├── suko-website/                 # Future docs site built in Suko (empty scaffold)
-├── examples/                     # Example .sk files
+├── examples/shop/                # Runnable example shop (Spring Boot + H2), separate Gradle build
 └── docs/superpowers/             # Specs and plans
 ```
 
@@ -286,6 +334,7 @@ suko/
 | 8. Distribution CLI (`suko add`) | ✅ Done | `suko-cli` module: `suko init`/`list`/`add`/`diff`/`update`, depends on 7 |
 | 9. Interpolation unification | ✅ Done | `${expr}` is the only interpolation syntax, in all three positions; bare braces never interpolate |
 | 10. Documentation site | Planned | Built in Suko itself, depends on 7 and 8, populates `suko-website/` |
+| 14. Secure by default | ✅ Done | URL allowlist (`SukoSafe`), `UNSAFE_SINK`, CSP lint, signed registry index, XSS corpus, `examples/shop`; see [`docs/security.md`](docs/security.md) |
 
 The repository itself was also restructured into a multi-module monorepo, starting with the 5 modules described in `docs/superpowers/specs/2026-09-19-suko-monorepo-migration.md` (`suko-core`/`suko-gradle-plugin`/`suko-maven-plugin`/`suko-components`/`suko-website`) and now at 8 modules total, shown in the tree above (`suko-registry`, `suko-registry-generator`, and `suko-cli` added by subprojetos 7 and 8).
 

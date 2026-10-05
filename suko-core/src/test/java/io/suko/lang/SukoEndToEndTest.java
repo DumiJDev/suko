@@ -15,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * SukoAstBuilder -> JteEmitter -> gg.jte. Complementa o
  * SukoParserSmokeTest (que só verifica ausência de erro de parsing).
  *
- * `Card<T>` (o componente genérico real de examples/Card.sk) não é
+ * `Card<T>` (o componente genérico real de fixtures/legacy/Card.sk) não é
  * renderizado aqui — ver ARCHITECTURE.md, "Limitações conhecidas (fim
  * do subprojeto 1)": gg.jte não tem forma de declarar uma variável de
  * tipo própria do template, confirmado empiricamente (tarefas 13, 17 e
@@ -26,7 +26,7 @@ class SukoEndToEndTest {
 
     @Test
     void rendersNavLinkFromCardExample() throws Exception {
-        String source = Files.readString(Path.of("../examples/Card.sk"));
+        String source = Files.readString(Path.of("src/test/resources/fixtures/legacy/Card.sk"));
 
         String html = JteRenderSupport.renderWithDependencies(source, "NavLink", Map.of(
             "label", "Perfil",

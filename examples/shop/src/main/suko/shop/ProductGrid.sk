@@ -1,0 +1,11 @@
+package shop;
+
+import shop.ProductCard;
+
+public component ProductGrid(List<Map<String, String>> products) {
+  <ul class="product-grid">
+    for (Map<String, String> p : products) {
+      ProductCard(p = p)
+    }
+  </ul>
+}

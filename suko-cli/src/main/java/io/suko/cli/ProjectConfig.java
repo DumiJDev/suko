@@ -1,7 +1,11 @@
 package io.suko.cli;
 
+import io.suko.registry.RegistrySignature;
+import io.suko.registry.TrustedKeys;
+
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -11,6 +15,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -48,7 +54,39 @@ public record ProjectConfig(int schemaVersion, String sourceRoot, String basePac
     // migration.
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    public record Registry(String base, String ref) {
+    /**
+     * The configured registry. {@code publicKeys} (optional, subprojeto 14 M6)
+     * are extra Ed25519 public keys trusted for <em>this</em> registry only:
+     * {@link #trustedKeys()} binds each one to {@link VerifiedIndex#canonicalId}
+     * of {@code base}/{@code ref}, so a key configured for one registry never
+     * validates another.
+     */
+    public record Registry(String base, String ref, List<PublicKey> publicKeys) {
+
+        public Registry {
+            publicKeys = publicKeys == null ? List.of() : List.copyOf(publicKeys);
+        }
+
+        public Registry(String base, String ref) {
+            this(base, ref, List.of());
+        }
+
+        /** The configured keys, bound to this registry's canonical id (empty if none or no base). */
+        public TrustedKeys trustedKeys() {
+            if (base == null || publicKeys.isEmpty()) {
+                return TrustedKeys.empty();
+            }
+            String registryId = VerifiedIndex.canonicalId(base, ref);
+            List<TrustedKeys.Key> keys = new ArrayList<>();
+            for (PublicKey key : publicKeys) {
+                keys.add(new TrustedKeys.Key(key.keyId(), registryId, RegistrySignature.publicKeyFromBase64(key.publicKey())));
+            }
+            return TrustedKeys.of(keys);
+        }
+    }
+
+    /** One entry of {@code registry.publicKeys}: {@code {"keyid": "...", "publicKey": "<base64 X.509>"}}. */
+    public record PublicKey(String keyId, String publicKey) {
     }
 
     // Java reserved words (keywords, contextual reserved literals, and the
@@ -154,8 +192,37 @@ public record ProjectConfig(int schemaVersion, String sourceRoot, String basePac
         JsonObject registryObject = registryElement.getAsJsonObject();
         String base = requireStringField(registryObject, "base", sourceDescription + " (registry)");
         String ref = requireStringField(registryObject, "ref", sourceDescription + " (registry)");
+        List<PublicKey> publicKeys = parsePublicKeys(registryObject, sourceDescription + " (registry.publicKeys)");
 
-        return new ProjectConfig(foundSchemaVersion, sourceRoot, basePackage, new Registry(base, ref));
+        return new ProjectConfig(foundSchemaVersion, sourceRoot, basePackage, new Registry(base, ref, publicKeys));
+    }
+
+    private static List<PublicKey> parsePublicKeys(JsonObject registryObject, String sourceDescription) {
+        if (!registryObject.has("publicKeys") || registryObject.get("publicKeys").isJsonNull()) {
+            return List.of();
+        }
+        JsonElement element = registryObject.get("publicKeys");
+        if (!element.isJsonArray()) {
+            throw new CliException("Field \"publicKeys\" in " + sourceDescription
+                    + " must be an array of {\"keyid\", \"publicKey\"} objects.");
+        }
+        List<PublicKey> keys = new ArrayList<>();
+        for (JsonElement keyElement : element.getAsJsonArray()) {
+            if (!keyElement.isJsonObject()) {
+                throw new CliException("Each entry of " + sourceDescription + " must be an object.");
+            }
+            JsonObject keyObject = keyElement.getAsJsonObject();
+            String keyId = requireStringField(keyObject, "keyid", sourceDescription);
+            String publicKey = requireStringField(keyObject, "publicKey", sourceDescription);
+            try {
+                RegistrySignature.publicKeyFromBase64(publicKey);
+            } catch (IllegalArgumentException e) {
+                throw new CliException("Invalid Ed25519 public key \"" + keyId + "\" in " + sourceDescription + ": "
+                        + e.getMessage());
+            }
+            keys.add(new PublicKey(keyId, publicKey));
+        }
+        return keys;
     }
 
     private static JsonObject parseObject(String json, String sourceDescription) {
@@ -207,6 +274,16 @@ public record ProjectConfig(int schemaVersion, String sourceRoot, String basePac
         JsonObject registryObject = new JsonObject();
         registryObject.addProperty("base", registry.base());
         registryObject.addProperty("ref", registry.ref());
+        if (!registry.publicKeys().isEmpty()) {
+            JsonArray keys = new JsonArray();
+            for (PublicKey key : registry.publicKeys()) {
+                JsonObject keyObject = new JsonObject();
+                keyObject.addProperty("keyid", key.keyId());
+                keyObject.addProperty("publicKey", key.publicKey());
+                keys.add(keyObject);
+            }
+            registryObject.add("publicKeys", keys);
+        }
         root.add("registry", registryObject);
 
         // GSON's pretty printer emits "\n" line breaks (not
@@ -243,7 +320,15 @@ public record ProjectConfig(int schemaVersion, String sourceRoot, String basePac
         String registryRef = firstNonNull(args.registryRef(),
                 fileConfig.map(c -> c.registry().ref()).orElse(null), null);
 
-        return new ProjectConfig(SCHEMA_VERSION, sourceRoot, basePackage, new Registry(registryBase, registryRef));
+        // Keys configured in suko.json belong to suko.json's registry: a
+        // --registry flag pointing elsewhere must not inherit them.
+        String fileBase = fileConfig.map(c -> c.registry().base()).orElse(null);
+        List<PublicKey> publicKeys = registryBase != null && registryBase.equals(fileBase)
+                ? fileConfig.get().registry().publicKeys()
+                : List.of();
+
+        return new ProjectConfig(SCHEMA_VERSION, sourceRoot, basePackage,
+                new Registry(registryBase, registryRef, publicKeys));
     }
 
     private static String missingBasePackageMessage(boolean fileExists, Path projectDir) {

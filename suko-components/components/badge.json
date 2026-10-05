@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "badge",
   "version": "0.2.0",
   "description": "Etiqueta compacta com variantes de cor (success, warning, danger).",

@@ -634,4 +634,45 @@ String withoutTitle = JteRenderSupport.renderWithDependencies(source, "WithoutTi
 
         org.junit.jupiter.api.Assertions.assertTrue(html.contains("Título"));
     }
+
+    @Test
+    void qualifiesMapInParamsAndForItemTypes() throws Exception {
+        // Subprojeto 14, Task 12 (loja): `Map` desqualificado num @param ou num
+        // @for do .jte gerado falha no gg.jte com "cannot find symbol" (sem
+        // import automático) — mesmo caso de "List"/"Function"; ver javaType.
+        String source = """
+            component Rows(Map<String, String> head, List<Map<String, String>> rows) {
+              <p>${head.get("t")}</p>
+              for (Map<String, String> r : rows) {
+                <i>${r.get("k")}</i>
+              }
+            }
+            """;
+
+        String html = JteRenderSupport.render(source, "Rows", Map.of(
+            "head", Map.of("t", "Título"),
+            "rows", java.util.List.of(Map.of("k", "a"), Map.of("k", "b"))));
+
+        assertTrue(html.contains("<p>Título</p>"), html);
+        assertTrue(html.contains("<i>a</i>") && html.contains("<i>b</i>"), html);
+    }
+
+    @Test
+    void qualifiesMapInsideArrayParamTypes() throws Exception {
+        // Subprojeto 14, Task 13 (revisão da Task 12): o caso array de javaType —
+        // `Map<String, String>[]` tem de sair como `java.util.Map<String, String>[]`.
+        String source = """
+            component Rows(Map<String, String>[] rows) {
+              for (Map<String, String> r : rows) {
+                <i>${r.get("k")}</i>
+              }
+            }
+            """;
+
+        @SuppressWarnings("unchecked")
+        Map<String, String>[] rows = new Map[] {Map.of("k", "a"), Map.of("k", "b")};
+        String html = JteRenderSupport.render(source, "Rows", Map.of("rows", rows));
+
+        assertTrue(html.contains("<i>a</i>") && html.contains("<i>b</i>"), html);
+    }
 }

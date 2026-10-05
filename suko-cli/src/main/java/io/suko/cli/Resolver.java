@@ -121,6 +121,32 @@ public final class Resolver {
         if (cached != null) {
             return cached;
         }
+        ComponentManifest manifest = fetchManifest(source, entry);
+        manifestCache.put(name, manifest);
+        return manifest;
+    }
+
+    /**
+     * Fetches the manifest of {@code entry} and checks the sha256 of its exact
+     * bytes against the index's {@code manifestSha256} <strong>before</strong>
+     * parsing it (subprojeto 14, M6): the index is the signed document, the
+     * manifest is only trusted through that hash. Also re-checks the entry's
+     * own shape ({@link VerifiedIndex} already did, this is defense in depth
+     * for callers that build an index by other means).
+     *
+     * @throws CliException {@code REGISTRY_MANIFEST_HASH: ...} on a mismatch
+     */
+    public static ComponentManifest fetchManifest(RegistrySource source, RegistryIndex.Entry entry) {
+        String name = entry.name();
+        if (!VerifiedIndex.isSafeManifestPath(entry.manifest())) {
+            throw new CliException("REGISTRY_INVALID: the index entry \"" + name
+                    + "\" points to an invalid manifest path: \"" + entry.manifest() + "\"");
+        }
+        String expected = entry.manifestSha256();
+        if (expected == null || !expected.matches("[0-9a-f]{64}")) {
+            throw new CliException("REGISTRY_MANIFEST_HASH: the index entry \"" + name
+                    + "\" has no valid manifestSha256 (64 lowercase hex): " + expected);
+        }
         byte[] bytes;
         try {
             bytes = source.resolve(entry.manifest());
@@ -128,14 +154,17 @@ public final class Resolver {
             throw new CliException(
                     "Could not read manifest for \"" + name + "\" (" + entry.manifest() + "): " + e.getMessage());
         }
-        ComponentManifest manifest;
+        String actual = Hashes.sha256OfRaw(bytes);
+        if (!actual.equals(expected)) {
+            throw new CliException("REGISTRY_MANIFEST_HASH: the manifest of \"" + name + "\" (" + entry.manifest()
+                    + ") does not match the registry index: expected sha256 " + expected + ", got " + actual
+                    + ". The registry may have been tampered with; nothing was written.");
+        }
         try {
-            manifest = RegistryJson.readManifest(new String(bytes, StandardCharsets.UTF_8));
+            return RegistryJson.readManifest(new String(bytes, StandardCharsets.UTF_8));
         } catch (RegistryJsonException e) {
             throw new CliException(
                     "Could not parse manifest for \"" + name + "\" (" + entry.manifest() + "): " + e.getMessage());
         }
-        manifestCache.put(name, manifest);
-        return manifest;
     }
 }

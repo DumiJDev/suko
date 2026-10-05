@@ -14,6 +14,9 @@ public class SukoExtension {
     private final Property<String> sourceDir;
     private final Property<String> outputDir;
     private final ListProperty<String> targets;
+    private final Property<String> generatedPackage;
+    private final Property<String> generatedJavaDir;
+    private final SukoSecurity security;
 
     // D11: o construtor sem argumentos que existia aqui (com uma
     // implementação manual de Property<T>, TestProperty, só para servir
@@ -34,6 +37,9 @@ public class SukoExtension {
         this.sourceDir = objectFactory.property(String.class);
         this.outputDir = objectFactory.property(String.class);
         this.targets = objectFactory.listProperty(String.class);
+        this.generatedPackage = objectFactory.property(String.class);
+        this.generatedJavaDir = objectFactory.property(String.class);
+        this.security = objectFactory.newInstance(SukoSecurity.class);
     }
 
     public Property<String> getSourceDir() {
@@ -71,5 +77,44 @@ public class SukoExtension {
 
     public Path getOutputDirAsPath() {
         return projectLayout.getProjectDirectory().dir(getOutputDir().get()).getAsFile().toPath();
+    }
+
+    public Property<String> getGeneratedPackage() {
+        return generatedPackage;
+    }
+
+    public Property<String> getGeneratedJavaDir() {
+        return generatedJavaDir;
+    }
+
+    public SukoSecurity getSecurity() {
+        return security;
+    }
+
+    public void security(org.gradle.api.Action<SukoSecurity> action) {
+        action.execute(security);
+    }
+
+    public Path getGeneratedJavaDirAsPath() {
+        return projectLayout.getProjectDirectory().dir(getGeneratedJavaDir().get()).getAsFile().toPath();
+    }
+
+    public Path getSecurityAuditPath() {
+        return projectLayout.getBuildDirectory().file("suko/security-audit.json").get().getAsFile().toPath();
+    }
+
+    public io.suko.ext.SecurityOptions securityOptions() {
+        try {
+            io.suko.ext.SecurityOptions o = io.suko.ext.SecurityOptions.DEFAULT
+                .withGeneratedPackage(generatedPackage.get())
+                .withStrictCsp(security.getStrictCsp().getOrElse(false))
+                .withImageDataTypes(new java.util.TreeSet<>(security.getImageDataTypes().getOrElse(java.util.List.of())))
+                .withCodeAttributes(new java.util.TreeSet<>(security.getCodeAttributes().getOrElse(java.util.List.of())))
+                .withUrlAttributes(new java.util.TreeSet<>(security.getUrlAttributes().getOrElse(java.util.List.of())));
+            java.util.List<String> schemes = security.getUrlSchemes().getOrElse(java.util.List.of());
+            return schemes.isEmpty() ? o : o.withUrlSchemes(new java.util.TreeSet<>(schemes));
+        } catch (IllegalArgumentException e) {
+            throw new org.gradle.api.GradleException("Configuração suko.security inválida: " + e.getMessage(), e);
+        }
     }
 }

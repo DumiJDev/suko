@@ -94,7 +94,7 @@ class AddCommandTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         int exitCode = run(projectDir, printStream(out), "add", "label",
-                "--registry", registry.toString(), "--base-package", "com.acme.web");
+                "--registry", registry.toString(), "--allow-unsigned", "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
 
@@ -116,7 +116,7 @@ class AddCommandTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         int exitCode = run(projectDir, printStream(out), "add", "field",
-                "--registry", registry.toString(), "--base-package", "com.acme.web");
+                "--registry", registry.toString(), "--allow-unsigned", "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
 
@@ -147,7 +147,7 @@ class AddCommandTest {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int exitCode = run(projectDir, printStream(out), "add", "field",
-                "--registry", registry.toString(), "--base-package", "com.acme.web");
+                "--registry", registry.toString(), "--allow-unsigned", "--base-package", "com.acme.web");
 
         assertNotEquals(0, exitCode);
         assertFalse(Files.exists(projectDir.resolve(Lockfile.FILE_NAME)), "lockfile must not be written");
@@ -167,7 +167,7 @@ class AddCommandTest {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int exitCode = run(projectDir, printStream(out), "add", "field",
-                "--registry", registry.toString(), "--base-package", "com.acme.web");
+                "--registry", registry.toString(), "--allow-unsigned", "--base-package", "com.acme.web");
 
         assertNotEquals(0, exitCode);
         String output = out.toString(StandardCharsets.UTF_8);
@@ -188,7 +188,7 @@ class AddCommandTest {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int exitCode = run(projectDir, printStream(out), "add", "field",
-                "--registry", registry.toString(), "--base-package", "com.acme.web");
+                "--registry", registry.toString(), "--allow-unsigned", "--base-package", "com.acme.web");
 
         assertNotEquals(0, exitCode);
         assertFalse(Files.exists(projectDir.resolve(Lockfile.FILE_NAME)), "lockfile must not be written");
@@ -207,7 +207,7 @@ class AddCommandTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
         int exitCode = run(projectDir, printStream(out), "add", "label", "--dry-run",
-                "--registry", registry.toString(), "--base-package", "com.acme.web");
+                "--registry", registry.toString(), "--allow-unsigned", "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
         String output = out.toString(StandardCharsets.UTF_8);
@@ -222,14 +222,14 @@ class AddCommandTest {
         ByteArrayOutputStream out1 = new ByteArrayOutputStream();
 
         int firstExitCode = run(projectDir, printStream(out1), "add", "label",
-                "--registry", registry.toString(), "--base-package", "com.acme.web");
+                "--registry", registry.toString(), "--allow-unsigned", "--base-package", "com.acme.web");
         assertEquals(0, firstExitCode, out1.toString(StandardCharsets.UTF_8));
 
         String lockfileAfterFirstRun = readString(projectDir.resolve(Lockfile.FILE_NAME));
 
         ByteArrayOutputStream out2 = new ByteArrayOutputStream();
         int secondExitCode = run(projectDir, printStream(out2), "add", "label",
-                "--registry", registry.toString(), "--base-package", "com.acme.web");
+                "--registry", registry.toString(), "--allow-unsigned", "--base-package", "com.acme.web");
         assertEquals(0, secondExitCode, out2.toString(StandardCharsets.UTF_8));
 
         String lockfileAfterSecondRun = readString(projectDir.resolve(Lockfile.FILE_NAME));

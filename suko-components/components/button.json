@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "button",
   "version": "0.2.0",
   "description": "Botão com variantes de estilo (primary, secondary, ghost) e estado desabilitado.",

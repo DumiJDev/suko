@@ -3,3 +3,13 @@ build/
 .claude/worktrees/
 .superpowers/
 jte-classes/
+
+# Registry signing material: never committed (plan R7)
+*.private.pem
+*.public.txt
+# A assinatura OFICIAL (suko-components/registry.json.sig) tem de ser versionada na release:
+# `git add -f suko-components/registry.json.sig`. Nao ha regra de ignore para ela (opcao mais simples).
+
+# Saida de IDE (Eclipse/Buildship); so a raiz de cada modulo, nao pastas bin/ dentro de src
+/bin/
+/*/bin/

@@ -40,6 +40,8 @@ public final class Args {
               --force                 Overwrite files/config that would otherwise be left alone
               --dry-run               Show what would happen without writing anything
               --yes                   Accept defaults without prompting
+              --allow-unsigned        Accept a registry without registry.json.sig (local registries only)
+              --allow-downgrade       Accept a signed index older than the one in suko.lock.json
               --help, -h              Show this help
             """;
 
@@ -81,6 +83,11 @@ public final class Args {
                     Options:
                       --registry <path|url>   Registry base (overrides suko.json)
                       --registry-ref <tag>    Registry tag/ref to use
+                      --allow-unsigned        Accept a registry without registry.json.sig — only for
+                                               a local registry (path, localhost, 127.0.0.1, [::1]) never
+                                               seen signed before; never saved in suko.json
+                      --allow-downgrade       Accept a signed index older than the one recorded in
+                                               suko.lock.json (rollback protection)
                       --help, -h              Show this help
                     """,
             "add", """
@@ -94,6 +101,11 @@ public final class Args {
                       --registry-ref <tag>    Registry tag/ref to use
                       --force                 Overwrite locally-edited files
                       --dry-run               Show what would happen without writing anything
+                      --allow-unsigned        Accept a registry without registry.json.sig — only for
+                                               a local registry (path, localhost, 127.0.0.1, [::1]) never
+                                               seen signed before; never saved in suko.json
+                      --allow-downgrade       Accept a signed index older than the one recorded in
+                                               suko.lock.json (rollback protection)
                       --help, -h              Show this help
                     """,
             "diff", """
@@ -107,6 +119,11 @@ public final class Args {
                     Options:
                       --registry <path|url>   Registry base (overrides suko.json)
                       --registry-ref <tag>    Registry tag/ref to use
+                      --allow-unsigned        Accept a registry without registry.json.sig — only for
+                                               a local registry (path, localhost, 127.0.0.1, [::1]) never
+                                               seen signed before; never saved in suko.json
+                      --allow-downgrade       Accept a signed index older than the one recorded in
+                                               suko.lock.json (rollback protection)
                       --help, -h              Show this help
                     """,
             "update", """
@@ -124,6 +141,11 @@ public final class Args {
                       --registry-ref <tag>    Registry tag/ref to use
                       --force                 Overwrite locally-edited files too
                       --dry-run               Show what would happen without writing anything
+                      --allow-unsigned        Accept a registry without registry.json.sig — only for
+                                               a local registry (path, localhost, 127.0.0.1, [::1]) never
+                                               seen signed before; never saved in suko.json
+                      --allow-downgrade       Accept a signed index older than the one recorded in
+                                               suko.lock.json (rollback protection)
                       --help, -h              Show this help
                     """);
 
@@ -137,9 +159,12 @@ public final class Args {
     private final boolean dryRun;
     private final boolean yes;
     private final boolean help;
+    private final boolean allowUnsigned;
+    private final boolean allowDowngrade;
 
     private Args(String command, List<String> positionals, String registryBase, String registryRef,
-            String sourceRoot, String basePackage, boolean force, boolean dryRun, boolean yes, boolean help) {
+            String sourceRoot, String basePackage, boolean force, boolean dryRun, boolean yes, boolean help,
+            boolean allowUnsigned, boolean allowDowngrade) {
         this.command = command;
         this.positionals = Collections.unmodifiableList(positionals);
         this.registryBase = registryBase;
@@ -150,6 +175,8 @@ public final class Args {
         this.dryRun = dryRun;
         this.yes = yes;
         this.help = help;
+        this.allowUnsigned = allowUnsigned;
+        this.allowDowngrade = allowDowngrade;
     }
 
     public String command() {
@@ -192,6 +219,16 @@ public final class Args {
         return help;
     }
 
+    /** {@code --allow-unsigned}: accept an unsigned <em>local</em> registry (see {@code VerifiedIndex}). */
+    public boolean allowUnsigned() {
+        return allowUnsigned;
+    }
+
+    /** {@code --allow-downgrade}: accept a signed index older than the lockfile's (see {@code VerifiedIndex}). */
+    public boolean allowDowngrade() {
+        return allowDowngrade;
+    }
+
     /**
      * Parses the raw process arguments.
      *
@@ -211,6 +248,8 @@ public final class Args {
         boolean dryRun = false;
         boolean yes = false;
         boolean help = false;
+        boolean allowUnsigned = false;
+        boolean allowDowngrade = false;
 
         int i = 0;
         while (i < argv.length) {
@@ -230,6 +269,14 @@ public final class Args {
                 }
                 case "--yes" -> {
                     yes = true;
+                    i++;
+                }
+                case "--allow-unsigned" -> {
+                    allowUnsigned = true;
+                    i++;
+                }
+                case "--allow-downgrade" -> {
+                    allowDowngrade = true;
                     i++;
                 }
                 case "--registry" -> {
@@ -266,7 +313,7 @@ public final class Args {
         if (command == null) {
             if (help) {
                 return new Args(null, positionals, registryBase, registryRef, sourceRoot, basePackage,
-                        force, dryRun, yes, true);
+                        force, dryRun, yes, true, allowUnsigned, allowDowngrade);
             }
             throw new CliException("No command given.\n\n" + USAGE);
         }
@@ -278,7 +325,7 @@ public final class Args {
         }
 
         return new Args(command, positionals, registryBase, registryRef, sourceRoot, basePackage,
-                force, dryRun, yes, help);
+                force, dryRun, yes, help, allowUnsigned, allowDowngrade);
     }
 
     private static String requireValue(String[] argv, int i, String flag, String kind, String example) {

@@ -19,8 +19,6 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -198,7 +196,7 @@ public final class RegistryGenerator {
                     : config.sourceRootPrefix() + "/" + relativePath;
             String targetDir = packageSuffix.isEmpty() ? "" : packageSuffix.replace('.', '/') + "/";
             String target = targetDir + fileName;
-            ComponentFile componentFile = new ComponentFile(path, target, sha256Of(parsed.sourceBytes()));
+            ComponentFile componentFile = new ComponentFile(path, target, RegistryJson.sha256Hex(parsed.sourceBytes()));
 
             ComponentManifest manifest = new ComponentManifest(
                     RegistryIndex.SCHEMA_VERSION,
@@ -221,13 +219,25 @@ public final class RegistryGenerator {
             ComponentManifest manifest = manifestsByName.get(registryName);
             entries.add(new RegistryIndex.Entry(
                     manifest.name(), manifest.version(), manifest.description(),
-                    manifest.category(), "components/" + registryName + ".json"));
+                    manifest.category(), "components/" + registryName + ".json",
+                    manifestFileSha256(manifest)));
         }
 
         RegistryIndex registryIndex = new RegistryIndex(
-                RegistryIndex.SCHEMA_VERSION, config.registryVersion(), config.basePackage(), entries);
+                RegistryIndex.SCHEMA_VERSION, config.registryVersion(), config.basePackage(),
+                config.metadata().registryId(), config.metadata().ref(),
+                config.metadata().issuedAt(), config.metadata().expires(), entries);
 
         return new GeneratedRegistry(registryIndex, manifestsByName);
+    }
+
+    /**
+     * SHA-256 of the exact bytes a manifest is written with on disk: its JSON
+     * ({@link RegistryJson#writeManifest}) followed by a single {@code \n}
+     * (the committed files are LF-only, see .gitattributes).
+     */
+    public static String manifestFileSha256(ComponentManifest manifest) {
+        return RegistryJson.sha256Hex(RegistryJson.manifestBytes(manifest));
     }
 
     /** Parse via {@link SukoAstBuilder} only — no {@code SukoErrorListener}
@@ -328,19 +338,5 @@ public final class RegistryGenerator {
                     "Could not read descriptions file '" + descriptionsFile + "': " + e.getMessage(), e);
         }
         return properties;
-    }
-
-    private static String sha256Of(byte[] content) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(content);
-            StringBuilder hex = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is a mandatory JDK algorithm", e);
-        }
     }
 }

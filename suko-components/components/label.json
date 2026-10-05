@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "label",
   "version": "0.2.0",
   "description": "Rótulo de texto simples para um campo de formulário.",

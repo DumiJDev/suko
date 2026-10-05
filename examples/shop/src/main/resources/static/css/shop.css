@@ -1,0 +1,32 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, sans-serif; color: #222; background: #faf8f4; }
+a { color: #1d4e89; }
+.site-header { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; padding: 1rem 2rem; background: #fff; border-bottom: 1px solid #ddd; }
+.brand { font-weight: 700; font-size: 1.25rem; text-decoration: none; color: #222; }
+.site-nav { display: flex; gap: 1rem; }
+.site-nav a { text-decoration: none; }
+.cart-link { margin-left: auto; }
+.site-header form { display: flex; gap: .5rem; }
+main { max-width: 72rem; margin: 0 auto; padding: 2rem; }
+.product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); gap: 1.5rem; list-style: none; padding: 0; }
+.product-card { background: #fff; border: 1px solid #ddd; border-radius: .5rem; overflow: hidden; }
+.product-card a { display: block; color: inherit; text-decoration: none; }
+.product-card img, .product img { width: 100%; height: auto; display: block; }
+.product-card h2 { font-size: 1rem; margin: .75rem; }
+.price { display: block; margin: 0 .75rem .75rem; font-weight: 700; }
+.product { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.description { line-height: 1.5; }
+.reviews { list-style: none; padding: 0; }
+.review { border-top: 1px solid #ddd; padding: .75rem 0; }
+.empty { color: #666; font-style: italic; }
+.site-footer { text-align: center; padding: 2rem; color: #666; font-size: .875rem; }
+.cart-count { display: inline-block; min-width: 1.5rem; padding: 0 .4rem; border-radius: 1rem; background: #1d4e89; color: #fff; text-align: center; }
+.add-to-cart, .review-form, .checkout-form { display: grid; gap: .5rem; max-width: 32rem; margin: 1rem 0; }
+.review-form textarea, .checkout-form textarea { font: inherit; }
+.add-to-cart input[type=number] { width: 5rem; }
+.error { color: #a40000; font-weight: 600; margin: 0; }
+.cart-lines, .checkout-lines, .order-lines { list-style: none; padding: 0; }
+.cart-line { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; border-top: 1px solid #ddd; padding: .75rem 0; }
+.cart-line .name { flex: 1; }
+.cart-total, .order-total { font-size: 1.25rem; font-weight: 700; }
+.button { display: inline-block; padding: .5rem 1rem; background: #1d4e89; color: #fff; border-radius: .25rem; text-decoration: none; }

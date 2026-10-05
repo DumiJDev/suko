@@ -22,10 +22,10 @@ import java.util.TreeMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Prova central do 13a: o output do compilador (os .jte, os source maps e os
- * diagnósticos) para três raízes reais fica byte a byte igual antes e depois
- * de o JTE passar para trás da API de extensões. Regenerar só com
- * -Dsuko.updateGolden=true, e só na Task 1.
+ * Golden do output do compilador (os .jte, os source maps e os diagnósticos) para as
+ * raízes invalid, components, shop (a loja de examples/shop) e website. Regenerado na
+ * Task 4 do subprojeto 14 e, com a loja, na Task 14. Regenerar só com
+ * -Dsuko.updateGolden=true.
  */
 class GoldenParityTest {
 
@@ -34,8 +34,9 @@ class GoldenParityTest {
 
     @ParameterizedTest
     @CsvSource({
-        "examples, ../examples",
+        "invalid, src/test/resources/fixtures/invalid",
         "components, ../suko-components/src/main/suko",
+        "shop, ../examples/shop/src/main/suko",
         "website, ../suko-website/src/main/suko"
     })
     void outputMatchesGolden(String name, String root) throws IOException {
@@ -50,7 +51,8 @@ class GoldenParityTest {
 
     static Map<String, String> snapshot(Path root) {
         Map<String, String> out = new TreeMap<>();
-        var result = new SukoProjectCompiler().compile(root);
+        SukoSources sources = SukoSources.fromDirectory(root);
+        var result = new SukoProjectCompiler().compile(sources);
         result.generatedJteSources().forEach((path, jte) -> out.put("jte/" + slash(path), jte));
 
         List<String> diagnostics = new ArrayList<>();
@@ -64,7 +66,7 @@ class GoldenParityTest {
         diagnostics.sort(null);
         out.put("diagnostics.txt", String.join("\n", diagnostics) + "\n");
 
-        ProjectAnalysis analysis = new SukoProjectCompiler().analyze(SukoSources.fromDirectory(root));
+        ProjectAnalysis analysis = new SukoProjectCompiler().analyze(sources);
         StringBuilder maps = new StringBuilder();
         analysis.files().forEach((file, fa) -> {
             if (fa.ast() == null || fa.diagnostics().hasErrors()) {

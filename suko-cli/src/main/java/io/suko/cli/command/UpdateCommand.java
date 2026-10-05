@@ -11,16 +11,14 @@ import io.suko.cli.Reconciler;
 import io.suko.cli.RegistrySources;
 import io.suko.cli.ResolutionPlan;
 import io.suko.cli.Resolver;
+import io.suko.cli.VerifiedIndex;
 import io.suko.registry.ComponentFile;
 import io.suko.registry.ComponentManifest;
 import io.suko.registry.RegistryIndex;
-import io.suko.registry.RegistryJson;
-import io.suko.registry.RegistryJsonException;
 import io.suko.registry.RegistrySource;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -87,7 +85,9 @@ public final class UpdateCommand {
         String registryRef = config.registry().ref() != null ? config.registry().ref() : lockfile.registry().ref();
 
         RegistrySource source = RegistrySources.resolve(registryBase);
-        RegistryIndex index = loadIndex(source, registryBase);
+        VerifiedIndex.Result verified = VerifiedIndex.load(source, registryBase, registryRef, Optional.of(lockfile),
+                args.allowUnsigned(), args.allowDowngrade(), config.registry().trustedKeys(), System.err);
+        RegistryIndex index = verified.index();
         ResolutionPlan plan = Resolver.resolve(index, source, requestedNames);
 
         List<FetchedFile> fetched = fetchAndVerify(plan, source);
@@ -130,7 +130,7 @@ public final class UpdateCommand {
             }
         }
 
-        Lockfile newLockfile = buildLockfile(config, index, registryBase, registryRef, plan, plannedFiles, lockfile);
+        Lockfile newLockfile = buildLockfile(config, verified, registryBase, registryRef, plan, plannedFiles, lockfile);
         newLockfile.write(projectDir);
         out.println();
         out.println("Wrote " + projectDir.resolve(Lockfile.FILE_NAME));
@@ -160,22 +160,6 @@ public final class UpdateCommand {
             }
         }
         return orphans;
-    }
-
-    // --- index/manifest loading (same shape as AddCommand/DiffCommand) ---
-
-    private RegistryIndex loadIndex(RegistrySource source, String registryBase) {
-        byte[] indexBytes;
-        try {
-            indexBytes = source.resolve("registry.json");
-        } catch (IOException e) {
-            throw new CliException("Could not read registry.json from \"" + registryBase + "\": " + e.getMessage());
-        }
-        try {
-            return RegistryJson.readIndex(new String(indexBytes, StandardCharsets.UTF_8));
-        } catch (RegistryJsonException e) {
-            throw new CliException("Could not parse registry.json from \"" + registryBase + "\": " + e.getMessage());
-        }
     }
 
     // --- fetch + verify (pre-rewrite sha256, same as AddCommand's step 3) ---
@@ -312,7 +296,7 @@ public final class UpdateCommand {
     // untouched entry — including an orphaned transitive — is carried over
     // unchanged, never dropped) ---
 
-    private Lockfile buildLockfile(ProjectConfig config, RegistryIndex index, String registryBase, String registryRef,
+    private Lockfile buildLockfile(ProjectConfig config, VerifiedIndex.Result verified, String registryBase, String registryRef,
             ResolutionPlan plan, List<PlannedFile> plannedFiles, Lockfile existingLockfile) {
 
         Map<String, LockEntry> componentsByName = new LinkedHashMap<>();
@@ -336,7 +320,8 @@ public final class UpdateCommand {
             componentsByName.put(manifest.name(), new LockEntry(manifest.name(), manifest.version(), reason, files));
         }
 
-        return new Lockfile(Lockfile.SCHEMA_VERSION, new Lockfile.Registry(registryBase, registryRef, index.registryVersion()),
+        return new Lockfile(Lockfile.SCHEMA_VERSION, new Lockfile.Registry(VerifiedIndex.normalizeBase(registryBase), registryRef,
+                        verified.index().registryVersion(), verified.signed(), verified.keyId(), verified.index().issuedAt()),
                 config.basePackage(), config.sourceRoot(), new ArrayList<>(componentsByName.values()));
     }
 

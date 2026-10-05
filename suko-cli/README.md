@@ -175,6 +175,50 @@ originally create — an on-disk file with no lockfile entry is treated as
 yours, and `suko add`/`suko update` refuse to touch it without an explicit
 `--force`.
 
+## Registry signature verification
+
+`list`, `add`, `diff` and `update` verify `registry.json` against
+`registry.json.sig` (Ed25519, over the exact bytes of the index) before
+parsing it. The expected identity of the registry comes from your
+configuration, never from the index being verified:
+
+- the **official** base template
+  (`https://raw.githubusercontent.com/DumiJDev/suko/<ref>/suko-components/`)
+  maps to the official `registryId`
+  `https://raw.githubusercontent.com/DumiJDev/suko/` (the ref sits in the middle
+  of the URL, so the URL itself could never equal the signed id);
+- a **custom** base maps to its normalised base (a filesystem path becomes
+  absolute and normalised, with a trailing `/`).
+
+Keys are bound to one `registryId` and come from the CLI's embedded
+`trusted-keys.json` plus `registry.publicKeys` in `suko.json`.
+
+Flags (accepted by `list`, `add`, `diff`, `update`):
+
+- **`--allow-unsigned`** — accept a registry without `registry.json.sig`.
+  Local registries only (a path, `localhost`, `127.0.0.1`, `[::1]`), and refused
+  for a registry the lockfile has already seen signed (anti-strip). It is **not
+  persisted**: every command that reads the registry needs it. Example:
+  `suko list --registry ../suko/suko-components --allow-unsigned`.
+- **`--allow-downgrade`** — accept a signed index older (`issuedAt` /
+  `registryVersion`) than the one recorded in `suko.lock.json`.
+
+The lockfile's `registry` object records what was verified: `signed`, `keyId`
+and `issuedAt` (the anti-strip and anti-rollback floor). Errors are prefixed
+with a code:
+
+| Code | Meaning |
+|---|---|
+| `REGISTRY_UNSIGNED` | no signature (or `--allow-unsigned` used where it is not accepted) |
+| `REGISTRY_BAD_SIGNATURE` | the signature does not verify with any trusted key for this registry |
+| `REGISTRY_MISMATCH` | the signed `registryId`/`ref` is not the configured one |
+| `REGISTRY_EXPIRED` | the index's `expires` is in the past |
+| `REGISTRY_ROLLBACK` | the index is older than the lockfile's (override: `--allow-downgrade`) |
+| `REGISTRY_MANIFEST_HASH` | a component manifest does not match its hash in the index |
+| `REGISTRY_INVALID` | unacceptable structure: schema, unreadable dates, bad manifest path |
+
+See `docs/security.md` for the threat model.
+
 ## Registry pinning is by registry tag, not by component version
 
 `suko add` and `suko update` operate against **one registry ref** (tag) at

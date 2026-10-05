@@ -33,6 +33,15 @@ O server traz o alvo `jte` embutido. As extensões do projeto (alvos, vocabulár
 - Sem `extensions.json` o server fica em silêncio (a spec dizia avisar uma vez; desvio deliberado para evitar ruído). Só procura `build/suko` e `target/suko`: com um `buildDirectory` personalizado no Gradle não o encontra.
 - Uma extensão que falhe dá `EXTENSION_FAILED` e o server continua.
 
+## Severidades
+
+`ERROR`, `WARNING` e `INFO` do compilador viram `Error`, `Warning` e `Information` do LSP. O
+`INFO` é novo (subprojeto 14): `TRUSTED_URL`/`TRUSTED_STYLE` marcam os usos de
+`trustedUrl(...)`/`trustedStyle(...)`. O server verifica com as opções de segurança por
+omissão: o `suko.security` do build (`strictCsp`, `urlSchemes`, `codeAttributes`...) não é
+lido, por isso `CSP_INLINE` não aparece e `codeAttributes`/`urlAttributes` personalizados não
+contam. Os erros `UNSAFE_SINK`, `RESERVED_NAME` e `UPPERCASE_NAME` aparecem como no build.
+
 ## Limites conhecidos
 
 - Cada verificação recompila o root inteiro (sem compilação incremental — o mesmo compromisso do `sukoWatch`).

@@ -12,5 +12,12 @@ import java.util.Map;
  * resolve) e o prefixo de package do ficheiro (ex.: {@code "ui."}).
  */
 public record EmitContext(SukoFile file, ProjectView project,
-                          Map<String, ProjectIndexEntry> importedByShortName, String packagePrefix) {
+                          Map<String, ProjectIndexEntry> importedByShortName, String packagePrefix,
+                          SecurityOptions options) {
+
+    /** Construtor do 13a: opções por omissão. */
+    public EmitContext(SukoFile file, ProjectView project,
+                       Map<String, ProjectIndexEntry> importedByShortName, String packagePrefix) {
+        this(file, project, importedByShortName, packagePrefix, SecurityOptions.DEFAULT);
+    }
 }

@@ -18,6 +18,7 @@ dependencies {
     testFixturesImplementation("gg.jte:jte:3.1.12")
 
     testImplementation(project(":suko-jte"))
+    testImplementation("org.jsoup:jsoup:1.17.2")
     testFixturesImplementation(project(":suko-jte"))
 
     testImplementation(platform("org.junit:junit-bom:5.10.2"))

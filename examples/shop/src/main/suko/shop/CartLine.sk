@@ -1,0 +1,14 @@
+package shop;
+
+public component CartLine(Map<String, String> line, String csrfName, String csrfToken) {
+  <li class="cart-line">
+    <a class="name" href="/p/${line.get("id")}">${line.get("name")}</a>
+    <span class="quantity">${line.get("quantity")} x ${line.get("unitPrice")}</span>
+    <span class="line-total">${line.get("lineTotal")}</span>
+    <form method="post" action="/cart/remove">
+      <input type="hidden" name=${csrfName} value=${csrfToken} />
+      <input type="hidden" name="id" value=${line.get("id")} />
+      <button type="submit">Remover</button>
+    </form>
+  </li>
+}

@@ -1,21 +1,26 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "registryVersion": "0.1.0-test",
   "basePackage": "io.suko.fixture",
+  "registryId": "https://fixture.example/",
+  "ref": "test",
+  "issuedAt": "2026-10-05T00:00:00Z",
   "components": [
     {
       "name": "a",
       "version": "0.1.0",
       "description": "Depends on b, which depends back on a (cycle).",
       "category": "test",
-      "manifest": "components/a.json"
+      "manifest": "components/a.json",
+      "manifestSha256": "685f4a373ff402dafc5c0b49b722a02743b2b19a633e75df0675dc17feb7d2ed"
     },
     {
       "name": "b",
       "version": "0.1.0",
       "description": "Depends back on a, closing the cycle.",
       "category": "test",
-      "manifest": "components/b.json"
+      "manifest": "components/b.json",
+      "manifestSha256": "f5ddd500adb6922f782eb26d5c966d58a9ccbf7587629f096e1859b0fd104be2"
     }
   ]
 }

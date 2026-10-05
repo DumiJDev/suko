@@ -29,6 +29,7 @@ public class JteCompiler {
     private final String sukoSource;
     private final ExtensionRegistry registry;
     private final List<String> targets;
+    private final SecurityOptions options;
 
     public JteCompiler(String fileName, String sukoSource) {
         this(fileName, sukoSource, ExtensionRegistry.defaults(), List.of("jte"));
@@ -41,6 +42,12 @@ public class JteCompiler {
     }
 
     public JteCompiler(String fileName, String sukoSource, ExtensionRegistry registry, List<String> targets) {
+        this(fileName, sukoSource, registry, targets, SecurityOptions.DEFAULT);
+    }
+
+    public JteCompiler(String fileName, String sukoSource, ExtensionRegistry registry, List<String> targets,
+                       SecurityOptions options) {
+        this.options = options;
         this.fileName = fileName;
         this.sukoSource = sukoSource;
         this.registry = registry;
@@ -129,7 +136,7 @@ public class JteCompiler {
         if (diagnostics.hasErrors()) {
             return CompileResult.failure(diagnostics);
         }
-        return emitAll(sukoFile, ProjectView.EMPTY, Map.of(), "");
+        return emitAll(sukoFile, ProjectView.EMPTY, Map.of(), "", diagnostics);
     }
 
     /** Parse + verificação semântica consciente de projeto, sem emissão.
@@ -175,15 +182,26 @@ public class JteCompiler {
         // correto o valor é idêntico (PACKAGE_DIRECTORY_MISMATCH garante-o).
         String currentPackagePrefix = ProjectIndex.relativeDirToPackagePrefix(
             fileRelativePath.getParent() == null ? Path.of("") : fileRelativePath.getParent());
-        return emitAll(sukoFile, projectIndex, importedByShortName, currentPackagePrefix);
+        return emitAll(sukoFile, projectIndex, importedByShortName, currentPackagePrefix, diagnostics);
     }
 
     private void runExtensionChecks(SukoFile sukoFile, ProjectView project, DiagnosticCollector diagnostics) {
         List<Target> resolved = targets.stream().flatMap(id -> registry.target(id).stream()).toList();
         VocabularyChecker.check(sukoFile, fileName, resolved, registry, diagnostics);
+        java.util.Set<String> active = new java.util.TreeSet<>();
+        for (Target t : resolved) {
+            try {
+                active.addAll(t.vocabularies());
+            } catch (Throwable e) {
+                io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
+                // VocabularyChecker.check já reporta o EXTENSION_FAILED deste alvo
+            }
+        }
+        CheckContext checkContext = new CheckContext(fileName, project, diagnostics, options,
+            java.util.Collections.unmodifiableSet(active));
         for (Checker checker : registry.checkers()) {
             try {
-                checker.check(sukoFile, new CheckContext(fileName, project, diagnostics));
+                checker.check(sukoFile, checkContext);
             } catch (Throwable e) {
                 io.suko.lang.ext.ExtensionFailures.rethrowFatal(e);
                 diagnostics.add(new SukoDiagnostic(Severity.ERROR,
@@ -194,10 +212,10 @@ public class JteCompiler {
     }
 
     private CompileResult emitAll(SukoFile sukoFile, ProjectView project,
-                                  Map<String, ProjectIndexEntry> importedByShortName, String packagePrefix) {
-        DiagnosticCollector diagnostics = new DiagnosticCollector();
+                                  Map<String, ProjectIndexEntry> importedByShortName, String packagePrefix,
+                                  DiagnosticCollector diagnostics) {
         Map<String, Map<String, String>> byTarget = new LinkedHashMap<>();
-        EmitContext ctx = new EmitContext(sukoFile, project, importedByShortName, packagePrefix);
+        EmitContext ctx = new EmitContext(sukoFile, project, importedByShortName, packagePrefix, options);
         for (String targetId : targets) {
             Target target = registry.target(targetId).orElse(null);
             if (target == null) {
@@ -222,6 +240,6 @@ public class JteCompiler {
             return CompileResult.failure(diagnostics);
         }
         Map<String, String> first = byTarget.isEmpty() ? Map.of() : byTarget.values().iterator().next();
-        return new CompileResult(true, new DiagnosticCollector(), first, byTarget);
+        return new CompileResult(true, diagnostics, first, byTarget);
     }
 }

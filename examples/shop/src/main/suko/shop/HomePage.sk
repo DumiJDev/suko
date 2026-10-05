@@ -1,0 +1,13 @@
+package shop;
+
+import shop.Layout;
+import shop.SearchBox;
+import shop.ProductGrid;
+
+public component HomePage(String title, int cartCount, List<Map<String, String>> categories, List<Map<String, String>> products) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Bem-vindo à Suko Shop</h1>
+    SearchBox(q = "")
+    ProductGrid(products = products)
+  }
+}

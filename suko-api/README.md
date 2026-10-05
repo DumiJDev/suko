@@ -99,6 +99,37 @@ Declarar a extensão no projeto (`sukoExtensions` no Gradle, `<dependencies>` do
 no Maven) e escolher os alvos — ver a secção "Extensions" do `README.md` da raiz. O
 LSP só carrega extensões em workspaces confiáveis.
 
+## Segurança (subprojeto 14)
+
+`SecurityOptions` (em `io.suko.ext`) é um record entregue às extensões em `EmitContext`
+e `CheckContext` (`ctx.options()`): `generatedPackage`, `urlSchemes` (por omissão `http`,
+`https`, `mailto`, `tel`), `imageDataTypes`, `strictCsp`, `codeAttributes`, `urlAttributes`.
+O construtor valida: `generatedPackage` tem de ser um package Java sem palavras reservadas,
+`urlSchemes` não pode ser vazio nem conter `javascript`, `vbscript`, `data`, `blob` ou
+`filesystem`, `imageDataTypes` é um subconjunto de `png`, `gif`, `jpeg`, `webp`, `avif`.
+Vêm do build (Gradle `suko { security { ... } }`, Maven `<security>`); ver `docs/security.md`.
+
+`Target.emitProject(ProjectEmitContext)` devolve ficheiros do projeto inteiro
+(`ProjectOutput`), em vez de por componente; por omissão nenhum. O `jte` usa-o para gerar
+`SukoSafe.java` em `generatedPackage`. O Gradle e o Maven escrevem-nos em `generatedJavaDir`
+(Gradle `build/generated-src/suko-java`; Maven `target/generated-sources/suko-java`) e o
+build regista essa pasta como fonte Java. O Gradle guarda a lista em
+`build/suko/java-outputs.txt` para limpar só o que gerou.
+
+Códigos que o checker de segurança do `jte` reporta: `UNSAFE_SINK`, `RESERVED_NAME`,
+`UPPERCASE_NAME` (ERROR), `CSP_INLINE` (WARNING, só com `strictCsp`) e `TRUSTED_URL`/
+`TRUSTED_STYLE` (INFO). O INFO aparece no LSP como Information e no Gradle com `--info`.
+
+### Contrato dos alvos
+
+**Todo alvo que aceite o vocabulário `html` tem de aplicar a verificação de URLs da M1**
+(valores dinâmicos em atributos de URL só depois de uma allowlist de esquemas, bloqueados
+para `about:invalid#suko-blocked`; mesmo conjunto de atributos que o `jte`) **e correr o
+corpus XSS** (`suko-core/src/test/resources/security/xss-corpus.txt`, `XssCorpusTest`).
+O core não conhece a `SukoSafe` nem nenhum alvo; um alvo que ignore isto abre XSS por URL
+em todos os componentes (incluindo os do registry). `Vocabulary` ainda não declara
+atributos de código/URL: só `codeAttributes`/`urlAttributes` da configuração.
+
 ## Limitações conhecidas e checklist para o item 12
 
 - `TagSpec.attributeTypes` e `allowsChildren` ainda não são aplicados pelo core.

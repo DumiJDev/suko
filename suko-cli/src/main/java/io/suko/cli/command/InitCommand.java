@@ -3,6 +3,7 @@ package io.suko.cli.command;
 import io.suko.cli.Args;
 import io.suko.cli.CliException;
 import io.suko.cli.ProjectConfig;
+import io.suko.cli.VerifiedIndex;
 import io.suko.cli.Version;
 
 import java.io.InputStream;
@@ -34,8 +35,10 @@ public final class InitCommand {
      * all in the {@code registry} object).
      */
     static final String DEFAULT_REGISTRY_REF = "v" + Version.current();
-    static final String DEFAULT_REGISTRY_BASE_TEMPLATE =
-            "https://raw.githubusercontent.com/DumiJDev/suko/%s/suko-components/";
+    // Single source of truth shared with VerifiedIndex.canonicalId, which
+    // maps exactly this URL (for the requested ref) to the official
+    // registryId the signed index declares.
+    static final String DEFAULT_REGISTRY_BASE_TEMPLATE = VerifiedIndex.OFFICIAL_BASE_TEMPLATE;
 
     public void run(Args args, InputStream in, PrintStream out, PrintStream err, Path projectDir) {
         Path configFile = projectDir.resolve(ProjectConfig.FILE_NAME);

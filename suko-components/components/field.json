@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "field",
   "version": "0.2.0",
   "description": "Label e input emparelhados, compostos a partir dos componentes Label e Input importados.",

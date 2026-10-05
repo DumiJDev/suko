@@ -1,63 +1,74 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "registryVersion": "0.2.0",
   "basePackage": "io.suko",
+  "registryId": "https://raw.githubusercontent.com/DumiJDev/suko/",
+  "ref": "main",
+  "issuedAt": "2026-10-05T00:00:00Z",
   "components": [
     {
       "name": "alert",
       "version": "0.2.0",
       "description": "Caixa de aviso com variantes de cor (success, warning, danger) e conteúdo livre.",
       "category": "feedback",
-      "manifest": "components/alert.json"
+      "manifest": "components/alert.json",
+      "manifestSha256": "066fe001474cc220ccedee3fd2bba0d38ce7679116907805b95d59a7ac9e60c9"
     },
     {
       "name": "badge",
       "version": "0.2.0",
       "description": "Etiqueta compacta com variantes de cor (success, warning, danger).",
       "category": "feedback",
-      "manifest": "components/badge.json"
+      "manifest": "components/badge.json",
+      "manifestSha256": "855464d1bd2b0a73bbbfe3cf484606243aed5ea90ea9a78526db2605808b364d"
     },
     {
       "name": "button",
       "version": "0.2.0",
       "description": "Botão com variantes de estilo (primary, secondary, ghost) e estado desabilitado.",
       "category": "action",
-      "manifest": "components/button.json"
+      "manifest": "components/button.json",
+      "manifestSha256": "22af7dace5595c7734f9ab298be3b9c08ff44dcff8807b2d5182b9f3e2012258"
     },
     {
       "name": "card",
       "version": "0.2.0",
       "description": "Cartão com cabeçalho e rodapé opcionais, e conteúdo obrigatório.",
       "category": "layout",
-      "manifest": "components/card.json"
+      "manifest": "components/card.json",
+      "manifestSha256": "b342f8c833fe969d7588e55e23b5641398c03f1db8922929de7677a6e8f27867"
     },
     {
       "name": "dialog",
       "version": "0.2.0",
       "description": "Diálogo modal com Alpine.js para abrir/fechar, título e conteúdo livre.",
       "category": "overlay",
-      "manifest": "components/dialog.json"
+      "manifest": "components/dialog.json",
+      "manifestSha256": "f0ccfd2fba2a01bc1169de03442ad8c58a6591b52c9f200fd8d8e4b47e529549"
     },
     {
       "name": "field",
       "version": "0.2.0",
       "description": "Label e input emparelhados, compostos a partir dos componentes Label e Input importados.",
       "category": "form",
-      "manifest": "components/field.json"
+      "manifest": "components/field.json",
+      "manifestSha256": "3f91cd71fcd3a8644697a9260dbd3a8138d043c42370d724bc992e397bddd1e9"
     },
     {
       "name": "input",
       "version": "0.2.0",
       "description": "Campo de entrada de texto simples, com placeholder e obrigatoriedade opcional.",
       "category": "form",
-      "manifest": "components/input.json"
+      "manifest": "components/input.json",
+      "manifestSha256": "7c8c8d0a2d389971a743faf8ce97395d1dae61e3f0725ce3af321a2505a4a47f"
     },
     {
       "name": "label",
       "version": "0.2.0",
       "description": "Rótulo de texto simples para um campo de formulário.",
       "category": "form",
-      "manifest": "components/label.json"
+      "manifest": "components/label.json",
+      "manifestSha256": "98afda3ba2195c7ee529e86c627e1f0e0b0ffcef34621244875d720d6a7e5f1e"
     }
   ]
 }

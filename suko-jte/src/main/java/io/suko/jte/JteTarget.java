@@ -24,8 +24,14 @@ public final class JteTarget implements Target {
     }
 
     public Emitted emit(ComponentDecl component, EmitContext ctx) {
-        JteEmitter emitter = new JteEmitter(ctx.file().components(), ctx.importedByShortName(), ctx.packagePrefix());
+        JteEmitter emitter = new JteEmitter(ctx.file().components(), ctx.importedByShortName(), ctx.packagePrefix(), ctx.options());
         JteEmitter.EmitResult result = emitter.emitWithSourceMap(component);
         return new Emitted(component.name() + ".jte", result.jteSource(), result.sourceMap());
+    }
+
+    @Override
+    public java.util.List<io.suko.ext.ProjectOutput> emitProject(io.suko.ext.ProjectEmitContext ctx) {
+        return java.util.List.of(new io.suko.ext.ProjectOutput(io.suko.ext.ProjectOutput.Kind.JAVA_SOURCE,
+            SukoSafeSource.relativePath(ctx.options()), SukoSafeSource.generate(ctx.options())));
     }
 }

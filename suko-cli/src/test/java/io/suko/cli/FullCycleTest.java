@@ -89,7 +89,7 @@ class FullCycleTest {
         ByteArrayOutputStream addErr = new ByteArrayOutputStream();
         int addExitCode = Main.run(new String[] {
                 "add", "field",
-                "--registry", REGISTRY.toString(),
+                "--registry", REGISTRY.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web",
                 "--source-root", "src/main/suko",
                 "--yes"

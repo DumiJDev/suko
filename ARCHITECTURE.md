@@ -14,8 +14,9 @@ Análise semântica [subprojeto 2 — CONCLUÍDO]
         │  - tabela de símbolos de componentes
         │  - valida chamadas de componente
         │  - valida slots (presença/cardinalidade/parâmetros)
-        │  - (não valida estrutura HTML nem URLs perigosas: nada o faz
-        │    hoje; o escape é feito pelo JTE em runtime, ContentType.Html)
+        │  - (não valida estrutura HTML; o escape de caracteres é do JTE em
+        │    runtime, ContentType.Html. Sinks perigosos e URLs: subprojeto 14,
+        │    HtmlSecurityChecker no suko-jte + SukoSafe gerado no projeto)
         │  - rejeita o que não é suportado (generics, nomes de
         │    componente compostos), delegando tipagem Java profunda
         │    ao javac na fase seguinte (subprojeto 3)
@@ -53,8 +54,9 @@ mais o plugin `base` (só para dar um `:clean` a nível de raiz, que também
 apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
 
 - **`suko-api/`** — o contrato das extensões (13a): `io.suko.ext.*`
-  (`SukoExtension`, `Target`, `Vocabulary`, `Checker`, `ExtensionApi.VERSION`,
-  contextos e `Emitted`). Só JDK; é o único módulo que uma extensão de
+  (`SukoExtension`, `Target` — com `emitProject` —, `Vocabulary`, `Checker`,
+  `ExtensionApi.VERSION`, contextos, `Emitted`, `ProjectOutput`/`ProjectEmitContext`
+  e `SecurityOptions`). Só JDK; é o único módulo que uma extensão de
   terceiros precisa de ver. Ver `suko-api/README.md`.
 - **`suko-core/`** — o compilador: gramática ANTLR, AST, `SukoAstBuilder`,
   `SemanticChecker`, `JteCompiler`, `io.suko.lang.ext.*` (`ExtensionRegistry`,
@@ -75,7 +77,7 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   real fica em aberto, dependente da mesma questão de D1 do subprojeto 7.
 - **`suko-maven-plugin/`** — plugin Maven (`SukoCompileMojo`), depende de
   `suko-core` e `suko-jte`. Tem um `META-INF/maven/plugin.xml` escrito à mão
-  (goal `compile`, 6 parâmetros), ver "Ressalva fechada" no item 4 do roadmap.
+  (goal `compile`, 8 parâmetros), ver "Ressalva fechada" no item 4 do roadmap.
   Não está publicado num repositório Maven; só há testes ao nível da Mojo e do
   descritor, nenhum teste automático corre um `mvn` real.
 - **`suko-jte/`** — o alvo JTE embutido (`JteEmitter`, `JteExtension`,
@@ -127,7 +129,8 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   GraalVM é opt-in e exclusivamente do lado do consumidor
   (`jbang --native --build-dir <dir> suko@DumiJDev/suko`) — nunca construído nem
   publicado por este projeto. Ver `suko-cli/README.md` para a referência
-  de comandos e o desenho de duplo hash do `suko.lock.json`.
+  de comandos, o desenho de duplo hash do `suko.lock.json` e a verificação da
+  assinatura do registry.
 - **`suko-lsp/`** — language server do Suko (subprojeto 11a): LSP4J sobre
   stdio, depende de `suko-core` e `suko-jte` (exclui o ANTLR *tool* que o plugin
   `antlr` põe no `api` do core; usa `antlr4-runtime`). Fat jar à mão, como o
@@ -148,8 +151,10 @@ apaga o `jte-classes/` órfão de builds pré-migração), sem source próprio.
   `suko add`, como qualquer outro consumidor). Decisão de scoping do
   subprojeto 10, não deste.
 
-`examples/` (ficheiros `.sk` de referência) permanece na raiz do
-repositório, fora de qualquer módulo — não é uma unidade de build.
+`examples/` é hoje a loja Suko (`examples/shop`, Spring Boot + H2, subprojeto 14),
+um build Gradle separado fora do `settings.gradle.kts` da raiz. Os antigos `.sk`
+de referência (`Card.sk`, `layout/`, `forms/`, `dashboard/`) vivem em
+`suko-core/src/test/resources/fixtures/legacy`.
 
 ## Decisões de design que moldam o pipeline
 
@@ -289,7 +294,7 @@ repositório, fora de qualquer módulo — não é uma unidade de build.
 
 ## Limitações conhecidas (fim do subprojeto 2)
 
-`examples/Card.sk` é a **referência da superfície da linguagem**, não
+`suko-core/src/test/resources/fixtures/legacy/Card.sk` (antes `examples/Card.sk`) é a **referência da superfície da linguagem**, não
 do que o emitter já renderiza — e, com a decisão de roadmap sobre
 generics abaixo, é hoje um programa que o verificador do subprojeto 2
 terá de rejeitar. Cada item abaixo foi confirmado empiricamente
@@ -316,10 +321,10 @@ arquitetura):
   formas com um erro explícito de "ainda não suportado"; a renderização
   real de generics é um subprojeto dedicado, fora dos subprojetos 2-4.
 
-- **Layouts e componentes reutilizáveis.** Os exemplos `examples/layout/` mostram
+- **Layouts e componentes reutilizáveis.** Os fixtures `fixtures/legacy/layout/` (antes `examples/layout/`) mostram
   como criar componentes reutilizáveis (`Layout`, `Card`, `Modal`, `Button`,
-  `Input`, `Select`) com slots nomeados. O `examples/forms/` demonstra
-  formulários completos com validação de erros. O `examples/dashboard/`
+  `Input`, `Select`) com slots nomeados. O `fixtures/legacy/forms/` demonstra
+  formulários completos com validação de erros. O `fixtures/legacy/dashboard/`
   mostra um painel de controle com navegação e listas dinâmicas.
 
 - **Slots nomeados.** Todos os componentes usam slots nomeados (`header`,
@@ -551,16 +556,11 @@ arquitetura):
   do âmbito do subprojeto 7 (regra D5: só a correção da Tarefa 1 estava
   pré-aprovada).
 - **`suko-cli` (subprojeto 8): sem hash nem assinatura sobre os próprios
-  documentos JSON do registry.** `registry.json`/`components/*.json`
-  chegam ao consumidor como texto simples, verificado apenas pelo
-  `sha256` de cada ficheiro de componente **individual** — mas nada
-  assina o índice/manifesto em si. A confiança de que o documento
-  recebido é o que o mantenedor publicou é inteiramente do transporte:
-  `HttpRegistrySource` exige HTTPS e recusa redirects, mas não há
-  verificação criptográfica adicional acima disso. Um registry
-  comprometido (ou um MITM que quebrasse TLS) poderia servir um
-  `registry.json` alterado com hashes de ficheiro internamente
-  consistentes entre si.
+  documentos JSON do registry — FECHADO no subprojeto 14.** O
+  `registry.json` é agora schema 2 com `manifestSha256` por entrada e uma
+  assinatura Ed25519 (`registry.json.sig`) verificada pela CLI antes do
+  parse; ver o item 14 e `suko-cli/README.md`. (Até ao subprojeto 8 a
+  confiança era só do transporte: HTTPS sem redirects.)
 - **`$` seguido de identificador dentro de uma string é sempre
   interpolação Suko — colide com as *magic properties* do Alpine.js.**
   `x-data="$store.foo"`, `x-on:click="$dispatch('evento')"`, `$el`,
@@ -665,8 +665,9 @@ Cada subprojeto tem o seu ciclo spec → plano → implementação em
 4. **Integração no build** — CONCLUÍDO. Plugin Gradle (`sukoCompile`, `sukoWatch`), plugin Maven (`suko:compile`), modo watch com `WatchService`, E2E tests.
    **Ressalva fechada:** o módulo `suko-maven-plugin` agora tem um
    `META-INF/maven/plugin.xml` completo e correto (goal `compile`,
-   implementation, phase `generate-sources`, os 6 parâmetros (`project`, `sourceDir`,
-   `outputDir`, `generatedPackage`, `targets`, `buildDirectory`) com
+   implementation, phase `generate-sources`, os 8 parâmetros (`project`, `sourceDir`,
+   `outputDir`, `generatedPackage`, `generatedJavaDir`, `security`, `targets`,
+   `buildDirectory`; os dois novos vêm do subprojeto 14) com
    `<configuration>`/`default-value` a espelhar os campos `@Parameter`
    de `SukoCompileMojo`), mantido à mão em vez de gerado pelo
    `maven-plugin-plugin` — a tentativa anterior de o gerar via uma tarefa
@@ -748,8 +749,9 @@ tem origem própria nesta spec):
    binário nativo GraalVM é opt-in, exclusivamente compilado pelo
    consumidor (`jbang --native --build-dir ...`), nunca por este projeto.
    Ver `suko-cli/README.md` e "Limitações conhecidas" acima para o
-   desenho de duplo hash do lockfile e as lacunas aceites (sem
-   assinatura no JSON do registry, sem pinagem por componente).
+   desenho de duplo hash do lockfile e as lacunas aceites (sem pinagem
+   por componente; o índice do registry passou a ser assinado no
+   subprojeto 14).
 9. **Unificação da sintaxe de interpolação** — CONCLUÍDO. Spec em
    `docs/superpowers/specs/2026-09-21-suko-interpolacao-unificada.md`,
    plano em `docs/superpowers/plans/2026-09-21-suko-interpolacao-unificada.md`.
@@ -809,8 +811,9 @@ tem origem própria nesta spec):
       determinístico por sistema operativo (no Windows ignora maiúsculas). A
       correção do `textOf` muda o `.jte` gerado para fontes com caracteres fora
       do BMP (antes truncado). Os diagnósticos do editor são os do
-      `sukoCompile` **mais** os avisos, que o build ainda descarta
-      (`JteCompiler.CompileResult.success` não os leva): bug antigo, à vista.
+      `sukoCompile` **mais** os avisos (o build descartava-os em sucesso; corrigido
+      no subprojeto 14, R3: `SukoCompileTask.printDiagnostics` e o Mojo imprimem
+      `WARNING`/`INFO`).
     - **Seguimento do 11a, por fazer (revisão final):** (a) desempenho — cada
       `didChange` invalida a cache e completion/hover/definition recompilam
       o root inteiro de forma síncrona na thread do LSP4J, e a thread do debounce
@@ -879,7 +882,7 @@ tem origem própria nesta spec):
     entre outras, e decidir onde se escolhe o alvo (opção em
     `suko.json`/no plugin Gradle/Maven, por ficheiro ou por projeto);
     (b) **modelo de elementos** — as tags de hoje são HTML
-    (o `SemanticChecker` **não** valida estrutura HTML nem URLs perigosas — nada o faz hoje; o escape é feito pelo JTE em runtime, `ContentType.Html`); é
+    (o `SemanticChecker` **não** valida estrutura HTML; o escape de caracteres é do JTE em runtime, `ContentType.Html`; os sinks perigosos e as URLs são verificados pelo `HtmlSecurityChecker` do `suko-jte` e pelo `SukoSafe` gerado, subprojeto 14); é
     preciso decidir se os alvos nativos usam um vocabulário próprio de
     widgets (`<Button>`, `<VBox>`, ...), um vocabulário comum mapeado
     para cada toolkit, ou tags HTML mapeadas para widgets, e como o
@@ -958,10 +961,9 @@ tem origem própria nesta spec):
     é ignorado (já vem embutido). Extensões **não** estão em sandbox: no
     build correm com os privilégios do Gradle/Maven.
 
-    *Limitações conhecidas do 13a (não escondidas):* (a) o
-    `sukoCompile`/`suko:compile` **não mostra avisos** (ex.: `WARNING` de
-    um checker) quando a compilação tem sucesso — bug anterior ao 13a, só o
-    LSP os mostra; (b) o `extensions.json` **não é escrito** quando não há
+    *Limitações conhecidas do 13a (não escondidas):* (a) ~~o
+    `sukoCompile`/`suko:compile` não mostra avisos em sucesso~~ — **fechado**
+    no subprojeto 14 (R3: Gradle e Maven imprimem `WARNING`/`INFO` em sucesso); (b) o `extensions.json` **não é escrito** quando não há
     fontes (Gradle: nenhum `.sk`; Maven: a pasta de fontes não existe) nem
     pelo `sukoWatch`, e a escrita não é atómica, logo o LSP pode ver um
     manifesto antigo ou truncado (este último é ignorado); (c)
@@ -989,12 +991,30 @@ tem origem própria nesta spec):
     devolve um único `Emitted` (jte+js/html+js e o item 12 precisam de várias
     saídas por componente); `EmitContext` não tem resolvedor de chamadas (a spec
     prometia um equivalente de `CallResolver`; hoje só `importedByShortName` +
-    `packagePrefix`); `CheckContext` não expõe os alvos ativos; contextos e
+    `packagePrefix`); `CheckContext` não expõe os alvos ativos (parcialmente fechado:
+    `activeVocabularies` expõe os vocabulários ativos, não os alvos); contextos e
     `ProjectIndexEntry` são records (considerar interfaces).
 
+    *Alterações da v1 feitas no subprojeto 14 (ruling R1: mudou-se a v1 no
+    lugar, `VERSION` continua 1, por ainda não haver extensões externas).*
+    Acrescentou-se: `Target.emitProject` com `ProjectOutput`/`ProjectEmitContext`
+    (emissão ao nível do projeto — cobre o que a 13b espera, ex. ficheiros JS);
+    o record `SecurityOptions`; `CheckContext.options` e
+    `CheckContext.activeVocabularies`; e a constante `Severity.INFO`. Atenção: `INFO`
+    é uma constante nova do enum, logo uma extensão com um `switch` exaustivo
+    sobre `Severity` deixa de compilar. O construtor legado de 3 argumentos de
+    `CheckContext` passa `activeVocabularies = {"html"}` (falha fechada: um
+    contexto legado não desliga os checkers de segurança).
+
+    *O `.jte` gerado já não é autónomo (subprojeto 14).* Referencia
+    `<generatedPackage>.SukoSafe` e só compila quando essa classe está no
+    classpath. Gradle: a ligação ao `compileJava` precisa do plugin `java` — sem ele
+    não há `SukoSafe`. Em montagens multi-módulo que escrevem o `.jte` noutro
+    módulo, esse módulo tem de ver o `SukoSafe`. O gerador do site
+    (`WebsiteGenerator`) ignora `projectOutputs` (ver os pendentes do item 14).
+
     *Follow-ups arrumados (sem dono):* descoberta que termina em `hasNext()`
-    a falhar; rollback parcial de registo; avisos descartados em sucesso
-    (**item do portão de release**); `extensions.json` não atómico; manifesto
+    a falhar; rollback parcial de registo; `extensions.json` não atómico; manifesto
     não escrito sem fontes nem pelo `sukoWatch`; `stat` com seguimento de
     symlinks antes da verificação UNC no Windows; fallback silencioso do
     `sourceRoot`; chamadas a extensões sem guarda dentro de handlers de
@@ -1020,9 +1040,10 @@ tem origem própria nesta spec):
     e o host genérico do LSP. **Extensões:** os alvos (o JTE embutido mas
     implementado pela mesma API — critério: `.jte` gerado byte a byte
     igual —, o gerador de HTML estático do site, TamboUI, Swing,
-    JavaFX), os vocabulários (o HTML acompanha o alvo JTE; as regras de escape e de
-    URLs perigosas **ainda não existem** — hoje o escape é do JTE em
-    runtime — e, quando existirem, mantêm revisão de segurança), os
+    JavaFX), os vocabulários (o HTML acompanha o alvo JTE; as regras de sinks e de
+    URLs perigosas existem desde o subprojeto 14 — `HtmlSecurityChecker` e
+    `SukoSafe` — e mantêm revisão de segurança; o escape de caracteres
+    continua a ser do JTE em runtime), os
     namespaces de atributos, verificadores extra (a11y, i18n),
     origens de registry, comandos da CLI e contribuições ao LSP. **A
     reatividade também é resolvida em compile-time** (modelo
@@ -1079,15 +1100,128 @@ tem origem própria nesta spec):
     denominador comum, por isso ficam poucas e as tags nativas são a
     saída.
 
-14. **Segurança por omissão** — decidido pelo utilizador a 2026-10-04
-    ("aplica todas as medidas de segurança"); bloqueia a primeira release.
-    Spec em `docs/superpowers/specs/2026-10-04-suko-seguranca-por-omissao.md`.
+14. **Segurança por omissão** — **CONCLUÍDO** (2026-10-05; ramo
+    `subprojeto-14-seguranca`, ainda sem PR). Decidido pelo utilizador a
+    2026-10-04 ("aplica todas as medidas de segurança"); bloqueava a primeira
+    release. Spec em `docs/superpowers/specs/2026-10-04-suko-seguranca-por-omissao.md`,
+    plano em `docs/superpowers/plans/2026-10-05-suko-seguranca-por-omissao.md`,
+    modelo de ameaças e configuração em `docs/security.md`.
     O JTE só escapa caracteres no render; o Suko acrescenta o que depende
     do significado do valor: allowlist de protocolos de URL em todos os
-    componentes (classe `SukoSafe` gerada, sem dependência de runtime),
-    erro `UNSAFE_SINK` para valores dinâmicos em `<script>`/`<style>`/`on*`/
-    `srcdoc`/`style`/`<base>`/..., `rel="noopener"` automático, lint de CSP
-    estrita, ativação do `OwaspHtmlPolicy` do JTE via o plugin, assinatura
-    Ed25519 do índice do registry e testes com corpus XSS e CSP/Trusted Types
-    no browser. Ordem proposta: depois de integrar o 13a, antes do item 12.
-    No fim da 13b: exemplo de e-commerce Suko + JTE + JS e pentest a ele.
+    componentes (classe `SukoSafe` gerada no projeto, só JDK, sem dependência
+    de runtime), erro `UNSAFE_SINK` para valores dinâmicos em `<script>`/
+    `<style>`/`on*`/`srcdoc`/`style`/`<base>`/..., `rel="noopener"` automático,
+    lint de CSP estrita, `OwaspHtmlPolicy` do JTE ativada pelo plugin Gradle,
+    assinatura Ed25519 do índice do registry (CLI), corpus XSS (`XssCorpusTest`)
+    e a loja `examples/shop` (Spring Boot + H2) como alvo do pentest.
+
+    **Códigos novos:** `UNSAFE_SINK` (ERROR), `RESERVED_NAME` (ERROR),
+    `UPPERCASE_NAME` (ERROR), `TRUSTED_URL`/`TRUSTED_STYLE` (INFO),
+    `CSP_INLINE` (WARNING, só com `strictCsp`) e, na CLI, `REGISTRY_UNSIGNED`,
+    `REGISTRY_BAD_SIGNATURE`, `REGISTRY_MISMATCH`, `REGISTRY_EXPIRED`,
+    `REGISTRY_ROLLBACK`, `REGISTRY_MANIFEST_HASH` e `REGISTRY_INVALID`
+    (este último — schema, datas ilegíveis, caminho de manifesto inválido — não
+    estava na tabela da spec). Configuração: `suko { security { ... } }` (Gradle)
+    e `<security>` (Maven); auditoria dos `trusted*` em `security-audit.json`.
+    Alterações ao compilador feitas ao construir a loja: o emissor qualifica
+    `Map` como `java.util.Map` em `@param`/`@for`.
+
+    **Lacunas conhecidas (registadas, não corrigidas):**
+
+    - (a) **Tipos de parâmetros.** Os componentes só recebem tipos de biblioteca
+      (`String`, `List`, `Map`...); a loja usa `List<Map<String,String>>` como
+      view models. Item 12 / 11c.
+    - (b) **`<!DOCTYPE html>`** não faz parse (`PARSE_ERROR` em `<!`): as páginas
+      escritas em Suko não têm doctype e abrem em modo quirks.
+    - (c) **Política do JTE.** A loja usa o plugin `gg.jte.gradle` em modo
+      `generate()` com templates pré-compilados e uma tarefa `verifyJtePolicy`;
+      a `OwaspHtmlPolicy` está aplicada aí (provado). Para utilizadores Gradle o
+      plugin do Suko define `htmlPolicyClass` de forma preguiçosa quando
+      `gg.jte.gradle` está aplicado e `jtePolicy` é `true`. No Maven só há
+      aviso. A compilação de templates em runtime (modo de desenvolvimento do
+      JTE) é só de demonstração e fica fora do pentest.
+    - (d) **Chave do registry.** `trusted-keys.json` da CLI está vazio até à
+      primeira release: até lá, `suko add` contra o registry oficial (HTTPS)
+      falha com `REGISTRY_UNSIGNED`. O `.sig` do registry oficial é um passo de
+      release (checklist em `docs/security.md`).
+    - (e) **Maven** só avisa sobre `htmlPolicyClass` (ver c).
+    - (f) **Atributos de extensões.** Os atributos de código/URL declarados por
+      `Vocabulary` (a spec previa-os) não estão implementados; só por
+      configuração (`codeAttributes`/`urlAttributes`).
+    - (g) **LSP.** Usa as opções de segurança por omissão: o `suko.security` do
+      build não é lido (o `extensions.json` poderia transportá-las).
+    - (h) **Playwright com CSP/Trusted Types** fica para o pentest.
+    - (i) **Ed25519 no native-image da CLI.** Foi exercitado
+      manualmente pelo implementador da Tarefa 11 com um GraalVM CE local (relato
+      dele: 139 s, `list`/`add` com registry assinado). O `NativeImageSmokeTest`
+      é saltado quando não há GraalVM no PATH (na última corrida do repositório
+      inteiro foi saltado). A inclusão do recurso `trusted-keys.json` por glob só
+      fica provada quando uma release embutir uma chave real.
+    - (j) **Gramática (vista ao construir a loja).** `<img>`/`<input>` precisam de
+      `/>`; chavetas em texto de `<style>` e `<` dentro de strings de atributos
+      não fazem parse; componentes do mesmo package exigem `import` explícito;
+      `for` é palavra reservada, logo `<label for=...>` não faz parse; texto
+      como `Site (opcional)` é lido como chamada de componente.
+    - (k) **`:` e `@` em nomes de atributo** não são aceites pelo lexer, por isso
+      `x-on:click`, `@click`, `hx-on:click` e `xlink:href` não se escrevem, e os
+      ramos de `:`/`@` do verificador são código morto até o lexer os permitir.
+    - (l) **Modelo de confiança do registry** (detalhes em `docs/security.md`):
+      a assinatura protege o transporte/anfitrião, não um `suko.json` ou
+      lockfile hostil; apagar o lockfile repõe o anti-strip/rollback; o
+      lockfile guarda **um** registry (trocar `--registry` perde a memória do
+      anterior); unidades de rede mapeadas parecem locais; refs móveis sem
+      `expires` podem ser reapresentadas (a política de release deve defini-lo).
+    - (m) **Loja.** Limitações documentadas em `examples/shop/README.md`
+      (cabeçalhos em recusas do firewall/Tomcat, whitelabel, sem limites contra
+      abuso, caracteres de controlo/bidi em nomes). Uma corrida no checkout
+      (várias encomendas do mesmo carrinho) foi encontrada na revisão e
+      corrigida.
+
+    **Pendentes do subprojeto 14** (revisão do architect; um por linha):
+
+    - 13b: a spec `docs/superpowers/specs/2026-10-04-suko-reatividade-ilhas.md`
+      está desalinhada com o 14 — `onclick` WARNING vs ERROR (~108-109, ~267, ~278);
+      "componentes simples sem verificação de URL" (~297-298) já está fechado; o
+      seu `suko { js { urlSchemes } }` (~288) tem de se fundir em
+      `security.urlSchemes`; a "classe auxiliar" do servidor (~292-296) deve ser o
+      `SukoSafe`; o `sanitizeUrl` do cliente (~286, `new URL(v, baseURI)`) é outro
+      algoritmo face ao `SukoSafe.url` (`ｊａｖａｓｃｒｉｐｔ:` em largura total difere)
+      — especificar o cliente como port do `SukoSafe.url` com vetores partilhados
+      do `xss-corpus.txt`. A spec **não** foi editada; só fica o registo.
+    - API v2 (decisões para o próximo incremento de `VERSION`): (a) `SecurityOptions`
+      é específica de HTML mas é o único canal de opções (`generatedPackage` e
+      `generatedJavaDir` deviam ser opções de projeto); (b) o `ProjectOutputWriter`
+      escreve `RESOURCE` na raiz dos templates e a limpeza só segue `JAVA_SOURCE`
+      (o JS da 13b vai para `static/suko`); (c) o `SecurityAudit` do core fixa os
+      códigos `TRUSTED_*` do `suko-jte` e analisa a mensagem após `": "` — usar uma
+      carga estruturada no diagnóstico; (d) o `HtmlSecurityChecker` trata todo o
+      atributo `on*` como handler — o `on:click=${lambda}` da 13b precisa de uma
+      exceção explícita; (e) item 12: uma classe Java que implemente `Component`
+      escreve HTML cru (mesma confiança que os slots) e o checker nunca a vê.
+    - `<!DOCTYPE html>` não faz parse, logo todas as páginas escritas em Suko
+      renderizam em modo quirks — corrigir antes do pentest (portão).
+    - Loja/pentest: a loja expõe pouco a um pentest (`cssValue`, `pathSegment`,
+      `srcset`/`imageDataTypes`, `rel`/`noopener`, `ping`, `hx-*` e `trusted*`
+      nunca recebem input HTTP; não há área autenticada) — criar um conjunto de
+      páginas/perfil de laboratório antes do pentest, e documentar como definir
+      `htmlPolicy` num bean `TemplateEngine` personalizado (pergunta M4 da spec).
+    - Teste no core que renderize o golden com a `OwaspHtmlPolicy` ligada.
+    - `WebsiteGenerator` ignora `projectOutputs`: a primeira página do site com
+      `href` dinâmico falha (falta `io.suko.generated.SukoSafe`).
+    - Teste com `mvn` real da ligação do POJO `<security>` através do `plugin.xml`
+      escrito à mão.
+    - O LSP usa as opções de segurança por omissão.
+    - Parqueados do ledger: testes do encaminhamento de `emitProject`; exceção
+      engolida em `activeVocabularies`; `type`/`is`/`classid` não cobertos pelo
+      checker; órfãos em `generatedJavaDir` quando o diretório muda; `TrustedKeys`
+      permissivo + `catch` silencioso no `verify`; `publicKeys` comparadas por
+      string exata; o lockfile lembra um só registry; unidades de rede mapeadas
+      contam como locais; falta `[::1]` numa mensagem do `VerifiedIndex` (~l. 156).
+
+    **Portão de release/pentest (explícito):** checklist de release em
+    `docs/security.md` (incluindo o `.sig` do registry oficial e a chave embutida),
+    o pentest à loja, o `<!DOCTYPE html>` e o teste com `mvn` real do `<security>`.
+
+    **Ordem:** 13a ✔ → 14 ✔ → item 12 → 13b → pentest à loja → 11c →
+    editores. A release continua bloqueada por 11b, 11c e item 12 (13a e 14
+    cumpridos). No fim da 13b: a loja ganha ilhas JS e é o alvo do pentest.

@@ -170,4 +170,36 @@ class ProjectConfigTest {
         assertNotNull(e.getMessage());
         assertFalse(e.getMessage().isBlank());
     }
+
+    @Test
+    void publicKeysRoundTripAndAreBoundToTheCanonicalRegistryId(@TempDir Path projectDir) {
+        String key = io.suko.registry.RegistrySignature.publicKeyBase64(
+                io.suko.registry.RegistrySignature.generateKeyPair().getPublic());
+        String official = String.format(VerifiedIndex.OFFICIAL_BASE_TEMPLATE, "v0.2.0");
+        ProjectConfig config = new ProjectConfig(1, "src/main/suko", "com.acme.web",
+                new ProjectConfig.Registry(official, "v0.2.0", java.util.List.of(new ProjectConfig.PublicKey("k1", key))));
+        config.write(projectDir);
+
+        ProjectConfig read = ProjectConfig.load(projectDir).orElseThrow();
+        assertEquals(config, read);
+        assertEquals(1, read.registry().trustedKeys().forRegistry(VerifiedIndex.OFFICIAL_REGISTRY_ID).size());
+        assertTrue(read.registry().trustedKeys().forRegistry(official).isEmpty());
+
+        // A --registry flag pointing elsewhere does not inherit suko.json's keys.
+        ProjectConfig overridden = ProjectConfig.resolve(Args.parse(new String[] { "list", "--registry", "https://other.example/" }), projectDir);
+        assertTrue(overridden.registry().publicKeys().isEmpty());
+        ProjectConfig same = ProjectConfig.resolve(Args.parse(new String[] { "list" }), projectDir);
+        assertEquals(1, same.registry().publicKeys().size());
+    }
+
+    @Test
+    void anInvalidPublicKeyIsReportedByName() {
+        String json = """
+                {"schemaVersion": 1, "sourceRoot": "src/main/suko", "basePackage": "com.acme.web",
+                 "registry": {"base": "https://reg.example/", "ref": "v1",
+                              "publicKeys": [{"keyid": "broken", "publicKey": "bm90IGEga2V5"}]}}
+                """;
+        CliException e = assertThrows(CliException.class, () -> ProjectConfig.parse(json, "suko.json"));
+        assertTrue(e.getMessage().contains("broken"), e.getMessage());
+    }
 }

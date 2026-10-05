@@ -1,0 +1,22 @@
+package shop;
+
+import shop.Layout;
+import shop.SearchBox;
+import shop.ProductGrid;
+
+public component SearchPage(String title, int cartCount, List<Map<String, String>> categories, String q, List<Map<String, String>> products) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Pesquisa</h1>
+    SearchBox(q = q)
+    if (q.isEmpty()) {
+      <p class="empty">Escreva o nome de um produto para pesquisar.</p>
+    } else {
+      if (products.isEmpty()) {
+        <p class="empty">Nenhum produto encontrado para ${q}.</p>
+      } else {
+        <p class="results">Resultados para ${q}</p>
+        ProductGrid(products = products)
+      }
+    }
+  }
+}

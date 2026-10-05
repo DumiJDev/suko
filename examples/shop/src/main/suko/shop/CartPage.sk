@@ -1,0 +1,22 @@
+package shop;
+
+import shop.Layout;
+import shop.CartLine;
+
+public component CartPage(String title, int cartCount, List<Map<String, String>> categories, String csrfName, String csrfToken, List<Map<String, String>> lines, String total, String totalCents) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Carrinho</h1>
+    if (lines.isEmpty()) {
+      <p class="empty">O carrinho está vazio.</p>
+      <p><a href="/">Ver produtos</a></p>
+    } else {
+      <ul class="cart-lines">
+        for (Map<String, String> l : lines) {
+          CartLine(line = l, csrfName = csrfName, csrfToken = csrfToken)
+        }
+      </ul>
+      <p class="cart-total" data-cents=${totalCents}>Total: ${total}</p>
+      <p><a class="button" href="/checkout">Finalizar compra</a></p>
+    }
+  }
+}
