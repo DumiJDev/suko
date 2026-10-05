@@ -21,12 +21,25 @@ public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, S
     private static final Pattern SCHEME = Pattern.compile("[a-z][a-z0-9+.-]*");
     private static final Pattern PACKAGE = Pattern.compile("[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*");
 
+    private static final Set<String> JAVA_KEYWORDS = Set.of(
+        "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char", "class", "const", "continue",
+        "default", "do", "double", "else", "enum", "extends", "final", "finally", "float", "for", "goto", "if",
+        "implements", "import", "instanceof", "int", "interface", "long", "native", "new", "package", "private",
+        "protected", "public", "return", "short", "static", "strictfp", "super", "switch", "synchronized", "this",
+        "throw", "throws", "transient", "try", "void", "volatile", "while", "true", "false", "null");
+
     public static final SecurityOptions DEFAULT = new SecurityOptions(
         "io.suko.generated", DEFAULT_URL_SCHEMES, Set.of(), false, Set.of(), Set.of());
 
     public SecurityOptions {
         if (generatedPackage == null || !PACKAGE.matcher(generatedPackage).matches()) {
             throw new IllegalArgumentException("generatedPackage inválido (esperado um package Java): " + generatedPackage);
+        }
+        for (String segment : generatedPackage.split("\\.")) {
+            if (JAVA_KEYWORDS.contains(segment)) {
+                throw new IllegalArgumentException("generatedPackage: '" + segment
+                    + "' é uma palavra reservada do Java e não pode ser um segmento de package: " + generatedPackage);
+            }
         }
         urlSchemes = sorted(lower(urlSchemes));
         if (urlSchemes.isEmpty()) {
@@ -76,10 +89,13 @@ public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, S
         return new SecurityOptions(generatedPackage, urlSchemes, imageDataTypes, strictCsp, codeAttributes, value);
     }
 
-    /** Troca {@code [^A-Za-z0-9_]} por {@code _} e prefixa {@code _} se começar por dígito ou ficar vazio. */
+    /** Troca {@code [^A-Za-z0-9_]} por {@code _} e prefixa {@code _} se começar por dígito, ficar vazio ou for uma palavra reservada do Java. */
     public static String sanitizePackageSegment(String raw) {
         String s = raw == null ? "" : raw.replaceAll("[^A-Za-z0-9_]", "_");
         if (s.isEmpty() || Character.isDigit(s.charAt(0))) {
+            s = "_" + s;
+        }
+        if (JAVA_KEYWORDS.contains(s)) {
             s = "_" + s;
         }
         return s;

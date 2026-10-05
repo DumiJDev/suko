@@ -53,6 +53,24 @@ public abstract class SukoBaseTask extends DefaultTask {
     }
 
     @Input
+    public String getGeneratedJavaDir() {
+        return extension == null ? "" : extension.getGeneratedJavaDir().get();
+    }
+
+    /** As opções de segurança entram nos inputs da task (valor inválido: o erro surge na execução). */
+    @Input
+    public String getSecurityOptionsSignature() {
+        if (extension == null) {
+            return io.suko.ext.SecurityOptions.DEFAULT.toString();
+        }
+        try {
+            return extension.securityOptions().toString();
+        } catch (org.gradle.api.GradleException e) {
+            return "invalid:" + e.getMessage();
+        }
+    }
+
+    @Input
     public String getOutputDir() {
         return getExtension().getOutputDir().get();
     }

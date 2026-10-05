@@ -55,7 +55,8 @@ class SukoSecurityTestKitTest {
         write(project.resolve("src/main/suko/A.sk"), "component A() { <p>x</p> }");
         BuildResult result = GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath()
             .withArguments("sukoCompile").buildAndFail();
-        assertTrue(result.getOutput().contains("javascript"), result.getOutput());
+        assertTrue(result.getOutput().contains("Configuração suko.security inválida")
+            && result.getOutput().contains("O esquema 'javascript' nunca pode ser permitido"), result.getOutput());
     }
 
     @Test
@@ -79,5 +80,84 @@ class SukoSecurityTestKitTest {
         BuildResult result = GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath()
             .withArguments("sukoCompile").build();
         assertTrue(result.getOutput().contains("CSP_INLINE"), result.getOutput());
+    }
+
+    @Test
+    void invalidImageDataTypeFailsTheBuild(@TempDir Path project) throws Exception {
+        write(project.resolve("settings.gradle.kts"), "rootProject.name = \"x\"");
+        write(project.resolve("build.gradle.kts"), """
+            plugins { id("io.suko.lang") }
+            suko { security { imageDataTypes = listOf("svg") } }
+            """);
+        write(project.resolve("src/main/suko/A.sk"), "component A() { <p>x</p> }");
+        BuildResult result = GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath()
+            .withArguments("sukoCompile").buildAndFail();
+        assertTrue(result.getOutput().contains("imageDataTypes só aceita") && result.getOutput().contains("'svg'"), result.getOutput());
+    }
+
+    @Test
+    void keywordGeneratedPackageSegmentIsRejectedAndKeywordProjectNameIsSanitised(@TempDir Path project) throws Exception {
+        write(project.resolve("settings.gradle.kts"), "rootProject.name = \"default\"");
+        write(project.resolve("build.gradle.kts"), "plugins { id(\"io.suko.lang\") }");
+        write(project.resolve("src/main/suko/A.sk"), "component A() { <p>x</p> }");
+        GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath()
+            .withArguments("sukoCompile").build();
+        assertTrue(Files.exists(project.resolve("build/generated-src/suko-java/io/suko/generated/_default/SukoSafe.java")));
+
+        write(project.resolve("build.gradle.kts"), """
+            plugins { id("io.suko.lang") }
+            suko { generatedPackage = "com.acme.class.ui" }
+            """);
+        BuildResult result = GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath()
+            .withArguments("sukoCompile").buildAndFail();
+        assertTrue(result.getOutput().contains("palavra reservada do Java") && result.getOutput().contains("class"), result.getOutput());
+    }
+
+    @Test
+    void changingGeneratedPackageRemovesTheStaleSukoSafe(@TempDir Path project) throws Exception {
+        write(project.resolve("settings.gradle.kts"), "rootProject.name = \"x\"");
+        write(project.resolve("src/main/suko/A.sk"), "component A() { <p>x</p> }");
+        write(project.resolve("src/main/java/Hand.java"), "class Hand {}");
+        write(project.resolve("build.gradle.kts"), """
+            plugins { id("io.suko.lang") }
+            suko { generatedPackage = "com.one" }
+            """);
+        GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath().withArguments("sukoCompile").build();
+        Path one = project.resolve("build/generated-src/suko-java/com/one/SukoSafe.java");
+        assertTrue(Files.exists(one));
+
+        write(project.resolve("build.gradle.kts"), """
+            plugins { id("io.suko.lang") }
+            suko { generatedPackage = "org.two" }
+            """);
+        GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath().withArguments("sukoCompile").build();
+        assertFalse(Files.exists(one), "SukoSafe antiga deveria ter sido removida");
+        assertFalse(Files.exists(project.resolve("build/generated-src/suko-java/com")), "pastas vazias removidas");
+        assertTrue(Files.exists(project.resolve("build/generated-src/suko-java/org/two/SukoSafe.java")));
+        assertTrue(Files.exists(project.resolve("src/main/java/Hand.java")));
+    }
+
+    @Test
+    void staleAuditIsRemovedWhenThereAreNoSourcesOrTheConfigurationIsInvalid(@TempDir Path project) throws Exception {
+        write(project.resolve("settings.gradle.kts"), "rootProject.name = \"x\"");
+        write(project.resolve("build.gradle.kts"), "plugins { id(\"io.suko.lang\") }");
+        write(project.resolve("src/main/suko/A.sk"), "component A(String e) { <iframe src=${trustedUrl(e)}></iframe> }");
+        GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath().withArguments("sukoCompile").build();
+        Path audit = project.resolve("build/suko/security-audit.json");
+        assertTrue(Files.readString(audit).contains("TRUSTED_URL"));
+
+        write(project.resolve("build.gradle.kts"), """
+            plugins { id("io.suko.lang") }
+            suko { security { urlSchemes = listOf("data") } }
+            """);
+        GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath().withArguments("sukoCompile").buildAndFail();
+        assertFalse(Files.exists(audit), "auditoria antiga removida com configuração inválida");
+
+        write(project.resolve("build.gradle.kts"), "plugins { id(\"io.suko.lang\") }");
+        GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath().withArguments("sukoCompile").build();
+        assertTrue(Files.exists(audit));
+        Files.delete(project.resolve("src/main/suko/A.sk"));
+        GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath().withArguments("sukoCompile").build();
+        assertFalse(Files.exists(audit), "auditoria antiga removida quando não há fontes");
     }
 }

@@ -40,6 +40,20 @@ class SecurityAuditTest {
     }
 
     @Test
+    void recordsTheFullExpressionEvenWhenItContainsColonSpace(@TempDir Path dir) throws Exception {
+        DiagnosticCollector c = new DiagnosticCollector();
+        c.add(new SukoDiagnostic(SukoDiagnostic.Severity.INFO,
+            "Uso de trustedUrl(...) dispensa a verificação de URL: c ? a : b", "TRUSTED_URL", "A.sk", new SourceSpan(1, 0, 0, 0)));
+        c.add(new SukoDiagnostic(SukoDiagnostic.Severity.INFO,
+            "Uso de trustedUrl(...) dispensa a verificação de URL: base + \"x: y\"", "TRUSTED_URL", "A.sk", new SourceSpan(2, 0, 0, 0)));
+        Path out = dir.resolve("audit.json");
+        SecurityAudit.write(out, Map.of(Path.of("A.sk"), c));
+        String json = Files.readString(out);
+        assertTrue(json.contains("\"expression\": \"c ? a : b\""), json);
+        assertTrue(json.contains("\"expression\": \"base + \\\"x: y\\\"\""), json);
+    }
+
+    @Test
     void writesAnEmptyListWhenThereAreNoTrustedUses(@TempDir Path dir) throws Exception {
         Path out = dir.resolve("audit.json");
         SecurityAudit.write(out, Map.of());

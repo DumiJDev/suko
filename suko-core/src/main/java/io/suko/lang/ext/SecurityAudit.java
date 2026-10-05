@@ -32,7 +32,8 @@ public final class SecurityAudit {
             for (SukoDiagnostic d : collector.getDiagnostics()) {
                 if (CODES.contains(d.code())) {
                     String message = d.message();
-                    int cut = message.lastIndexOf(": ");
+                    // O prefixo fixo das mensagens não contém ": "; a expressão pode contê-lo (c ? a : b).
+                    int cut = message.indexOf(": ");
                     entries.add(new Entry(path.toString().replace('\\', '/'),
                         d.span() == null ? 0 : d.span().startLine(), d.span() == null ? 0 : d.span().startColumn(),
                         d.code(), cut < 0 ? message : message.substring(cut + 2)));
@@ -53,8 +54,12 @@ public final class SecurityAudit {
             Path parent = file.toAbsolutePath().getParent();
             Files.createDirectories(parent);
             Path tmp = Files.createTempFile(parent, "audit", ".tmp");
-            Files.writeString(tmp, json, StandardCharsets.UTF_8);
-            Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            try {
+                Files.writeString(tmp, json, StandardCharsets.UTF_8);
+                Files.move(tmp, file, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } finally {
+                Files.deleteIfExists(tmp);
+            }
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }

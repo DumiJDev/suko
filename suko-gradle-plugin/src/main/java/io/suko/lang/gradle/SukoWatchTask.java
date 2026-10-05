@@ -181,20 +181,7 @@ public class SukoWatchTask extends SukoBaseTask {
         }
 
 
-        Path javaDir = getExtension() == null ? outputDir.resolveSibling("suko-java") : getExtension().getGeneratedJavaDirAsPath();
-        for (var out : result.projectOutputs()) {
-            Path base = switch (out.kind()) {
-                case JAVA_SOURCE -> javaDir;
-                case TEMPLATE, RESOURCE -> outputDir;
-            };
-            Path file = base.resolve(out.relativePath());
-            try {
-                Files.createDirectories(file.getParent());
-                Files.writeString(file, out.source());
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to write " + file, e);
-            }
-        }
+        SukoProjectOutputs.write(result, outputDir, getExtension());
 
         for (var fileEntry : result.diagnosticsByFile().entrySet()) {
             printDiagnostics(fileEntry.getValue(), fileEntry.getKey().toString());

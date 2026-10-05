@@ -61,6 +61,16 @@ class SecurityOptionsTest {
         assertEquals("suko_shop", SecurityOptions.sanitizePackageSegment("suko-shop"));
         assertEquals("_9lives", SecurityOptions.sanitizePackageSegment("9lives"));
         assertEquals("_", SecurityOptions.sanitizePackageSegment(""));
+        assertEquals("_class", SecurityOptions.sanitizePackageSegment("class"));
+        assertEquals("_default", SecurityOptions.sanitizePackageSegment("default"));
+        assertEquals("classes", SecurityOptions.sanitizePackageSegment("classes"));
+    }
+
+    @Test
+    void keywordPackageSegmentsAreRejected() {
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+            () -> SecurityOptions.DEFAULT.withGeneratedPackage("com.acme.default.ui"));
+        assertTrue(e.getMessage().contains("default"), e.getMessage());
     }
 
     @Test

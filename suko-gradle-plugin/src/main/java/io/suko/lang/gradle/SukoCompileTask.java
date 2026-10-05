@@ -37,6 +37,7 @@ public class SukoCompileTask extends SukoBaseTask {
         String skipReason = noSourcesMessage(sourceDir);
         if (skipReason != null) {
             getLogger().lifecycle(skipReason);
+            SukoProjectOutputs.deleteAudit(getExtension()); // não deixar uma auditoria antiga a parecer atual
             return;
         }
 
@@ -46,13 +47,21 @@ public class SukoCompileTask extends SukoBaseTask {
             throw new RuntimeException("Failed to create output directory: " + outputDir, e);
         }
 
+        io.suko.ext.SecurityOptions securityOptions;
+        try {
+            securityOptions = getExtension().securityOptions();
+        } catch (org.gradle.api.GradleException e) {
+            SukoProjectOutputs.deleteAudit(getExtension());
+            throw e;
+        }
+
         try (java.net.URLClassLoader loader = openExtensionLoader()) {
             io.suko.lang.ext.ExtensionRegistry registry = io.suko.lang.ext.ExtensionRegistry.load(loader);
             java.util.List<String> targets = resolvedTargets();
             // Escrito mesmo com a lista vazia: o LSP distingue "sem extensões" de "sem build".
             io.suko.lang.ext.ExtensionManifest.write(getExtension().getExtensionManifestPath(),
                 extensionFiles().stream().map(java.io.File::toPath).toList(), targets);
-            var compiler = new io.suko.lang.project.SukoProjectCompiler(registry, targets, getExtension().securityOptions());
+            var compiler = new io.suko.lang.project.SukoProjectCompiler(registry, targets, securityOptions);
             for (var d : compiler.projectDiagnostics()) {
                 getLogger().error("[{}] {}: {}", d.severity(), d.code(), d.message());
             }
@@ -78,20 +87,7 @@ public class SukoCompileTask extends SukoBaseTask {
         }
 
 
-        Path javaDir = getExtension() == null ? outputDir.resolveSibling("suko-java") : getExtension().getGeneratedJavaDirAsPath();
-        for (var out : result.projectOutputs()) {
-            Path base = switch (out.kind()) {
-                case JAVA_SOURCE -> javaDir;
-                case TEMPLATE, RESOURCE -> outputDir;
-            };
-            Path file = base.resolve(out.relativePath());
-            try {
-                Files.createDirectories(file.getParent());
-                Files.writeString(file, out.source());
-            } catch (IOException e) {
-                throw new RuntimeException("Failed to write " + file, e);
-            }
-        }
+        SukoProjectOutputs.write(result, outputDir, getExtension());
 
         for (var fileEntry : result.diagnosticsByFile().entrySet()) {
             printDiagnostics(fileEntry.getValue(), fileEntry.getKey().toString());
