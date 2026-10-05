@@ -35,6 +35,37 @@ public class SukoGradlePlugin implements Plugin<Project> {
         extension.getSourceDir().convention("src/main/suko");
         extension.getOutputDir().convention("build/generated-src/suko");
         extension.getTargets().convention(java.util.List.of("jte"));
+        extension.getGeneratedPackage().convention(
+            "io.suko.generated." + io.suko.ext.SecurityOptions.sanitizePackageSegment(project.getName()));
+        extension.getGeneratedJavaDir().convention("build/generated-src/suko-java");
+        extension.getSecurity().getJtePolicy().convention(true);
+
+        project.getPluginManager().withPlugin("java", p -> {
+            var sourceSets = project.getExtensions().getByType(org.gradle.api.tasks.SourceSetContainer.class);
+            sourceSets.getByName("main").getJava().srcDir(project.getLayout().dir(
+                project.provider(() -> extension.getGeneratedJavaDirAsPath().toFile())));
+            project.getTasks().named("compileJava", t -> t.dependsOn("sukoCompile"));
+        });
+
+        // M4: política do JTE (defesa em profundidade) — nunca sobrescreve um valor do utilizador.
+        // Reflexão para o plugin Suko não depender do plugin do JTE.
+        project.getPluginManager().withPlugin("gg.jte.gradle", p -> {
+            if (extension.getSecurity().getJtePolicy().get()) {
+                Object jte = project.getExtensions().findByName("jte");
+                if (jte != null) {
+                    try {
+                        var getter = jte.getClass().getMethod("getHtmlPolicyClass");
+                        @SuppressWarnings("unchecked")
+                        var prop = (org.gradle.api.provider.Property<String>) getter.invoke(jte);
+                        if (!prop.isPresent()) {
+                            prop.set("gg.jte.html.OwaspHtmlPolicy");
+                        }
+                    } catch (ReflectiveOperationException e) {
+                        project.getLogger().warn("suko: não foi possível ativar a política HTML do JTE: {}", e.toString());
+                    }
+                }
+            }
+        });
         var sukoExtensions = project.getConfigurations().create("sukoExtensions", c -> {
             c.setCanBeConsumed(false);
             c.setCanBeResolved(true);

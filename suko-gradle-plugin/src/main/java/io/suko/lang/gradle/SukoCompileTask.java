@@ -52,11 +52,13 @@ public class SukoCompileTask extends SukoBaseTask {
             // Escrito mesmo com a lista vazia: o LSP distingue "sem extensões" de "sem build".
             io.suko.lang.ext.ExtensionManifest.write(getExtension().getExtensionManifestPath(),
                 extensionFiles().stream().map(java.io.File::toPath).toList(), targets);
-            var compiler = new io.suko.lang.project.SukoProjectCompiler(registry, targets);
+            var compiler = new io.suko.lang.project.SukoProjectCompiler(registry, targets, getExtension().securityOptions());
             for (var d : compiler.projectDiagnostics()) {
                 getLogger().error("[{}] {}: {}", d.severity(), d.code(), d.message());
             }
-            writeAndReport(compiler.compile(sourceDir), outputDir);
+            var result = compiler.compile(sourceDir);
+            io.suko.lang.ext.SecurityAudit.write(getExtension().getSecurityAuditPath(), result.diagnosticsByFile());
+            writeAndReport(result, outputDir);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -72,6 +74,22 @@ public class SukoCompileTask extends SukoBaseTask {
                 getLogger().lifecycle("Compiled: {}", entry.getKey());
             } catch (IOException e) {
                 throw new RuntimeException("Failed to write " + jteFile, e);
+            }
+        }
+
+
+        Path javaDir = getExtension() == null ? outputDir.resolveSibling("suko-java") : getExtension().getGeneratedJavaDirAsPath();
+        for (var out : result.projectOutputs()) {
+            Path base = switch (out.kind()) {
+                case JAVA_SOURCE -> javaDir;
+                case TEMPLATE, RESOURCE -> outputDir;
+            };
+            Path file = base.resolve(out.relativePath());
+            try {
+                Files.createDirectories(file.getParent());
+                Files.writeString(file, out.source());
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write " + file, e);
             }
         }
 

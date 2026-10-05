@@ -47,7 +47,7 @@ public class SukoWatchTask extends SukoBaseTask {
 
         try (java.net.URLClassLoader loader = openExtensionLoader()) {
             SukoProjectCompiler compiler = new SukoProjectCompiler(
-                io.suko.lang.ext.ExtensionRegistry.load(loader), resolvedTargets());
+                io.suko.lang.ext.ExtensionRegistry.load(loader), resolvedTargets(), securityOptions());
             WatchService watchService = FileSystems.getDefault().newWatchService();
             registerRecursively(sourceDir, watchService);
 
@@ -115,6 +115,10 @@ public class SukoWatchTask extends SukoBaseTask {
         }
     }
 
+    private io.suko.ext.SecurityOptions securityOptions() {
+        return getExtension() == null ? io.suko.ext.SecurityOptions.DEFAULT : getExtension().securityOptions();
+    }
+
     private void registerRecursively(Path root, WatchService watchService) throws IOException {
         try (Stream<Path> walk = Files.walk(root)) {
             for (Path dir : walk.filter(Files::isDirectory).toList()) {
@@ -150,7 +154,7 @@ public class SukoWatchTask extends SukoBaseTask {
     public void compileAll(Path sourceDir, Path outputDir) {
         try (java.net.URLClassLoader loader = openExtensionLoader()) {
             compileAll(sourceDir, outputDir, new SukoProjectCompiler(
-                io.suko.lang.ext.ExtensionRegistry.load(loader), resolvedTargets()));
+                io.suko.lang.ext.ExtensionRegistry.load(loader), resolvedTargets(), securityOptions()));
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -161,6 +165,9 @@ public class SukoWatchTask extends SukoBaseTask {
             getLogger().error("[{}] {}: {}", d.severity(), d.code(), d.message());
         }
         SukoProjectCompiler.ProjectCompileResult result = compiler.compile(sourceDir);
+        if (getExtension() != null) {
+            io.suko.lang.ext.SecurityAudit.write(getExtension().getSecurityAuditPath(), result.diagnosticsByFile());
+        }
 
         for (var entry : result.generatedJteSources().entrySet()) {
             Path jteFile = outputDir.resolve(entry.getKey());
@@ -170,6 +177,22 @@ public class SukoWatchTask extends SukoBaseTask {
                 getLogger().lifecycle("Compiled: {}", entry.getKey());
             } catch (IOException e) {
                 throw new RuntimeException("Failed to write " + jteFile, e);
+            }
+        }
+
+
+        Path javaDir = getExtension() == null ? outputDir.resolveSibling("suko-java") : getExtension().getGeneratedJavaDirAsPath();
+        for (var out : result.projectOutputs()) {
+            Path base = switch (out.kind()) {
+                case JAVA_SOURCE -> javaDir;
+                case TEMPLATE, RESOURCE -> outputDir;
+            };
+            Path file = base.resolve(out.relativePath());
+            try {
+                Files.createDirectories(file.getParent());
+                Files.writeString(file, out.source());
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write " + file, e);
             }
         }
 
