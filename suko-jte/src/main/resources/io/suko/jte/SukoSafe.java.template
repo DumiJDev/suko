@@ -1,0 +1,247 @@
+package @@PACKAGE@@;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
+/**
+ * Gerado pelo Suko (subprojeto 14) — não editar. Só JDK.
+ * Verificações de segurança que o JTE não faz: protocolos de URL, srcset,
+ * segmentos de caminho, valores CSS e o token noopener do rel.
+ */
+public final class SukoSafe {
+
+    public static final String BLOCKED = "about:invalid#suko-blocked";
+
+    private static final Set<String> SCHEMES = Set.of(@@URL_SCHEMES@@);
+    private static final Set<String> IMAGE_DATA_TYPES = Set.of(@@IMAGE_DATA_TYPES@@);
+
+    private SukoSafe() {
+    }
+
+    /** Atributo de URL: devolve o valor tal como veio, ou {@link #BLOCKED}; {@code null} omite o atributo. */
+    public static String url(Object v) {
+        return check(v, false);
+    }
+
+    /** Como {@link #url} mas aceita {@code data:image/<tipo>} dos tipos configurados (img/source). */
+    public static String imageUrl(Object v) {
+        return check(v, true);
+    }
+
+    public static String srcset(Object v) {
+        return srcset(v, false);
+    }
+
+    public static String imageSrcset(Object v) {
+        return srcset(v, true);
+    }
+
+    /** Lista de URLs separados por espaço (atributo ping): cada um é validado, os bloqueados caem. */
+    public static String ping(Object v) {
+        if (v == null) {
+            return null;
+        }
+        List<String> out = new ArrayList<>();
+        for (String part : String.valueOf(v).trim().split("[ \\t\\n\\r\\f]+")) {
+            if (part.isEmpty()) {
+                continue;
+            }
+            String checked = check(part, false);
+            if (checked != null && !checked.equals(BLOCKED)) {
+                out.add(part);
+            }
+        }
+        return String.join(" ", out);
+    }
+
+    /** Um segmento de caminho: nada que mude de origem ou injete query/fragmento. */
+    public static String pathSegment(Object v) {
+        if (v == null) {
+            return "";
+        }
+        String s = String.valueOf(v);
+        if (s.equals(".") || s.equals("..")) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        for (byte b : s.getBytes(StandardCharsets.UTF_8)) {
+            int c = b & 0xFF;
+            if (isPathSafe(c)) {
+                out.append((char) c);
+            } else {
+                out.append('%').append(HEX[c >> 4]).append(HEX[c & 15]);
+            }
+        }
+        return out.toString();
+    }
+
+    /** Um valor de declaração CSS: número com unidade, cor #hex ou identificador; o resto vira {@code unset}. */
+    public static String cssValue(Object v) {
+        if (v == null) {
+            return "unset";
+        }
+        String s = String.valueOf(v).trim();
+        if (s.matches("[-+]?[0-9]+(\\.[0-9]+)?(%|[A-Za-z]{1,4})?")
+            || s.matches("#[0-9A-Fa-f]{3,8}")
+            || s.matches("[A-Za-z-]+")) {
+            return s;
+        }
+        return "unset";
+    }
+
+    /** Junta {@code noopener} ao rel; um rel com o token {@code opener} é um opt-out explícito. */
+    public static String rel(Object v) {
+        String s = v == null ? "" : String.valueOf(v).trim();
+        if (s.isEmpty()) {
+            return "noopener";
+        }
+        for (String token : s.toLowerCase(Locale.ROOT).split("[ \\t\\n\\r\\f]+")) {
+            if (token.equals("opener") || token.equals("noopener")) {
+                return s;
+            }
+        }
+        return s + " noopener";
+    }
+
+    // ---- implementação ------------------------------------------------
+
+    private static final char[] HEX = "0123456789ABCDEF".toCharArray();
+
+    private static boolean isPathSafe(int c) {
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')
+            || "-._~!$'()*+,;=:@".indexOf(c) >= 0;
+    }
+
+    private static String check(Object v, boolean image) {
+        if (v == null) {
+            return null;
+        }
+        String s = String.valueOf(v);
+        String t = normalize(s);
+        int colon = t.indexOf(':');
+        if (colon >= 0) {
+            int slash = firstOf(t, "/?#");
+            if (slash < 0 || colon < slash) {
+                String scheme = t.substring(0, colon).toLowerCase(Locale.ROOT);
+                if (SCHEMES.contains(scheme)) {
+                    return s;
+                }
+                if (image && scheme.equals("data") && imageDataAllowed(t.substring(colon + 1))) {
+                    return s;
+                }
+                return BLOCKED;
+            }
+        }
+        return s;
+    }
+
+    /** Como o URL parser WHATWG: tira C0/espaço nas pontas e TAB/LF/CR em qualquer posição. */
+    private static String normalize(String s) {
+        int start = 0;
+        int end = s.length();
+        while (start < end && s.charAt(start) <= ' ') {
+            start++;
+        }
+        while (end > start && s.charAt(end - 1) <= ' ') {
+            end--;
+        }
+        StringBuilder b = new StringBuilder(end - start);
+        for (int i = start; i < end; i++) {
+            char c = s.charAt(i);
+            if (c != '\t' && c != '\n' && c != '\r') {
+                b.append(c);
+            }
+        }
+        return b.toString();
+    }
+
+    private static int firstOf(String s, String chars) {
+        for (int i = 0; i < s.length(); i++) {
+            if (chars.indexOf(s.charAt(i)) >= 0) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean imageDataAllowed(String rest) {
+        String r = rest.toLowerCase(Locale.ROOT);
+        if (!r.startsWith("image/")) {
+            return false;
+        }
+        int end = r.length();
+        for (int i = 6; i < r.length(); i++) {
+            char c = r.charAt(i);
+            if (c == ';' || c == ',') {
+                end = i;
+                break;
+            }
+        }
+        return IMAGE_DATA_TYPES.contains(r.substring(6, end));
+    }
+
+    private static boolean isSpace(char c) {
+        return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
+    }
+
+    /** Candidatos de srcset como na WHATWG; um candidato com URL bloqueado é removido. */
+    private static String srcset(Object v, boolean image) {
+        if (v == null) {
+            return null;
+        }
+        String s = String.valueOf(v);
+        List<String> out = new ArrayList<>();
+        int i = 0;
+        int n = s.length();
+        while (i < n) {
+            while (i < n && (isSpace(s.charAt(i)) || s.charAt(i) == ',')) {
+                i++;
+            }
+            if (i >= n) {
+                break;
+            }
+            int start = i;
+            while (i < n && !isSpace(s.charAt(i))) {
+                i++;
+            }
+            String url = s.substring(start, i);
+            String descriptors = "";
+            if (url.endsWith(",")) {
+                int e = url.length();
+                while (e > 0 && url.charAt(e - 1) == ',') {
+                    e--;
+                }
+                url = url.substring(0, e);
+            } else {
+                int ds = i;
+                int depth = 0;
+                while (i < n) {
+                    char c = s.charAt(i);
+                    if (c == '(') {
+                        depth++;
+                    } else if (c == ')' && depth > 0) {
+                        depth--;
+                    } else if (c == ',' && depth == 0) {
+                        break;
+                    }
+                    i++;
+                }
+                descriptors = s.substring(ds, i).trim();
+                if (i < n) {
+                    i++;
+                }
+            }
+            if (url.isEmpty()) {
+                continue;
+            }
+            String checked = check(url, image);
+            if (checked != null && !checked.equals(BLOCKED)) {
+                out.add(descriptors.isEmpty() ? url : url + " " + descriptors);
+            }
+        }
+        return String.join(", ", out);
+    }
+}
