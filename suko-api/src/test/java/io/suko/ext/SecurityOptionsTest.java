@@ -18,6 +18,22 @@ class SecurityOptionsTest {
     }
 
     @Test
+    void urlAttributesCannotOverlapSinkAttributes() {
+        for (String bad : new String[] {"style", "srcdoc", "onclick", "ONERROR", "x-data", "hx-on", "hx-on:click",
+                                        "data-x-html", "data-hx-on-click", ":href", "@click"}) {
+            IllegalArgumentException e = assertThrows(IllegalArgumentException.class,
+                () -> SecurityOptions.DEFAULT.withUrlAttributes(Set.of("data-url", bad)), bad);
+            assertTrue(e.getMessage().toLowerCase().contains(bad.toLowerCase()), e.getMessage());
+        }
+        assertThrows(IllegalArgumentException.class,
+            () -> SecurityOptions.DEFAULT.withCodeAttributes(Set.of("meu-attr")).withUrlAttributes(Set.of("MEU-ATTR")));
+        assertThrows(IllegalArgumentException.class,
+            () -> SecurityOptions.DEFAULT.withUrlAttributes(Set.of("meu-attr")).withCodeAttributes(Set.of("meu-attr")));
+        assertEquals(Set.of("data-url", "hx-get"),
+            SecurityOptions.DEFAULT.withUrlAttributes(Set.of("data-url", "hx-get")).urlAttributes());
+    }
+
+    @Test
     void forbiddenSchemesAreABuildError() {
         for (String bad : new String[] {"javascript", "VBScript", "data", "blob", "filesystem"}) {
             IllegalArgumentException e = assertThrows(IllegalArgumentException.class,

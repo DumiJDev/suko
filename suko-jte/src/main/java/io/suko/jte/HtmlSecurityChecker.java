@@ -331,8 +331,9 @@ public final class HtmlSecurityChecker implements Checker {
         }
         // htmx/Alpine aceitam o prefixo data- (data-hx-on-click, data-x-data)
         String code = attr.startsWith("data-") ? attr.substring(5) : attr;
-        if (code.equals("hx-vals") || code.equals("hx-headers") || code.equals("hx-trigger")) {
-            return "O atributo '" + attr + "' pode ser avaliado como JavaScript pelo htmx (js:/javascript:/filtros)";
+        if (code.equals("hx-vals") || code.equals("hx-headers") || code.equals("hx-trigger")
+            || code.equals("hx-vars") || code.equals("hx-request")) {
+            return "O atributo '" + attr + "' pode ser avaliado como JavaScript pelo htmx (js:/javascript:/filtros; hx-vars é sempre JS)";
         }
         if (code.startsWith("x-") || code.startsWith("hx-on") || attr.startsWith(":") || attr.startsWith("@")
             || options.codeAttributes().contains(attr)) {

@@ -63,6 +63,19 @@ public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, S
         }
         codeAttributes = sorted(lower(codeAttributes));
         urlAttributes = sorted(lower(urlAttributes));
+        for (String attr : urlAttributes) {
+            if (isSinkAttribute(attr) || codeAttributes.contains(attr)) {
+                throw new IllegalArgumentException("urlAttributes: '" + attr
+                    + "' é um atributo de código/estilo (sink) e não pode ser tratado como URL"
+                    + " (style, srcdoc, on*, x-*, hx-on*, data-x-*, data-hx-on*, :*, @* e codeAttributes)");
+            }
+        }
+    }
+
+    private static boolean isSinkAttribute(String a) {
+        return a.equals("style") || a.equals("srcdoc") || a.startsWith("on") || a.startsWith("x-")
+            || a.startsWith("hx-on") || a.startsWith("data-x-") || a.startsWith("data-hx-on")
+            || a.startsWith(":") || a.startsWith("@");
     }
 
     public SecurityOptions withGeneratedPackage(String value) {

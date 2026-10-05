@@ -104,6 +104,11 @@ Maven: `<security>` com `urlSchemes`, `imageDataTypes`, `codeAttributes`, `urlAt
   `generatedPackage`: Gradle, por omissão `io.suko.generated.<projeto>`; Maven, derivado do
   `artifactId`. Pasta: Gradle `build/generated-src/suko-java`; Maven
   `target/generated-sources/suko-java`.
+- **URL dinâmico com prefixo literal não garante mesma origem.** Em `href="/${path}"`, a
+  `SukoSafe.url` aceita valores relativos ao esquema: com `path = "/evil.com"` o resultado é
+  `//evil.com`, que o browser resolve para outro anfitrião. Quem precisa de mesma origem tem de
+  validar ou codificar o valor (por exemplo, só aceitar segmentos de caminho); o `pathSegment`
+  é aplicado apenas a embeds de origem constante.
 - `SukoSafe.pathSegment` só é seguro depois de um prefixo literal `esquema://host/`.
 
 ## 3. O que não é do Suko
@@ -184,7 +189,9 @@ Para a primeira release:
 4. Assinar o `registry.json` na tag de release: `RegistryTool sign --registry-dir D --key-id ID --key-file F`.
    O `sign` verifica o próprio resultado, salvo `--no-verify`. Assinar fora do CI disparado por push, ou
    num environment protegido.
-5. Confirmar que o recurso `trusted-keys.json` entra no native-image (ver lacunas em `ARCHITECTURE.md`).
+5. Versionar a assinatura: `git add -f suko-components/registry.json.sig` (o `.gitignore` já não a ignora)
+   e confirmar com `git status` que o ficheiro entra no commit/tag da release.
+6. Confirmar que o recurso `trusted-keys.json` entra no native-image (ver lacunas em `ARCHITECTURE.md`).
 
 ## 6. Contrato dos alvos
 

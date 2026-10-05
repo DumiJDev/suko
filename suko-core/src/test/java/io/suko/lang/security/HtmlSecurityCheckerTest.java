@@ -255,6 +255,10 @@ class HtmlSecurityCheckerTest {
         "component A(String x) { <div data-hx-vals=${x}>b</div> }",
         "component A(String x) { <div data-hx-headers=\"${x}\">b</div> }",
         "component A(String x) { <div data-hx-trigger=${x}>b</div> }",
+        "component A(String x) { <div hx-vars=${x}>b</div> }",
+        "component A(String x) { <div data-hx-vars=${x}>b</div> }",
+        "component A(String x) { <div HX-VARS=${x}>b</div> }",
+        "component A(String x) { <div hx-request=${x}>b</div> }",
         "component A(String x) { <link rel=\"stylesheet\" rel=\"canonical\" href=${x}> }",
         "component A(String x) { <meta name=\"referrer\" name=\"viewport\" content=${x}> }"
     })
@@ -266,6 +270,7 @@ class HtmlSecurityCheckerTest {
     @ValueSource(strings = {
         "component A() { <div hx-vals=\"abc\" hx-headers=\"abc\" hx-trigger=\"click\">b</div> }",
         "component A() { <div data-hx-vals=\"abc\" data-hx-trigger=\"load\">b</div> }",
+        "component A() { <div hx-vars=\"a:1\" hx-request=\"abc\">b</div> }",
         "component A(String x) { <div data-title=${x} data-hx-x=${x}>b</div> }"
     })
     void hardeningLiteralHtmxAttributesAreAccepted(String sk) {
