@@ -51,7 +51,21 @@
           <type>java.lang.String</type>
           <required>false</required>
           <editable>true</editable>
-          <description>Package name for generated classes.</description>
+          <description>Package da SukoSafe gerada. Por omissao io.suko.generated.&lt;artifactId sanitizado&gt;.</description>
+        </parameter>
+        <parameter>
+          <name>generatedJavaDir</name>
+          <type>java.io.File</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Diretorio das fontes Java geradas (SukoSafe.java); registado como compile source root.</description>
+        </parameter>
+        <parameter>
+          <name>security</name>
+          <type>io.suko.lang.maven.SukoCompileMojo$Security</type>
+          <required>false</required>
+          <editable>true</editable>
+          <description>Seguranca: urlSchemes, imageDataTypes, codeAttributes, urlAttributes, strictCsp.</description>
         </parameter>
         <parameter>
           <name>targets</name>
@@ -72,7 +86,9 @@
         <project implementation="org.apache.maven.project.MavenProject" default-value="${project}"/>
         <sourceDir implementation="java.io.File" default-value="${project.basedir}/src/main/suko">${suko.sourceDir}</sourceDir>
         <outputDir implementation="java.io.File" default-value="${project.build.directory}/generated-sources/suko">${suko.outputDir}</outputDir>
-        <generatedPackage implementation="java.lang.String" default-value="io.suko.generated">${suko.package}</generatedPackage>
+        <generatedPackage implementation="java.lang.String">${suko.package}</generatedPackage>
+        <generatedJavaDir implementation="java.io.File" default-value="${project.build.directory}/generated-sources/suko-java">${suko.generatedJavaDir}</generatedJavaDir>
+        <security implementation="io.suko.lang.maven.SukoCompileMojo$Security"/>
         <targets implementation="java.util.List" default-value="jte">${suko.targets}</targets>
         <buildDirectory implementation="java.io.File" default-value="${project.build.directory}"/>
       </configuration>

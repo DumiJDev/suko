@@ -41,7 +41,7 @@ class PluginDescriptorConsistencyTest {
         // tipo de campo existe na classe), por isso comparamos por nome de campo.
         Set<String> annotatedFieldNames = new HashSet<>();
         for (Field field : SukoCompileMojo.class.getDeclaredFields()) {
-            if (!field.isSynthetic()) {
+            if (!field.isSynthetic() && !field.getName().endsWith("ForTests")) { // ganchos de teste, não parâmetros
                 annotatedFieldNames.add(field.getName());
             }
         }
