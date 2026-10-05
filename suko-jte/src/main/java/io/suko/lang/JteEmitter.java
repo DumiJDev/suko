@@ -637,6 +637,9 @@ public class JteEmitter {
     }
 
     private String noopenerRel(Expr value, java.util.Set<String> slotNames) {
+        if (value instanceof Expr.PrimaryExpr p && p.text().equals("true")) {
+            return "\"noopener\"";   // `rel` booleano (sem valor)
+        }
         if (io.suko.jte.HtmlSecurityRules.isLiteral(value) && value instanceof Expr.StringLiteralExpr s) {
             String text = Expr.pretty(s.parts());
             // Opt-out só para `rel` LITERAL com o token `opener` (decidido aqui, em compile-time);
@@ -653,11 +656,14 @@ public class JteEmitter {
         String tag = io.suko.jte.HtmlSecurityRules.lower(el.tagName());
         String attr = io.suko.jte.HtmlSecurityRules.lower(a.name());
 
-        for (String fn : new String[] {"trustedUrl", "trustedStyle", "trustedHtml"}) {
-            var trusted = io.suko.jte.HtmlSecurityRules.trustedArgument(v, fn);
-            if (trusted.isPresent()) {
-                return emitExpr(trusted.get(), slotNames);
-            }
+        // trustedUrl só em atributos de URL/srcset/ping; trustedStyle só em style; trustedHtml não existe.
+        boolean urlLike = io.suko.jte.HtmlSecurityRules.isUrlAttribute(tag, attr, options)
+            || io.suko.jte.HtmlSecurityRules.isSrcset(attr) || io.suko.jte.HtmlSecurityRules.isPing(attr);
+        var trusted = urlLike ? io.suko.jte.HtmlSecurityRules.trustedArgument(v, "trustedUrl")
+            : attr.equals("style") ? io.suko.jte.HtmlSecurityRules.trustedArgument(v, "trustedStyle")
+            : java.util.Optional.<Expr>empty();
+        if (trusted.isPresent()) {
+            return emitExpr(trusted.get(), slotNames);
         }
         if (io.suko.jte.HtmlSecurityRules.isLiteral(v)) {
             return emitExpr(v, slotNames);

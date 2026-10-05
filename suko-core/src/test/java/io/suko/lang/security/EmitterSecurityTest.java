@@ -114,4 +114,25 @@ class EmitterSecurityTest {
         String html = RenderHarness.render("component A() { <p>a@b.com @if(true) X @endif</p> }", "A", Map.of());
         assertTrue(html.contains("a@b.com @if(true) X @endif"), html);
     }
+
+    @Test
+    void trustedFunctionsAreOnlyHonouredOnTheirOwnAttributes() {
+        assertFalse(jte("component A(String u) { <a href=${trustedUrl(u)}>x</a> }").contains("SukoSafe"));
+        String onclick = jte("component A(String u) { <a href=\"/\" onclick=${trustedUrl(u)}>x</a> }");
+        assertTrue(onclick.contains("onclick=\"${trustedUrl(u)}\""), onclick);
+        String style = jte("component A(String s) { <div style=${trustedStyle(s)}>x</div> }");
+        assertTrue(style.contains("style=\"${s}\"") && !style.contains("SukoSafe"), style);
+        String styleOnHref = jte("component A(String s) { <a href=${trustedStyle(s)}>x</a> }");
+        assertTrue(styleOnHref.contains("SukoSafe.url(trustedStyle(s))"), styleOnHref);
+        String urlOnStyle = jte("component A(String s) { <div style=${trustedUrl(s)}>x</div> }");
+        assertTrue(urlOnStyle.contains("style=\"${trustedUrl(s)}\""), urlOnStyle);
+        String html = jte("component A(String s) { <a href=${trustedHtml(s)}>x</a> <p title=${trustedHtml(s)}>y</p> }");
+        assertTrue(html.contains("SukoSafe.url(trustedHtml(s))") && html.contains("title=\"${trustedHtml(s)}\""), html);
+    }
+
+    @Test
+    void booleanRelWithBlankTargetBecomesNoopener() {
+        String out = jte("component A() { <a href=\"/x\" target=\"_blank\" rel>x</a> }");
+        assertTrue(out.contains("rel=\"${\"noopener\"}\"") && !out.contains("SukoSafe"), out);
+    }
 }
