@@ -315,6 +315,9 @@ public class JteEmitter {
         String baseName = switch (type.name()) {
             case "Content" -> type.typeArguments().isEmpty() ? "gg.jte.Content" : type.name();
             case "List" -> "java.util.List";
+            // "Map" (subprojeto 14, Task 12): mesma lista fechada — os modelos de vista da loja
+            // de exemplo são Map<String,String> e o gg.jte não importa java.util.
+            case "Map" -> "java.util.Map";
             case "Function" -> "java.util.function.Function";
             default -> type.name();
         };
