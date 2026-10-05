@@ -83,13 +83,27 @@ class NativeImageSmokeTest {
                 "--registry", REAL_REGISTRY.toString(), "--registry-ref", "main");
         assertTrue(Files.isRegularFile(projectDir.resolve("suko.json")), "suko init did not write suko.json");
 
-        run(projectDir, 0, binary.toString(), "list");
-        run(projectDir, 0, binary.toString(), "add", "field");
+        // The committed registry is unsigned (R7 of the subprojeto 14 plan),
+        // so these runs need --allow-unsigned (local registry only).
+        run(projectDir, 0, binary.toString(), "list", "--allow-unsigned");
+        run(projectDir, 0, binary.toString(), "add", "field", "--allow-unsigned");
         assertTrue(Files.isRegularFile(projectDir.resolve("suko.lock.json")), "suko add did not write suko.lock.json");
-        run(projectDir, 0, binary.toString(), "list");
-        run(projectDir, 0, binary.toString(), "diff", "field");
-        run(projectDir, 0, binary.toString(), "update", "field");
-        run(projectDir, 2, binary.toString(), "add", "naoexiste");
+        run(projectDir, 0, binary.toString(), "list", "--allow-unsigned");
+        run(projectDir, 0, binary.toString(), "diff", "field", "--allow-unsigned");
+        run(projectDir, 0, binary.toString(), "update", "field", "--allow-unsigned");
+        run(projectDir, 2, binary.toString(), "add", "naoexiste", "--allow-unsigned");
+
+        // Subprojeto 14 (M6): the native binary must verify an Ed25519
+        // signature (Signature + KeyFactory "Ed25519", reached through JCA
+        // reflection) — a signed copy of the registry, with the public key
+        // configured in suko.json, and no --allow-unsigned.
+        Path signedRegistry = Files.createDirectories(buildDir.resolve("signed-registry"));
+        Path signedProject = Files.createDirectories(buildDir.resolve("signed-project"));
+        String publicKey = SignedRegistryFixture.signedCopy(REAL_REGISTRY, signedRegistry, "main");
+        Files.writeString(signedProject.resolve("suko.json"), SignedRegistryFixture.sukoJson(
+                signedRegistry, "main", "com.example.demo", publicKey));
+        run(signedProject, 0, binary.toString(), "list");
+        run(signedProject, 0, binary.toString(), "add", "field");
     }
 
     /** Runs a process to completion, asserting its exit code and the absence of a reflection-shaped crash. */

@@ -56,6 +56,10 @@
             "int",
             "java.lang.String",
             "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
+            "java.lang.String",
             "java.util.List"
           ]
         }
@@ -67,6 +71,7 @@
         {
           "name": "<init>",
           "parameterTypes": [
+            "java.lang.String",
             "java.lang.String",
             "java.lang.String",
             "java.lang.String",
@@ -106,6 +111,24 @@
       ]
     },
     {
+      "type": "sun.security.ec.ed.EdDSAKeyFactory$Ed25519",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "sun.security.ec.ed.EdDSASignature$Ed25519",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "sun.security.provider.SHA2$SHA256",
       "methods": [
         {
@@ -113,6 +136,11 @@
           "parameterTypes": []
         }
       ]
+    }
+  ],
+  "resources": [
+    {
+      "glob": "trusted-keys.json"
     }
   ]
 }

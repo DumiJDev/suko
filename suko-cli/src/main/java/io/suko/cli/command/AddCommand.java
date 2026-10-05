@@ -11,17 +11,15 @@ import io.suko.cli.Reconciler;
 import io.suko.cli.RegistrySources;
 import io.suko.cli.ResolutionPlan;
 import io.suko.cli.Resolver;
+import io.suko.cli.VerifiedIndex;
 import io.suko.registry.ComponentFile;
 import io.suko.registry.ComponentManifest;
 import io.suko.registry.ExternalRequirement;
 import io.suko.registry.RegistryIndex;
-import io.suko.registry.RegistryJson;
-import io.suko.registry.RegistryJsonException;
 import io.suko.registry.RegistrySource;
 
 import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -72,9 +70,14 @@ public final class AddCommand {
         String registryRef = config.registry().ref() != null ? config.registry().ref() : InitCommand.DEFAULT_REGISTRY_REF;
 
         RegistrySource source = RegistrySources.resolve(registryBase);
+        Optional<Lockfile> existingLockfile = Lockfile.load(projectDir);
 
-        // Step 2: index + dependency closure.
-        RegistryIndex index = loadIndex(source, registryBase);
+        // Step 2: index (signature, identity, expiry, rollback — VerifiedIndex,
+        // before anything else) + dependency closure (each manifest checked
+        // against the index's manifestSha256 before it is parsed).
+        VerifiedIndex.Result verified = VerifiedIndex.load(source, registryBase, registryRef, existingLockfile,
+                args.allowUnsigned(), args.allowDowngrade(), config.registry().trustedKeys(), System.err);
+        RegistryIndex index = verified.index();
         ResolutionPlan plan = Resolver.resolve(index, source, args.positionals());
 
         // Step 3: fetch every file and verify its sha256 against the
@@ -87,7 +90,6 @@ public final class AddCommand {
 
         // Step 5: compute destinations and reconcile against the lockfile.
         Path sourceRootAbsolute = projectDir.resolve(config.sourceRoot()).toAbsolutePath().normalize();
-        Optional<Lockfile> existingLockfile = Lockfile.load(projectDir);
         List<PlannedFile> plannedFiles = classifyAll(rewritten, config, sourceRootAbsolute, existingLockfile);
 
         List<String> unresolved = new ArrayList<>();
@@ -120,29 +122,13 @@ public final class AddCommand {
         }
 
         // Step 7: write the lockfile last.
-        Lockfile newLockfile = buildLockfile(config, index, registryBase, registryRef, plan, plannedFiles, existingLockfile);
+        Lockfile newLockfile = buildLockfile(config, verified, registryBase, registryRef, plan, plannedFiles, existingLockfile);
         newLockfile.write(projectDir);
         out.println();
         out.println("Wrote " + projectDir.resolve(Lockfile.FILE_NAME));
 
         // Step 8: print external requirements, never act on them.
         printExternalRequirements(out, plan);
-    }
-
-    // --- Step 1 helpers ---
-
-    private RegistryIndex loadIndex(RegistrySource source, String registryBase) {
-        byte[] indexBytes;
-        try {
-            indexBytes = source.resolve("registry.json");
-        } catch (IOException e) {
-            throw new CliException("Could not read registry.json from \"" + registryBase + "\": " + e.getMessage());
-        }
-        try {
-            return RegistryJson.readIndex(new String(indexBytes, StandardCharsets.UTF_8));
-        } catch (RegistryJsonException e) {
-            throw new CliException("Could not parse registry.json from \"" + registryBase + "\": " + e.getMessage());
-        }
     }
 
     // --- Step 3 ---
@@ -285,7 +271,7 @@ public final class AddCommand {
 
     // --- Step 7 ---
 
-    private Lockfile buildLockfile(ProjectConfig config, RegistryIndex index, String registryBase, String registryRef,
+    private Lockfile buildLockfile(ProjectConfig config, VerifiedIndex.Result verified, String registryBase, String registryRef,
             ResolutionPlan plan, List<PlannedFile> plannedFiles, Optional<Lockfile> existingLockfile) {
 
         Map<String, LockEntry> existingByName = new LinkedHashMap<>();
@@ -308,7 +294,8 @@ public final class AddCommand {
             componentsByName.put(manifest.name(), new LockEntry(manifest.name(), manifest.version(), reason, files));
         }
 
-        return new Lockfile(Lockfile.SCHEMA_VERSION, new Lockfile.Registry(registryBase, registryRef, index.registryVersion()),
+        return new Lockfile(Lockfile.SCHEMA_VERSION, new Lockfile.Registry(registryBase, registryRef,
+                        verified.index().registryVersion(), verified.signed(), verified.keyId(), verified.index().issuedAt()),
                 config.basePackage(), config.sourceRoot(), new ArrayList<>(componentsByName.values()));
     }
 

@@ -36,7 +36,7 @@ class ListCommandTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream out = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
-        Args args = Args.parse(new String[] { "list", "--registry", REAL_REGISTRY_BASE.toString() });
+        Args args = Args.parse(new String[] { "list", "--registry", REAL_REGISTRY_BASE.toString(), "--allow-unsigned" });
         new ListCommand().run(args, out, Path.of("."));
 
         String output = captured.toString(StandardCharsets.UTF_8);
@@ -71,7 +71,7 @@ class ListCommandTest {
         ByteArrayOutputStream captured = new ByteArrayOutputStream();
         PrintStream out = new PrintStream(captured, true, StandardCharsets.UTF_8);
 
-        Args args = Args.parse(new String[] { "list" });
+        Args args = Args.parse(new String[] { "list", "--allow-unsigned" });
         new ListCommand().run(args, out, projectDir);
 
         String output = captured.toString(StandardCharsets.UTF_8);

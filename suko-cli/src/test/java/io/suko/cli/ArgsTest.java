@@ -122,4 +122,19 @@ class ArgsTest {
         assertEquals("add", args.command());
         assertTrue(args.help());
     }
+
+    @Test
+    void securityFlagsAreRecognisedAnywhereAndDefaultToOff() {
+        Args none = Args.parse(new String[] { "add", "button" });
+        assertFalse(none.allowUnsigned());
+        assertFalse(none.allowDowngrade());
+        Args both = Args.parse(new String[] { "--allow-unsigned", "add", "button", "--allow-downgrade" });
+        assertTrue(both.allowUnsigned());
+        assertTrue(both.allowDowngrade());
+        assertEquals(java.util.List.of("button"), both.positionals());
+        for (String command : java.util.List.of("list", "add", "diff", "update")) {
+            assertTrue(Args.COMMAND_HELP.get(command).contains("--allow-unsigned"), command);
+            assertTrue(Args.COMMAND_HELP.get(command).contains("--allow-downgrade"), command);
+        }
+    }
 }

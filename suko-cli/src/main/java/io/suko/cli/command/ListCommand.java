@@ -4,21 +4,19 @@ import io.suko.cli.Args;
 import io.suko.cli.CliException;
 import io.suko.cli.ProjectConfig;
 import io.suko.cli.RegistrySources;
+import io.suko.cli.VerifiedIndex;
 import io.suko.registry.RegistryIndex;
-import io.suko.registry.RegistryJson;
-import io.suko.registry.RegistryJsonException;
 import io.suko.registry.RegistrySource;
+import io.suko.registry.TrustedKeys;
 
-import java.io.IOException;
 import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * {@code suko list}: reads {@code registry.json} (via {@link RegistrySource}
- * + {@link RegistryJson#readIndex(String)}) and prints name, version,
+ * {@code suko list}: reads and verifies {@code registry.json} (via
+ * {@link VerifiedIndex}) and prints name, version,
  * category and description, column-aligned.
  */
 public final class ListCommand {
@@ -34,21 +32,22 @@ public final class ListCommand {
                     "No registry configured. Pass --registry <path|url>, or run `suko init` to create a suko.json.");
         }
 
+        String registryRef = args.registryRef() != null ? args.registryRef()
+                : fileConfig.map(c -> c.registry() != null ? c.registry().ref() : null)
+                        .orElse(InitCommand.DEFAULT_REGISTRY_REF);
+        // Keys from suko.json only count for suko.json's own registry (same
+        // rule as ProjectConfig.resolve): --registry elsewhere drops them.
+        TrustedKeys configuredKeys = fileConfig
+                .filter(c -> c.registry() != null && registryBase.equals(c.registry().base()))
+                .map(c -> c.registry().trustedKeys())
+                .orElse(TrustedKeys.empty());
+
         RegistrySource source = RegistrySources.resolve(registryBase);
-
-        byte[] indexBytes;
-        try {
-            indexBytes = source.resolve("registry.json");
-        } catch (IOException e) {
-            throw new CliException("Could not read registry.json from \"" + registryBase + "\": " + e.getMessage());
-        }
-
-        RegistryIndex index;
-        try {
-            index = RegistryJson.readIndex(new String(indexBytes, StandardCharsets.UTF_8));
-        } catch (RegistryJsonException e) {
-            throw new CliException("Could not parse registry.json from \"" + registryBase + "\": " + e.getMessage());
-        }
+        // `suko list` writes nothing and has no lockfile to protect, hence no
+        // rollback/anti-strip state (Optional.empty()); signature, identity
+        // and expiry are still verified like every other command.
+        RegistryIndex index = VerifiedIndex.load(source, registryBase, registryRef, Optional.empty(),
+                args.allowUnsigned(), args.allowDowngrade(), configuredKeys, System.err).index();
 
         printTable(out, index.components());
     }

@@ -79,9 +79,30 @@ class UpdateCommandTest {
             String newSha = Hashes.sha256OfRaw(newBytes);
 
             Path manifestFile = registry.resolve(LABEL_MANIFEST);
+            byte[] oldManifestBytes = Files.readAllBytes(manifestFile);
             String manifestJson = Files.readString(manifestFile);
             assertTrue(manifestJson.contains(oldSha), "manifest should still contain the old sha256 before tampering");
             Files.writeString(manifestFile, manifestJson.replace(oldSha, newSha));
+            rehashManifestInIndex(registry, LABEL_MANIFEST, oldManifestBytes);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    /**
+     * After a manifest in the (unsigned, --allow-unsigned) registry copy is
+     * edited, points the index's {@code manifestSha256} at the new bytes —
+     * otherwise the manifest-hash check (subprojeto 14, M6) would reject the
+     * edit before the behavior under test is ever reached.
+     */
+    private static void rehashManifestInIndex(Path registry, String manifest, byte[] oldBytes) {
+        try {
+            Path index = registry.resolve("registry.json");
+            String oldSha = Hashes.sha256OfRaw(oldBytes);
+            String newSha = Hashes.sha256OfRaw(Files.readAllBytes(registry.resolve(manifest)));
+            String json = Files.readString(index, StandardCharsets.UTF_8);
+            assertTrue(json.contains(oldSha), "index should list " + manifest + " with its old manifestSha256");
+            Files.writeString(index, json.replace(oldSha, newSha), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -95,7 +116,7 @@ class UpdateCommandTest {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         List<String> argv = new ArrayList<>(List.of("add"));
         argv.addAll(List.of(names));
-        argv.addAll(List.of("--registry", registry.toString(), "--base-package", "com.acme.web"));
+        argv.addAll(List.of("--registry", registry.toString(), "--allow-unsigned", "--base-package", "com.acme.web"));
         Args args = Args.parse(argv.toArray(new String[0]));
         new AddCommand().run(args, printStream(out), projectDir);
     }
@@ -138,7 +159,7 @@ class UpdateCommandTest {
         String fileBefore = readString(labelPath);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(),
+        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
@@ -157,7 +178,7 @@ class UpdateCommandTest {
         tamperLabelUpstream(registry, "package io.suko.ui;\n<div class=\"label-v2\">{{ text }}</div>\n");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(),
+        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
@@ -187,7 +208,7 @@ class UpdateCommandTest {
         }
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(),
+        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
@@ -212,7 +233,7 @@ class UpdateCommandTest {
         String lockfileBefore = readString(projectDir.resolve(Lockfile.FILE_NAME));
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(),
+        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertNotEquals(0, exitCode);
@@ -235,7 +256,7 @@ class UpdateCommandTest {
         tamperLabelUpstream(registry, "package io.suko.ui;\n<div class=\"label-v2\">{{ text }}</div>\n");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runUpdate(projectDir, out, "update", "--force", "--registry", registry.toString(),
+        int exitCode = runUpdate(projectDir, out, "update", "--force", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
@@ -266,7 +287,7 @@ class UpdateCommandTest {
         tamperLabelUpstream(registry, "package io.suko.ui;\n<div class=\"label-v2\">{{ text }}</div>\n");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(),
+        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
@@ -291,10 +312,12 @@ class UpdateCommandTest {
         // edge from field's manifest in the registry copy.
         Path fieldManifest = registry.resolve("components/field.json");
         try {
+            byte[] oldManifestBytes = Files.readAllBytes(fieldManifest);
             String json = Files.readString(fieldManifest);
             String withoutLabelDependency = json.replace("\"input\",\n    \"label\"", "\"input\"");
             assertTrue(json.contains("\"label\""), "field's manifest should list label under dependsOn before the edit");
             Files.writeString(fieldManifest, withoutLabelDependency);
+            rehashManifestInIndex(registry, "components/field.json", oldManifestBytes);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -303,7 +326,7 @@ class UpdateCommandTest {
         String labelContentBefore = readString(labelPathBefore);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(),
+        int exitCode = runUpdate(projectDir, out, "update", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
@@ -327,7 +350,7 @@ class UpdateCommandTest {
         install(projectDir, registry, "label");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runUpdate(projectDir, out, "update", "button", "--registry", registry.toString(),
+        int exitCode = runUpdate(projectDir, out, "update", "button", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertNotEquals(0, exitCode);

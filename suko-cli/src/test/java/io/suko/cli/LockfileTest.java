@@ -118,4 +118,32 @@ class LockfileTest {
         assertTrue(read.isPresent());
         assertTrue(read.get().components().get(0).files().isEmpty());
     }
+
+    @Test
+    void verificationStateRoundTripsAndOldLockfilesStillRead() {
+        Lockfile signed = new Lockfile(1, new Lockfile.Registry("https://reg.example/", "v1", "0.2.0", true, "k1",
+                "2026-10-05T00:00:00Z"), "com.acme.web", "src/main/suko", List.of());
+        String json = signed.toJson();
+        assertTrue(json.contains("\"signed\": true"), json);
+        assertEquals(signed.registry(), Lockfile.parse(json, "test").registry());
+
+        // An unsigned registry writes none of the optional fields; an old lockfile reads as unsigned.
+        String plain = new Lockfile(1, new Lockfile.Registry("base", "ref", "0.1.0"), "com.acme.web", "src/main/suko",
+                List.of()).toJson();
+        assertFalse(plain.contains("signed"), plain);
+        assertFalse(plain.contains("keyId"), plain);
+        assertFalse(plain.contains("issuedAt"), plain);
+        Lockfile.Registry old = Lockfile.parse(plain, "test").registry();
+        assertFalse(old.signed());
+        assertNull(old.keyId());
+        assertNull(old.issuedAt());
+    }
+
+    @Test
+    void aNonBooleanSignedFieldIsRejected() {
+        String json = new Lockfile(1, new Lockfile.Registry("base", "ref", "0.1.0"), "com.acme.web", "src/main/suko",
+                List.of()).toJson().replace("\"registryVersion\": \"0.1.0\"", "\"registryVersion\": \"0.1.0\", \"signed\": \"yes\"");
+        CliException e = assertThrows(CliException.class, () -> Lockfile.parse(json, "test"));
+        assertTrue(e.getMessage().contains("signed"), e.getMessage());
+    }
 }

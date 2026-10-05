@@ -8,12 +8,12 @@ import io.suko.cli.Lockfile;
 import io.suko.cli.NamespaceRewriter;
 import io.suko.cli.ProjectConfig;
 import io.suko.cli.RegistrySources;
+import io.suko.cli.Resolver;
 import io.suko.cli.TextDiff;
+import io.suko.cli.VerifiedIndex;
 import io.suko.registry.ComponentFile;
 import io.suko.registry.ComponentManifest;
 import io.suko.registry.RegistryIndex;
-import io.suko.registry.RegistryJson;
-import io.suko.registry.RegistryJsonException;
 import io.suko.registry.RegistrySource;
 
 import java.io.IOException;
@@ -63,8 +63,10 @@ public final class DiffCommand {
             throw new CliException(
                     "No registry configured. Pass --registry <path|url>, or run `suko init` to create a suko.json.");
         }
+        String registryRef = config.registry().ref() != null ? config.registry().ref() : lockfile.registry().ref();
         RegistrySource source = RegistrySources.resolve(registryBase);
-        RegistryIndex index = loadIndex(source, registryBase);
+        RegistryIndex index = VerifiedIndex.load(source, registryBase, registryRef, Optional.of(lockfile),
+                args.allowUnsigned(), args.allowDowngrade(), config.registry().trustedKeys(), System.err).index();
         Map<String, RegistryIndex.Entry> entriesByName = new LinkedHashMap<>();
         for (RegistryIndex.Entry entry : index.components()) {
             entriesByName.put(entry.name(), entry);
@@ -82,7 +84,7 @@ public final class DiffCommand {
                 anyDifference = true;
                 continue;
             }
-            ComponentManifest manifest = loadManifest(source, indexEntry);
+            ComponentManifest manifest = Resolver.fetchManifest(source, indexEntry);
             for (ComponentFile manifestFile : manifest.files()) {
                 String lockTarget = basePackageFolder + "/" + manifestFile.target();
                 Path diskPath = sourceRootAbsolute.resolve(lockTarget).normalize();
@@ -144,36 +146,6 @@ public final class DiffCommand {
             targets.add(entry.get());
         }
         return targets;
-    }
-
-    private RegistryIndex loadIndex(RegistrySource source, String registryBase) {
-        byte[] indexBytes;
-        try {
-            indexBytes = source.resolve("registry.json");
-        } catch (IOException e) {
-            throw new CliException("Could not read registry.json from \"" + registryBase + "\": " + e.getMessage());
-        }
-        try {
-            return RegistryJson.readIndex(new String(indexBytes, StandardCharsets.UTF_8));
-        } catch (RegistryJsonException e) {
-            throw new CliException("Could not parse registry.json from \"" + registryBase + "\": " + e.getMessage());
-        }
-    }
-
-    private ComponentManifest loadManifest(RegistrySource source, RegistryIndex.Entry entry) {
-        byte[] bytes;
-        try {
-            bytes = source.resolve(entry.manifest());
-        } catch (IOException e) {
-            throw new CliException(
-                    "Could not read manifest for \"" + entry.name() + "\" (" + entry.manifest() + "): " + e.getMessage());
-        }
-        try {
-            return RegistryJson.readManifest(new String(bytes, StandardCharsets.UTF_8));
-        } catch (RegistryJsonException e) {
-            throw new CliException(
-                    "Could not parse manifest for \"" + entry.name() + "\" (" + entry.manifest() + "): " + e.getMessage());
-        }
     }
 
     private byte[] fetchAndVerify(RegistrySource source, ComponentFile manifestFile, String componentName) {

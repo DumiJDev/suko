@@ -2,6 +2,7 @@ package io.suko.cli.command;
 
 import io.suko.cli.Args;
 import io.suko.cli.CliException;
+import io.suko.cli.Hashes;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -69,7 +70,7 @@ class DiffCommandTest {
 
     private void install(Path projectDir, Path registry, String... names) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Args args = Args.parse(prepend(new String[] { "add" }, names, "--registry", registry.toString(),
+        Args args = Args.parse(prepend(new String[] { "add" }, names, "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web"));
         new AddCommand().run(args, printStream(out), projectDir);
     }
@@ -99,7 +100,7 @@ class DiffCommandTest {
         install(projectDir, registry, "label");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runDiff(projectDir, out, "diff", "label", "--registry", registry.toString(),
+        int exitCode = runDiff(projectDir, out, "diff", "label", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertEquals(0, exitCode, out.toString(StandardCharsets.UTF_8));
@@ -116,7 +117,7 @@ class DiffCommandTest {
         Files.writeString(labelPath, original + "\n<div>hand-edited</div>\n");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runDiff(projectDir, out, "diff", "label", "--registry", registry.toString(),
+        int exitCode = runDiff(projectDir, out, "diff", "label", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertNotEquals(0, exitCode);
@@ -138,7 +139,7 @@ class DiffCommandTest {
         install(projectDir, registry, "label");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runDiff(projectDir, out, "diff", "button", "--registry", registry.toString(),
+        int exitCode = runDiff(projectDir, out, "diff", "button", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertNotEquals(0, exitCode);
@@ -166,7 +167,7 @@ class DiffCommandTest {
         Files.writeString(inputPath, Files.readString(inputPath) + "\n<div>hand-edited</div>\n");
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runDiff(projectDir, out, "diff", "--registry", registry.toString(),
+        int exitCode = runDiff(projectDir, out, "diff", "--registry", registry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertNotEquals(0, exitCode);
@@ -186,20 +187,44 @@ class DiffCommandTest {
         // `suko add`/`suko update` refuse to write it.
         Path tamperedRegistry = copyOfRealRegistry(projectDir);
         Path labelManifest = tamperedRegistry.resolve("components/label.json");
+        byte[] oldManifestBytes = Files.readAllBytes(labelManifest);
         String manifestJson = Files.readString(labelManifest);
         assertTrue(manifestJson.contains("\"target\": \"ui/Label.sk\""),
                 "test assumption about label.json's shape is wrong: " + manifestJson);
         String tampered = manifestJson.replace(
                 "\"target\": \"ui/Label.sk\"", "\"target\": \"../../../../../../../../etc/passwd\"");
         Files.writeString(labelManifest, tampered);
+        // The hostile registry also fixes up the (unsigned) index's
+        // manifestSha256, so the target-containment check below is still
+        // the line of defense being exercised.
+        rehashManifestInIndex(tamperedRegistry, "components/label.json", oldManifestBytes);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        int exitCode = runDiff(projectDir, out, "diff", "label", "--registry", tamperedRegistry.toString(),
+        int exitCode = runDiff(projectDir, out, "diff", "label", "--registry", tamperedRegistry.toString(), "--allow-unsigned",
                 "--base-package", "com.acme.web");
 
         assertNotEquals(0, exitCode);
         String output = out.toString(StandardCharsets.UTF_8);
         assertTrue(output.contains("outside of sourceRoot"), "should name the refusal reason: " + output);
         assertFalse(output.contains("root:"), "must never have read /etc/passwd's contents: " + output);
+    }
+
+    /**
+     * After a manifest in the (unsigned, --allow-unsigned) registry copy is
+     * edited, points the index's {@code manifestSha256} at the new bytes —
+     * otherwise the manifest-hash check (subprojeto 14, M6) would reject the
+     * edit before the behavior under test is ever reached.
+     */
+    private static void rehashManifestInIndex(Path registry, String manifest, byte[] oldBytes) {
+        try {
+            Path index = registry.resolve("registry.json");
+            String oldSha = Hashes.sha256OfRaw(oldBytes);
+            String newSha = Hashes.sha256OfRaw(Files.readAllBytes(registry.resolve(manifest)));
+            String json = Files.readString(index, StandardCharsets.UTF_8);
+            assertTrue(json.contains(oldSha), "index should list " + manifest + " with its old manifestSha256");
+            Files.writeString(index, json.replace(oldSha, newSha), StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

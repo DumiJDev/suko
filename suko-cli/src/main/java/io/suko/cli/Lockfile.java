@@ -51,8 +51,26 @@ public record Lockfile(int schemaVersion, Registry registry, String basePackage,
                 .toList();
     }
 
-    /** The registry this lockfile's components were installed from. */
-    public record Registry(String base, String ref, String registryVersion) {
+    /**
+     * The registry this lockfile's components were installed from.
+     * <p>
+     * {@code signed}, {@code keyId} and {@code issuedAt} record what the CLI
+     * verified (subprojeto 14, M6): a registry once seen {@code signed} is
+     * refused when it later shows up without a signature, even with
+     * {@code --allow-unsigned} (anti-strip), and {@code issuedAt} /
+     * {@code registryVersion} are the anti-rollback floor. {@code issuedAt}
+     * is the signed index's own issue date (it only changes when the
+     * registry publishes a new index), not a time this file was written.
+     * All three are optional in the JSON: lockfiles written before them
+     * still read ({@code signed=false}, {@code null}).
+     * </p>
+     */
+    public record Registry(String base, String ref, String registryVersion, boolean signed, String keyId,
+                           String issuedAt) {
+
+        public Registry(String base, String ref, String registryVersion) {
+            this(base, ref, registryVersion, false, null, null);
+        }
     }
 
     /** Reads {@code suko.lock.json} from {@code projectDir}, if it exists. */
@@ -97,6 +115,9 @@ public record Lockfile(int schemaVersion, Registry registry, String basePackage,
         String base = requireStringField(registryObject, "base", sourceDescription + " (registry)");
         String ref = requireStringField(registryObject, "ref", sourceDescription + " (registry)");
         String registryVersion = requireStringField(registryObject, "registryVersion", sourceDescription + " (registry)");
+        boolean signed = optionalBooleanField(registryObject, "signed", sourceDescription + " (registry)");
+        String keyId = optionalStringField(registryObject, "keyId", sourceDescription + " (registry)");
+        String issuedAt = optionalStringField(registryObject, "issuedAt", sourceDescription + " (registry)");
 
         String basePackage = requireStringField(root, "basePackage", sourceDescription);
         String sourceRoot = requireStringField(root, "sourceRoot", sourceDescription);
@@ -110,7 +131,7 @@ public record Lockfile(int schemaVersion, Registry registry, String basePackage,
             components.add(parseComponent(componentElement, sourceDescription));
         }
 
-        return new Lockfile(foundSchemaVersion, new Registry(base, ref, registryVersion), basePackage, sourceRoot, components);
+        return new Lockfile(foundSchemaVersion, new Registry(base, ref, registryVersion, signed, keyId, issuedAt), basePackage, sourceRoot, components);
     }
 
     private static LockEntry parseComponent(JsonElement element, String sourceDescription) {
@@ -175,6 +196,24 @@ public record Lockfile(int schemaVersion, Registry registry, String basePackage,
         return value.getAsString();
     }
 
+    private static boolean optionalBooleanField(JsonObject object, String field, String sourceDescription) {
+        if (!object.has(field) || object.get(field).isJsonNull()) {
+            return false;
+        }
+        JsonElement value = object.get(field);
+        if (!value.isJsonPrimitive() || !value.getAsJsonPrimitive().isBoolean()) {
+            throw new CliException("Field \"" + field + "\" in " + sourceDescription + " must be a boolean, found: " + value);
+        }
+        return value.getAsBoolean();
+    }
+
+    private static String optionalStringField(JsonObject object, String field, String sourceDescription) {
+        if (!object.has(field) || object.get(field).isJsonNull()) {
+            return null;
+        }
+        return requireStringField(object, field, sourceDescription);
+    }
+
     /** Writes this lockfile to {@code suko.lock.json} in {@code projectDir}, in LF, UTF-8. */
     public void write(Path projectDir) {
         Path file = projectDir.resolve(FILE_NAME);
@@ -200,6 +239,15 @@ public record Lockfile(int schemaVersion, Registry registry, String basePackage,
         registryObject.addProperty("base", registry.base());
         registryObject.addProperty("ref", registry.ref());
         registryObject.addProperty("registryVersion", registry.registryVersion());
+        if (registry.signed()) {
+            registryObject.addProperty("signed", true);
+        }
+        if (registry.keyId() != null) {
+            registryObject.addProperty("keyId", registry.keyId());
+        }
+        if (registry.issuedAt() != null) {
+            registryObject.addProperty("issuedAt", registry.issuedAt());
+        }
         root.add("registry", registryObject);
 
         root.addProperty("basePackage", basePackage);
