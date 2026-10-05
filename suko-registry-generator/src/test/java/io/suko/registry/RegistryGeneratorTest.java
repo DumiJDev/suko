@@ -23,7 +23,8 @@ class RegistryGeneratorTest {
                 "0.1.0",
                 "src/main/suko",
                 fixtureRoot.resolve("descriptions.properties"),
-                componentConfigs);
+                componentConfigs,
+                new GeneratorConfig.RegistryMetadata("https://reg.example/", "v1", "2026-10-05T00:00:00Z", null));
     }
 
     private static GeneratorConfig.ComponentConfig config(String version, String category) {
@@ -150,7 +151,8 @@ class RegistryGeneratorTest {
         GeneratorConfig configMissingLabelDescription = new GeneratorConfig(
                 config.basePackage(), config.registryVersion(), config.sourceRootPrefix(),
                 Path.of("src/test/resources/generator-fixtures/valid/descriptions-missing-label.properties"),
-                Map.of("Label", config("1.0.0", "form"), "Field", config("1.0.0", "form")));
+                Map.of("Label", config("1.0.0", "form"), "Field", config("1.0.0", "form")),
+                config.metadata());
 
         RegistryGeneratorException exception = assertThrows(RegistryGeneratorException.class,
                 () -> RegistryGenerator.generate(VALID_FIXTURE, configMissingLabelDescription));
@@ -170,12 +172,40 @@ class RegistryGeneratorTest {
         GeneratorConfig config = new GeneratorConfig(
                 "io.suko", "0.1.0", "src/main/suko",
                 Path.of("src/test/resources/generator-fixtures/valid/descriptions-utf8.properties"),
-                Map.of("Label", config("1.0.0", "form"), "Field", config("1.0.0", "form")));
+                Map.of("Label", config("1.0.0", "form"), "Field", config("1.0.0", "form")),
+                new GeneratorConfig.RegistryMetadata("https://reg.example/", "v1", "2026-10-05T00:00:00Z", null));
 
         GeneratedRegistry registry = RegistryGenerator.generate(VALID_FIXTURE, config);
 
         ComponentManifest label = registry.manifestsByName().get("label");
         assertEquals("Rótulo com acentuação: ção, ã, é.", label.description());
+    }
+
+    @Test
+    void indexCarriesRegistryMetadataAndManifestHashes() throws Exception {
+        GeneratedRegistry registry = RegistryGenerator.generate(VALID_FIXTURE, configFor(VALID_FIXTURE, Map.of(
+                "Label", config("1.0.0", "form"),
+                "Field", config("1.0.0", "form"))));
+        assertEquals(2, RegistryIndex.SCHEMA_VERSION);
+        assertEquals("https://reg.example/", registry.index().registryId());
+        assertEquals("v1", registry.index().ref());
+        assertEquals("2026-10-05T00:00:00Z", registry.index().issuedAt());
+        assertNull(registry.index().expires());
+        assertEquals(2, registry.index().components().size());
+        for (RegistryIndex.Entry e : registry.index().components()) {
+            byte[] manifest = RegistryJson.manifestBytes(registry.manifestsByName().get(e.name()));
+            assertEquals(sha256Hex(manifest), e.manifestSha256(), e.name());
+        }
+    }
+
+    @Test
+    void manifestBytesAreLfTerminatedWhateverThePlatform() {
+        GeneratedRegistry registry = RegistryGenerator.generate(VALID_FIXTURE, configFor(VALID_FIXTURE, Map.of(
+                "Label", config("1.0.0", "form"),
+                "Field", config("1.0.0", "form"))));
+        byte[] b = RegistryJson.manifestBytes(registry.manifestsByName().get("label"));
+        assertEquals('\n', b[b.length - 1]);
+        assertFalse(new String(b, java.nio.charset.StandardCharsets.UTF_8).contains("\r"));
     }
 
     private static String sha256Hex(byte[] content) throws Exception {

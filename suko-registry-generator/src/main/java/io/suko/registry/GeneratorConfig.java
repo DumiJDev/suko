@@ -29,7 +29,8 @@ public record GeneratorConfig(
         String registryVersion,
         String sourceRootPrefix,
         Path descriptionsFile,
-        Map<String, ComponentConfig> componentConfigs
+        Map<String, ComponentConfig> componentConfigs,
+        RegistryMetadata metadata
 ) {
 
     /**
@@ -39,5 +40,13 @@ public record GeneratorConfig(
      * {@link GeneratorConfig#componentConfigs()}.
      */
     public record ComponentConfig(String version, String category, List<ExternalRequirement> externalRequirements) {
+    }
+
+    /**
+     * Schema-2 index metadata the sources cannot express. {@code registryId}
+     * is the base a project configures the registry with (without the ref);
+     * {@code expires} may be {@code null} (immutable tags never expire).
+     */
+    public record RegistryMetadata(String registryId, String ref, String issuedAt, String expires) {
     }
 }

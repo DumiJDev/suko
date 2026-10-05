@@ -2,9 +2,9 @@
   "schemaVersion": 2,
   "registryVersion": "0.2.0",
   "basePackage": "io.suko",
-  "registryId": "https://registry.suko.invalid/",
+  "registryId": "https://raw.githubusercontent.com/DumiJDev/suko/",
   "ref": "main",
-  "issuedAt": "1970-01-01T00:00:00Z",
+  "issuedAt": "2026-10-05T00:00:00Z",
   "components": [
     {
       "name": "alert",

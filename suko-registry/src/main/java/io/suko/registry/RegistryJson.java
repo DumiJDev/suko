@@ -79,6 +79,27 @@ public final class RegistryJson {
         return GSON.toJson(index);
     }
 
+    /** Exact bytes a manifest is written with (and hashed over): JSON + a single LF, on every platform. */
+    public static byte[] manifestBytes(ComponentManifest manifest) {
+        return (writeManifest(manifest) + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    /** Exact bytes the index is written with (and signed over): JSON + a single LF, on every platform. */
+    public static byte[] indexBytes(RegistryIndex index) {
+        return (writeIndex(index) + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    public static String sha256Hex(byte[] bytes) {
+        try {
+            byte[] d = java.security.MessageDigest.getInstance("SHA-256").digest(bytes);
+            StringBuilder sb = new StringBuilder();
+            for (byte b : d) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     public static RegistryIndex readIndex(String json) {
         JsonObject object = parseObject(json, "registry index");
         validateSchemaVersion(object, "registry index");

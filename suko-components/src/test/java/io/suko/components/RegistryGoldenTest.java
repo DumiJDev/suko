@@ -88,7 +88,11 @@ class RegistryGoldenTest {
                 "0.2.0",
                 "src/main/suko",
                 SOURCE_ROOT.resolve("descriptions.properties"),
-                Map.copyOf(componentConfigs));
+                Map.copyOf(componentConfigs),
+                // Valores fixos: a geração tem de ser determinística. O mantenedor atualiza
+                // issuedAt/ref/expires ao cortar uma release. registryId = base oficial sem ref.
+                new GeneratorConfig.RegistryMetadata("https://raw.githubusercontent.com/DumiJDev/suko/",
+                        "main", "2026-10-05T00:00:00Z", null));
     }
 
     /**
@@ -102,13 +106,12 @@ class RegistryGoldenTest {
     public static void main(String[] args) throws IOException {
         GeneratedRegistry registry = RegistryGenerator.generate(SOURCE_ROOT, buildConfig());
 
-        Files.writeString(MODULE_ROOT.resolve("registry.json"),
-                RegistryJson.writeIndex(registry.index()) + "\n");
+        Files.write(MODULE_ROOT.resolve("registry.json"), RegistryJson.indexBytes(registry.index()));
 
         Files.createDirectories(COMPONENTS_DIR);
         for (Map.Entry<String, ComponentManifest> entry : registry.manifestsByName().entrySet()) {
-            Files.writeString(COMPONENTS_DIR.resolve(entry.getKey() + ".json"),
-                    RegistryJson.writeManifest(entry.getValue()) + "\n");
+            Files.write(COMPONENTS_DIR.resolve(entry.getKey() + ".json"),
+                    RegistryJson.manifestBytes(entry.getValue()));
         }
 
         System.out.println("Wrote registry.json and " + registry.manifestsByName().size()
@@ -119,7 +122,7 @@ class RegistryGoldenTest {
     void committedRegistryIndexMatchesTheGeneratedOne() throws IOException {
         GeneratedRegistry registry = RegistryGenerator.generate(SOURCE_ROOT, buildConfig());
 
-        String expected = RegistryJson.writeIndex(registry.index()).strip();
+        String expected = new String(RegistryJson.indexBytes(registry.index()), java.nio.charset.StandardCharsets.UTF_8).strip();
         String actual = Files.readString(MODULE_ROOT.resolve("registry.json")).strip();
 
         assertEquals(expected, actual, "registry.json diverges from src/main/suko; " + REGENERATE_HINT);
@@ -146,7 +149,7 @@ class RegistryGoldenTest {
             assertTrue(Files.exists(committed),
                     "components/" + name + ".json does not exist; " + REGENERATE_HINT);
 
-            String expected = RegistryJson.writeManifest(entry.getValue()).strip();
+            String expected = new String(RegistryJson.manifestBytes(entry.getValue()), java.nio.charset.StandardCharsets.UTF_8).strip();
             String actual = Files.readString(committed).strip();
             assertEquals(expected, actual,
                     "components/" + name + ".json diverges from src/main/suko; " + REGENERATE_HINT);

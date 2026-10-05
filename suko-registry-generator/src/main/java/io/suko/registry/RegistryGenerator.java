@@ -19,8 +19,6 @@ import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -198,7 +196,7 @@ public final class RegistryGenerator {
                     : config.sourceRootPrefix() + "/" + relativePath;
             String targetDir = packageSuffix.isEmpty() ? "" : packageSuffix.replace('.', '/') + "/";
             String target = targetDir + fileName;
-            ComponentFile componentFile = new ComponentFile(path, target, sha256Of(parsed.sourceBytes()));
+            ComponentFile componentFile = new ComponentFile(path, target, RegistryJson.sha256Hex(parsed.sourceBytes()));
 
             ComponentManifest manifest = new ComponentManifest(
                     RegistryIndex.SCHEMA_VERSION,
@@ -227,16 +225,11 @@ public final class RegistryGenerator {
 
         RegistryIndex registryIndex = new RegistryIndex(
                 RegistryIndex.SCHEMA_VERSION, config.registryVersion(), config.basePackage(),
-                // TEMPORARY (Task 9): placeholder schema-2 metadata; Task 10 replaces these with
-                // GeneratorConfig.RegistryMetadata supplied by the caller.
-                PLACEHOLDER_REGISTRY_ID, PLACEHOLDER_REF, PLACEHOLDER_ISSUED_AT, null, entries);
+                config.metadata().registryId(), config.metadata().ref(),
+                config.metadata().issuedAt(), config.metadata().expires(), entries);
 
         return new GeneratedRegistry(registryIndex, manifestsByName);
     }
-
-    private static final String PLACEHOLDER_REGISTRY_ID = "https://registry.suko.invalid/";
-    private static final String PLACEHOLDER_REF = "main";
-    private static final String PLACEHOLDER_ISSUED_AT = "1970-01-01T00:00:00Z";
 
     /**
      * SHA-256 of the exact bytes a manifest is written with on disk: its JSON
@@ -244,7 +237,7 @@ public final class RegistryGenerator {
      * (the committed files are LF-only, see .gitattributes).
      */
     public static String manifestFileSha256(ComponentManifest manifest) {
-        return sha256Of((RegistryJson.writeManifest(manifest) + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        return RegistryJson.sha256Hex(RegistryJson.manifestBytes(manifest));
     }
 
     /** Parse via {@link SukoAstBuilder} only — no {@code SukoErrorListener}
@@ -345,19 +338,5 @@ public final class RegistryGenerator {
                     "Could not read descriptions file '" + descriptionsFile + "': " + e.getMessage(), e);
         }
         return properties;
-    }
-
-    private static String sha256Of(byte[] content) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(content);
-            StringBuilder hex = new StringBuilder(hash.length * 2);
-            for (byte b : hash) {
-                hex.append(String.format("%02x", b));
-            }
-            return hex.toString();
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 is a mandatory JDK algorithm", e);
-        }
     }
 }
