@@ -218,6 +218,58 @@ class CartAndCheckoutTest {
     }
 
     @Test
+    void concurrentCheckoutsOfTheSameSessionCreateExactlyOneOrder() throws Exception {
+        MockHttpSession s = new MockHttpSession();
+        add(s, "1", "1").andExpect(status().is3xxRedirection());
+        int stockBefore = stock(1);
+        long ordersBefore = orderCount();
+        int threads = 8;
+        var pool = java.util.concurrent.Executors.newFixedThreadPool(threads);
+        var start = new java.util.concurrent.CountDownLatch(1);
+        try {
+            var futures = new java.util.ArrayList<java.util.concurrent.Future<Integer>>();
+            for (int i = 0; i < threads; i++) {
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return checkout(s, "Nome", "a@b.pt", "Rua").andReturn().getResponse().getStatus();
+                }));
+            }
+            start.countDown();
+            int redirects = 0;
+            for (var f : futures) {
+                int code = f.get(60, java.util.concurrent.TimeUnit.SECONDS);
+                assertTrue(code == 302 || code == 200, "estado inesperado: " + code);
+                redirects += code == 302 ? 1 : 0;
+            }
+            assertEquals(1, redirects, "só um checkout pode ter sucesso");
+        } finally {
+            pool.shutdownNow();
+        }
+        assertEquals(ordersBefore + 1, orderCount(), "um carrinho, uma encomenda");
+        assertEquals(stockBefore - 1, stock(1), "stock descido uma vez");
+        assertEquals(0, cartCount(s));
+    }
+
+    @Test
+    void failedCheckoutRestoresTheCart() throws Exception {
+        MockHttpSession s = new MockHttpSession();
+        add(s, "9", "20");   // mais do que o stock: o checkout falha e o carrinho fica como estava
+        checkout(s, "Nome", "a@b.pt", "Rua").andExpect(status().isOk());
+        assertEquals(20, cartCount(s));
+    }
+
+    @Test
+    void successfulCheckoutRotatesTheSessionIdAndKeepsTheConfirmation() throws Exception {
+        MockHttpSession s = new MockHttpSession();
+        add(s, "2", "1");
+        String before = s.getId();
+        String location = checkout(s, "Nome", "a@b.pt", "Rua").andExpect(status().is3xxRedirection())
+            .andReturn().getResponse().getRedirectedUrl();
+        assertNotEquals(before, s.getId(), "session fixation: o id da sessão muda no checkout");
+        assertTrue(page(s, location).text().contains("Encomenda confirmada"));
+    }
+
+    @Test
     void stateChangingPostsWithoutCsrfAreForbidden() throws Exception {
         MockHttpSession s = new MockHttpSession();
         mvc.perform(post("/cart/add").session(s).param("id", "2").param("quantity", "1")).andExpect(status().isForbidden());

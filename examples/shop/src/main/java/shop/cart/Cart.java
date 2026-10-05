@@ -48,6 +48,26 @@ public class Cart implements Serializable {
         lines.clear();
     }
 
+    /**
+     * Tira todas as linhas e esvazia o carrinho num só passo (atómico por sessão): dois checkouts
+     * concorrentes da mesma sessão não podem gerar duas encomendas do mesmo carrinho.
+     */
+    public synchronized Map<Long, Integer> drain() {
+        Map<Long, Integer> taken = Collections.unmodifiableMap(new LinkedHashMap<>(lines));
+        lines.clear();
+        return taken;
+    }
+
+    /** Devolve ao carrinho as linhas de um {@link #drain()} cujo checkout falhou (soma às que entretanto entraram). */
+    public synchronized void restore(Map<Long, Integer> drained) {
+        drained.forEach((id, q) -> {
+            Integer current = lines.get(id);
+            if (current != null || lines.size() < MAX_LINES) {
+                lines.put(id, Math.min(MAX_QUANTITY, (current == null ? 0 : current) + q));
+            }
+        });
+    }
+
     /** Cópia (ordem de inserção) — quem a recebe não altera o carrinho. */
     public synchronized Map<Long, Integer> lines() {
         return Collections.unmodifiableMap(new LinkedHashMap<>(lines));

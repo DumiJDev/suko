@@ -83,6 +83,26 @@ A loja não tem vulnerabilidades deliberadas. O que está montado, e o teste que
 - **Outros**: a consola H2 está desligada (404), e não há utilizador por omissão (nem a
   "generated security password" no log).
 
+## Limitações conhecidas (âmbito do pentest)
+
+Estas limitações estão documentadas de propósito e não foram corrigidas:
+
+- **Pedidos recusados pelo firewall do Spring Security ou pelo Tomcat não levam cabeçalhos de
+  segurança.** Exemplos: `/p/1;x=1` e `/p/1%0d%0aX:y`.
+- **URLs sem mapeamento e o `/error` mostram a whitelabel do Spring Boot.** Isto inclui o 403
+  de CSRF. A página não mostra detalhes (`server.error.include-*`), mas não é a página da loja.
+- **Não há limites contra abuso:**
+  - avaliações ilimitadas;
+  - encomendas sem pagamento, que podem esgotar o stock;
+  - cada `GET`/`HEAD` cria uma sessão (carrinho e token CSRF).
+- **`name`, `author` e `address` aceitam caracteres de controlo e bidi.** Saem escapados, mas
+  não são filtrados. O `email` recusa caracteres de controlo.
+- **A consola H2 está sempre desligada.** É um aperto deliberado face à spec, que a previa no
+  perfil de desenvolvimento.
+- **O checkout é atómico por sessão.** O `Cart.drain()` tira e esvazia o carrinho num só
+  passo, e um checkout falhado devolve as linhas ao carrinho. Num checkout com sucesso o id da
+  sessão muda (`changeSessionId`, defesa contra session fixation).
+
 ## Limitações atuais do Suko visíveis aqui
 
 - Os componentes recebem `Map<String,String>` e `List<Map<String,String>>` (montados em

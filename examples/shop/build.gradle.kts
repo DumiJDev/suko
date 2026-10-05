@@ -51,4 +51,21 @@ jte {
 }
 tasks.named("generateJte") { dependsOn("sukoCompile") }
 
+// Falha alto se a política HTML do JTE não ficar ligada com suko.security.jtePolicy=true
+// (p.ex. se o plugin do JTE mudar e a convenção do Suko deixar de chegar a htmlPolicyClass).
+val verifyJtePolicy by tasks.registering {
+    group = "verification"
+    description = "Confirma que jte.htmlPolicyClass é a OwaspHtmlPolicy quando suko.security.jtePolicy está ligado"
+    val wanted = suko.security.jtePolicy
+    val policy = jte.htmlPolicyClass
+    doLast {
+        if (wanted.get() && policy.orNull != "gg.jte.html.OwaspHtmlPolicy") {
+            throw GradleException("jte.htmlPolicyClass = ${policy.orNull}; esperado gg.jte.html.OwaspHtmlPolicy (suko.security.jtePolicy=true)")
+        }
+        logger.lifecycle("jte.htmlPolicyClass = ${policy.orNull}")
+    }
+}
+tasks.named("generateJte") { dependsOn(verifyJtePolicy) }
+tasks.named("check") { dependsOn(verifyJtePolicy) }
+
 tasks.test { useJUnitPlatform() }

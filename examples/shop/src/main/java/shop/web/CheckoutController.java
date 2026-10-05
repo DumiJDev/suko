@@ -1,5 +1,6 @@
 package shop.web;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,6 +54,7 @@ class CheckoutController {
     String place(@RequestParam(defaultValue = "") String name,
                  @RequestParam(defaultValue = "") String email,
                  @RequestParam(defaultValue = "") String address,
+                 HttpServletRequest request,
                  Model m) {
         String n = Forms.clean(name);
         String e = Forms.clean(email);
@@ -67,18 +69,31 @@ class CheckoutController {
         if (!Forms.lengthBetween(a, 1, ADDRESS_MAX)) {
             errors.put("address", "A morada tem de ter entre 1 e " + ADDRESS_MAX + " caracteres.");
         }
-        Map<Long, Integer> lines = cart.lines();
-        if (lines.isEmpty()) {
+        if (cart.lines().isEmpty()) {
             errors.put("general", "O carrinho está vazio.");
         }
         if (errors.isEmpty()) {
-            try {
-                long id = orderService.placeOrder(lines, n, e, a);
-                placedOrders.add(id);
-                cart.clear();
-                return "redirect:/orders/" + id + "/confirmation";
-            } catch (OrderService.CheckoutException ex) {
-                errors.put("general", ex.getMessage());
+            // drain(): tirar e esvaziar num só passo — checkouts concorrentes da mesma sessão
+            // (duplo clique, pedidos em paralelo) não transformam um carrinho em N encomendas.
+            Map<Long, Integer> lines = cart.drain();
+            if (lines.isEmpty()) {
+                errors.put("general", "O carrinho está vazio.");
+            } else {
+                boolean placed = false;
+                try {
+                    long id = orderService.placeOrder(lines, n, e, a);
+                    placed = true;
+                    placedOrders.add(id);
+                    // A sessão passa a guardar dados pessoais (a encomenda): novo id contra session fixation.
+                    request.changeSessionId();
+                    return "redirect:/orders/" + id + "/confirmation";
+                } catch (OrderService.CheckoutException ex) {
+                    errors.put("general", ex.getMessage());
+                } finally {
+                    if (!placed) {
+                        cart.restore(lines);   // qualquer falha devolve as linhas ao carrinho
+                    }
+                }
             }
         }
         return page(m, form(name, email, address), errors);
