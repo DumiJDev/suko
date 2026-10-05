@@ -117,5 +117,13 @@ public class SukoCompileTask extends SukoBaseTask {
                 getLogger().warn("[WARNING] {} - {}: {}", location, diag.code(), diag.message());
             }
         }
+        for (SukoDiagnostic diag : diagnostics.getDiagnostics()) {
+            if (diag.severity() == SukoDiagnostic.Severity.INFO) {
+                String location = diag.span() != null && !diag.span().isNone()
+                    ? fileName + ":" + diag.span().startLine() + ":" + diag.span().startColumn()
+                    : fileName;
+                getLogger().info("[INFO] {} - {}: {}", location, diag.code(), diag.message());
+            }
+        }
     }
 }

@@ -169,6 +169,7 @@ final class DiagnosticsService {
         return switch (severity) {
             case ERROR -> DiagnosticSeverity.Error;
             case WARNING -> DiagnosticSeverity.Warning;
+            case INFO -> DiagnosticSeverity.Information;
         };
     }
 }

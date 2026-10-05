@@ -1,6 +1,13 @@
 package io.suko.lang.project;
 
+import io.suko.ext.ProjectEmitContext;
+import io.suko.ext.ProjectOutput;
+import io.suko.ext.SecurityOptions;
+import io.suko.ext.Target;
 import io.suko.lang.JteCompiler;
+import io.suko.lang.ast.SourceSpan;
+import io.suko.lang.ext.ExtensionFailures;
+import io.suko.lang.ext.VocabularyChecker;
 import io.suko.lang.ext.ExtensionRegistry;
 import io.suko.lang.diagnostic.DiagnosticCollector;
 import io.suko.lang.diagnostic.SukoDiagnostic;
@@ -24,12 +31,18 @@ public class SukoProjectCompiler {
 
     private final ExtensionRegistry registry;
     private final List<String> targets;
+    private final SecurityOptions options;
 
     public SukoProjectCompiler() {
         this(ExtensionRegistry.defaults(), List.of("jte"));
     }
 
     public SukoProjectCompiler(ExtensionRegistry registry, List<String> targets) {
+        this(registry, targets, SecurityOptions.DEFAULT);
+    }
+
+    public SukoProjectCompiler(ExtensionRegistry registry, List<String> targets, SecurityOptions options) {
+        this.options = options;
         this.registry = registry;
         this.targets = JteCompiler.normalizeTargets(targets);
     }
@@ -38,8 +51,18 @@ public class SukoProjectCompiler {
         boolean success,
         Map<Path, DiagnosticCollector> diagnosticsByFile,
         Map<Path, String> generatedJteSources,
-        List<SukoDiagnostic> projectDiagnostics
+        List<SukoDiagnostic> projectDiagnostics,
+        List<Output> projectOutputs
     ) {
+        /** Ficheiro de projeto emitido por um alvo (ex.: a SukoSafe.java do alvo JTE). */
+        public record Output(String targetId, ProjectOutput.Kind kind, Path relativePath, String source) {
+        }
+
+        public ProjectCompileResult(boolean success, Map<Path, DiagnosticCollector> diagnosticsByFile,
+                                    Map<Path, String> generatedJteSources, List<SukoDiagnostic> projectDiagnostics) {
+            this(success, diagnosticsByFile, generatedJteSources, projectDiagnostics, List.of());
+        }
+
         public ProjectCompileResult(boolean success, Map<Path, DiagnosticCollector> diagnosticsByFile,
                                     Map<Path, String> generatedJteSources) {
             this(success, diagnosticsByFile, generatedJteSources, List.of());
@@ -95,7 +118,7 @@ public class SukoProjectCompiler {
         for (Map.Entry<Path, String> entry : sources.files().entrySet()) {
             Path relative = entry.getKey();
             JteCompiler.Analysis analysis =
-                new JteCompiler(relative.toString(), entry.getValue(), registry, targets).analyze(index, relative);
+                new JteCompiler(relative.toString(), entry.getValue(), registry, targets, options).analyze(index, relative);
             for (SukoDiagnostic duplicate : duplicateDiagnostics.getOrDefault(relative, List.of())) {
                 analysis.diagnostics().add(duplicate);
             }
@@ -116,7 +139,7 @@ public class SukoProjectCompiler {
 
         for (Map.Entry<Path, String> sourceEntry : sources.files().entrySet()) {
             Path relative = sourceEntry.getKey();
-            JteCompiler compiler = new JteCompiler(relative.toString(), sourceEntry.getValue(), registry, targets);
+            JteCompiler compiler = new JteCompiler(relative.toString(), sourceEntry.getValue(), registry, targets, options);
             JteCompiler.CompileResult result = compiler.compile(index, relative);
             DiagnosticCollector fileDiagnostics = result.diagnostics();
             for (SukoDiagnostic duplicate : duplicateDiagnostics.getOrDefault(relative, List.of())) {
@@ -139,7 +162,32 @@ public class SukoProjectCompiler {
             }
         }
 
-        return new ProjectCompileResult(success, diagnosticsByFile, generatedJteSources, project);
+        List<ProjectCompileResult.Output> projectOutputs = new ArrayList<>();
+        if (success) {
+            for (String targetId : targets) {
+                Target target = registry.target(targetId).orElse(null);
+                if (target == null) continue;
+                try {
+                    for (ProjectOutput out : target.emitProject(new ProjectEmitContext(index, options))) {
+                        projectOutputs.add(new ProjectCompileResult.Output(
+                            targetId, out.kind(), Path.of(out.relativePath()), out.source()));
+                    }
+                } catch (Throwable e) {
+                    ExtensionFailures.rethrowFatal(e);
+                    project = withExtra(project, new SukoDiagnostic(SukoDiagnostic.Severity.ERROR,
+                        "A extensão '" + registry.ownerOf(target) + "' falhou ao emitir os ficheiros do projeto para o alvo '"
+                            + targetId + "': " + VocabularyChecker.describe(e), "EXTENSION_FAILED", null, SourceSpan.NONE));
+                    success = false;
+                }
+            }
+        }
+        return new ProjectCompileResult(success, diagnosticsByFile, generatedJteSources, project, projectOutputs);
+    }
+
+    private static List<SukoDiagnostic> withExtra(List<SukoDiagnostic> diagnostics, SukoDiagnostic extra) {
+        List<SukoDiagnostic> copy = new ArrayList<>(diagnostics);
+        copy.add(extra);
+        return copy;
     }
 
     // REVISÃO FINAL (achado C): colisões de nome qualificado detetadas na

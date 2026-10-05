@@ -16,4 +16,9 @@ public interface Target {
     Set<String> vocabularies();
 
     Emitted emit(ComponentDecl component, EmitContext ctx);
+
+    /** Ficheiros do projeto inteiro (não por componente). Por omissão nenhum. */
+    default java.util.List<ProjectOutput> emitProject(ProjectEmitContext ctx) {
+        return java.util.List.of();
+    }
 }
