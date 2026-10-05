@@ -49,9 +49,9 @@ class RegistryToolTest {
     @Test
     void signWithoutAKeySourceFails(@TempDir Path dir) throws Exception {
         Files.writeString(dir.resolve("registry.json"), "{}");
-        // sem --key-file e sem SUKO_REGISTRY_SIGNING_KEY no ambiente do teste
+        // ambiente injetado: independente de SUKO_REGISTRY_SIGNING_KEY no processo
         assertThrows(IllegalStateException.class, () ->
-            RegistryTool.main(new String[] {"sign", "--registry-dir", dir.toString(), "--key-id", "k"}));
+            RegistryTool.run(new String[] {"sign", "--registry-dir", dir.toString(), "--key-id", "k"}, n -> null));
     }
 
     @Test
@@ -59,5 +59,79 @@ class RegistryToolTest {
         RegistryTool.main(new String[] {"generate-key", "--out-dir", dir.toString(), "--key-id", "k", "--registry-id", "r"});
         assertThrows(IllegalStateException.class, () ->
             RegistryTool.main(new String[] {"sign", "--registry-dir", dir.toString(), "--key-id", "k", "--key-file", dir.resolve("k.private.pem").toString()}));
+    }
+
+    private static String[] gen(Path dir, String id) {
+        return new String[] {"generate-key", "--out-dir", dir.toString(), "--key-id", id, "--registry-id", "https://r.example/"};
+    }
+
+    @Test
+    void wrongKeySelfCheckFailsAndRemovesStaleSig(@TempDir Path dir) throws Exception {
+        Path reg = dir.resolve("reg");
+        Files.createDirectories(reg);
+        Files.writeString(reg.resolve("registry.json"), "{}\n");
+        Files.writeString(reg.resolve("registry.json.sig"), "stale");
+        Path other = dir.resolve("other");
+        RegistryTool.main(gen(dir, "k1"));
+        RegistryTool.main(gen(other, "k1"));
+        // chave privada de "other" com a pública de "dir"
+        assertThrows(IllegalStateException.class, () -> RegistryTool.main(new String[] {"sign", "--registry-dir", reg.toString(),
+            "--key-id", "k1", "--key-file", other.resolve("k1.private.pem").toString(),
+            "--public-key-file", dir.resolve("k1.public.txt").toString()}));
+        assertFalse(Files.exists(reg.resolve("registry.json.sig")));
+    }
+
+    @Test
+    void noVerifySkipsTheSelfCheck(@TempDir Path dir) throws Exception {
+        Files.writeString(dir.resolve("registry.json"), "{}\n");
+        Path keys = dir.resolve("keys");
+        RegistryTool.main(gen(keys, "k1"));
+        Files.delete(keys.resolve("k1.public.txt"));
+        String[] base = {"sign", "--registry-dir", dir.toString(), "--key-id", "k1", "--key-file", keys.resolve("k1.private.pem").toString()};
+        assertThrows(IllegalStateException.class, () -> RegistryTool.main(base));
+        RegistryTool.main(java.util.stream.Stream.concat(java.util.Arrays.stream(base), java.util.stream.Stream.of("--no-verify")).toArray(String[]::new));
+        assertTrue(Files.exists(dir.resolve("registry.json.sig")));
+    }
+
+    @Test
+    void envKeyWithoutPublicKeyFileFails(@TempDir Path dir) throws Exception {
+        Files.writeString(dir.resolve("registry.json"), "{}\n");
+        Path keys = dir.resolve("keys");
+        RegistryTool.main(gen(keys, "k1"));
+        String pem = Files.readString(keys.resolve("k1.private.pem"));
+        String[] args = {"sign", "--registry-dir", dir.toString(), "--key-id", "k1"};
+        var ex = assertThrows(IllegalStateException.class, () -> RegistryTool.run(args, n -> pem));
+        assertTrue(ex.getMessage().contains("--public-key-file"), ex.getMessage());
+        assertFalse(Files.exists(dir.resolve("registry.json.sig")));
+        RegistryTool.run(new String[] {"sign", "--registry-dir", dir.toString(), "--key-id", "k1",
+            "--public-key-file", keys.resolve("k1.public.txt").toString()}, n -> pem);
+        assertTrue(Files.exists(dir.resolve("registry.json.sig")));
+    }
+
+    @Test
+    void privateKeyIs0600(@TempDir Path dir) throws Exception {
+        RegistryTool.main(gen(dir, "k1"));
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+            dir.getFileSystem().supportedFileAttributeViews().contains("posix"));
+        assertEquals(java.nio.file.attribute.PosixFilePermissions.fromString("rw-------"),
+            Files.getPosixFilePermissions(dir.resolve("k1.private.pem")));
+    }
+
+    @Test
+    void keyIdWithTraversalOrOddCharsIsRejected(@TempDir Path dir) throws Exception {
+        for (String bad : new String[] {"../x", "a/b", "a b", "..", "", "k\"1"}) {
+            assertThrows(IllegalArgumentException.class, () -> RegistryTool.main(gen(dir, bad)), bad);
+        }
+        try (var list = Files.list(dir)) {
+            assertEquals(0, list.count());
+        }
+    }
+
+    @Test
+    void generateKeyLeavesNoPartialStateWhenThePublicFileExists(@TempDir Path dir) throws Exception {
+        Files.writeString(dir.resolve("k1.public.txt"), "x");
+        assertThrows(IllegalStateException.class, () -> RegistryTool.main(gen(dir, "k1")));
+        assertFalse(Files.exists(dir.resolve("k1.private.pem")));
+        assertEquals("x", Files.readString(dir.resolve("k1.public.txt")));
     }
 }

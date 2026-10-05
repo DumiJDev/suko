@@ -33,6 +33,10 @@ public record GeneratorConfig(
         RegistryMetadata metadata
 ) {
 
+    public GeneratorConfig {
+        java.util.Objects.requireNonNull(metadata, "GeneratorConfig.metadata (registryId, ref, issuedAt) é obrigatório");
+    }
+
     /**
      * Per-component metadata that has no representation in the {@code .sk}
      * source and is therefore supplied by the caller, keyed by the

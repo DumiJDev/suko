@@ -3,3 +3,8 @@ build/
 .claude/worktrees/
 .superpowers/
 jte-classes/
+
+# Registry signing material: never committed (plan R7)
+*.private.pem
+*.public.txt
+registry.json.sig

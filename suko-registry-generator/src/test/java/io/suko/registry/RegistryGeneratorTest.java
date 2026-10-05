@@ -182,6 +182,13 @@ class RegistryGeneratorTest {
     }
 
     @Test
+    void nullMetadataFailsWithAClearMessage() {
+        NullPointerException e = assertThrows(NullPointerException.class,
+                () -> new GeneratorConfig("io.suko", "0.1.0", "src/main/suko", Path.of("d.properties"), Map.of(), null));
+        assertTrue(e.getMessage().contains("metadata"), e.getMessage());
+    }
+
+    @Test
     void indexCarriesRegistryMetadataAndManifestHashes() throws Exception {
         GeneratedRegistry registry = RegistryGenerator.generate(VALID_FIXTURE, configFor(VALID_FIXTURE, Map.of(
                 "Label", config("1.0.0", "form"),
