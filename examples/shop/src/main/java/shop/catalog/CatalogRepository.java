@@ -69,12 +69,6 @@ public class CatalogRepository {
             .query().listOfRows();
     }
 
-    public List<Map<String, Object>> reviews(long productId) {
-        return jdbc.sql("select id, author, body, rating, website from review where product_id = :productId order by id")
-            .param("productId", productId)
-            .query().listOfRows();
-    }
-
     /** Aplica o limite de {@value #MAX_QUERY_LENGTH} caracteres (sem partir pares substitutos). */
     public static String truncate(String q) {
         if (q == null) {

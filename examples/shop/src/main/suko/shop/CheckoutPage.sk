@@ -1,0 +1,25 @@
+package shop;
+
+import shop.Layout;
+import shop.CheckoutForm;
+
+public component CheckoutPage(String title, int cartCount, List<Map<String, String>> categories, String csrfName, String csrfToken, List<Map<String, String>> lines, String total, String totalCents, Map<String, String> form, Map<String, String> errors) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Finalizar compra</h1>
+    if (errors.containsKey("general")) {
+      <p class="error">${errors.get("general")}</p>
+    }
+    if (lines.isEmpty()) {
+      <p class="empty">O carrinho está vazio.</p>
+      <p><a href="/">Ver produtos</a></p>
+    } else {
+      <ul class="checkout-lines">
+        for (Map<String, String> l : lines) {
+          <li>${l.get("name")}: ${l.get("quantity")} x ${l.get("unitPrice")} = ${l.get("lineTotal")}</li>
+        }
+      </ul>
+      <p class="cart-total" data-cents=${totalCents}>Total: ${total}</p>
+      CheckoutForm(csrfName = csrfName, csrfToken = csrfToken, form = form, errors = errors)
+    }
+  }
+}

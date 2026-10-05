@@ -1,0 +1,11 @@
+package shop;
+
+import shop.Layout;
+
+public component ErrorPage(String title, int cartCount, List<Map<String, String>> categories, String message) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Não foi possível concluir o pedido</h1>
+    <p class="empty">${message}</p>
+    <p><a href="/">Voltar à página inicial</a></p>
+  }
+}

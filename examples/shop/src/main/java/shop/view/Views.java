@@ -56,12 +56,12 @@ public final class Views {
     }
 
     /** {@code 1250} → {@code "12,50 €"}. */
-    public static String price(int cents) {
+    public static String price(long cents) {
         return (cents / 100) + "," + String.format("%02d", cents % 100) + " €";
     }
 
     /** O JDBC do H2 devolve as colunas em maiúsculas; procura sem distinguir. */
-    private static Object value(Map<String, Object> row, String column) {
+    public static Object value(Map<String, Object> row, String column) {
         if (row.containsKey(column)) {
             return row.get(column);
         }
@@ -73,7 +73,7 @@ public final class Views {
         return null;
     }
 
-    private static String text(Map<String, Object> row, String column) {
+    public static String text(Map<String, Object> row, String column) {
         Object v = value(row, column);
         return v == null ? "" : v.toString();
     }

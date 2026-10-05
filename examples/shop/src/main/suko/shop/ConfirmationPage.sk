@@ -1,0 +1,19 @@
+package shop;
+
+import shop.Layout;
+
+public component ConfirmationPage(String title, int cartCount, List<Map<String, String>> categories, Map<String, String> order, List<Map<String, String>> lines) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Encomenda confirmada</h1>
+    <p class="thanks">Obrigado, ${order.get("name")}. A encomenda número ${order.get("id")} foi registada.</p>
+    <p class="email">Confirmação para: ${order.get("email")}</p>
+    <p class="address">Entrega em: ${order.get("address")}</p>
+    <ul class="order-lines">
+      for (Map<String, String> l : lines) {
+        <li>${l.get("name")}: ${l.get("quantity")} unidades, ${l.get("lineTotal")}</li>
+      }
+    </ul>
+    <p class="order-total" data-cents=${order.get("totalCents")}>Total: ${order.get("total")}</p>
+    <p><a href="/">Continuar a comprar</a></p>
+  }
+}

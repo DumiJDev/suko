@@ -22,4 +22,7 @@ insert into review (product_id, author, body, rating, website) values
     (1, 'Ana',    'Muito claro e direto. Recomendo a quem escreve templates.', 5, 'https://exemplo.pt/ana'),
     (5, 'Bruno',  'Ótimo café, chegou bem embalado.', 4, null),
     (7, 'Carla',  'Faz um café excelente, mas a pega aquece um pouco.', 4, null),
-    (9, 'Duarte', 'Quentinha e muito bonita. Vale o preço.', 5, null);
+    (9, 'Duarte', 'Quentinha e muito bonita. Vale o preço.', 5, null),
+    -- Website hostil semeado de propósito: a aplicação não valida o esquema; o Suko (SukoSafe.url)
+    -- mostra o link como about:invalid#suko-blocked (ReviewsTest.hostileSeededWebsiteIsBlockedEndToEnd).
+    (4, 'Eduarda', 'Bonito, mas o link do meu site não vai funcionar.', 4, 'javascript:alert(''semente'')');

@@ -73,6 +73,26 @@ class CatalogPagesTest {
     }
 
     @Test
+    void sqlAndLikeMetacharactersMatchNothingAndAreEchoedAsText() throws Exception {
+        // ' OR 1=1 --, % e _ são texto literal: nem injeção nem curinga do LIKE (que apanharia tudo).
+        String[][] cases = {{"%27%20OR%201%3D1%20--", "' OR 1=1 --"}, {"%25", "%"}, {"_", "_"}, {"%25%25", "%%"}, {"__", "__"}};
+        for (String[] c : cases) {
+            Document d = page("/search?q=" + c[0]);
+            assertEquals(0, d.select(".product-card").size(), c[1]);
+            assertEquals(c[1], d.select("input[name=q]").attr("value"), c[1]);
+            assertTrue(d.select(".empty").text().contains(c[1]), d.select(".empty").outerHtml());
+            assertTrue(d.select(".empty *").isEmpty(), "o termo é texto, não markup");
+        }
+    }
+
+    @Test
+    void longQueryIsEchoedCutTo80Characters() throws Exception {
+        Document d = page("/search?q=" + "a".repeat(500));
+        assertEquals("a".repeat(80), d.select("input[name=q]").attr("value"));
+        assertFalse(d.html().contains("a".repeat(81)));
+    }
+
+    @Test
     void emptySearchShowsAHelpfulMessageNotAnError() throws Exception {
         assertTrue(page("/search?q=zzzznaoexiste").select(".empty").text().length() > 0);
     }

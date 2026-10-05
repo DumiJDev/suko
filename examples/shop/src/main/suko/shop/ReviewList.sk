@@ -1,0 +1,21 @@
+package shop;
+
+public component ReviewList(List<Map<String, String>> reviews) {
+  if (reviews.isEmpty()) {
+    <p class="empty">Ainda não há avaliações.</p>
+  } else {
+    <ul class="reviews">
+      for (Map<String, String> r : reviews) {
+        <li class="review">
+          <strong class="author">${r.get("author")}</strong>
+          <span class="rating">${r.get("rating")} em 5</span>
+          <p class="body">${r.get("body")}</p>
+          if (!r.get("website").isEmpty()) {
+            // O website é texto do utilizador: a SukoSafe gerada bloqueia javascript:, data:, ...
+            <a class="website" href=${r.get("website")} rel="nofollow ugc">site do autor</a>
+          }
+        </li>
+      }
+    </ul>
+  }
+}

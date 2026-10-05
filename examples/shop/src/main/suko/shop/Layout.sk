@@ -17,7 +17,7 @@ public component Layout(String title, int cartCount, List<Map<String, String>> c
             <a href="/c/${c.get("slug")}">${c.get("name")}</a>
           }
         </nav>
-        <a class="cart-link" href="/cart">Carrinho ${cartCount}</a>
+        <a class="cart-link" href="/cart">Carrinho <span class="cart-count">${cartCount}</span></a>
       </header>
       <main>${children}</main>
       <footer class="site-footer">Loja de exemplo do Suko, com dados fictícios.</footer>

@@ -3,6 +3,7 @@ plugins {
     id("org.springframework.boot") version "3.3.4"
     id("io.spring.dependency-management") version "1.1.6"
     id("io.suko.lang")
+    id("gg.jte.gradle") version "3.1.12"
 }
 
 group = "shop"
@@ -34,9 +35,20 @@ suko {
     outputDir.set("src/main/jte")                // raiz de templates do starter do JTE
     generatedPackage.set("shop.suko")
     security {
-        jtePolicy.set(false)                     // templates compilados em runtime: sem o plugin do JTE
+        // jtePolicy fica no valor por omissão (true): com o plugin do JTE aplicado, o Suko liga a
+        // gg.jte.html.OwaspHtmlPolicy na geração dos templates (defesa em profundidade).
         strictCsp.set(true)                      // nenhum style=/on*/<script> inline: a loja serve CSP estrita
     }
 }
+
+// Templates pré-compilados: o plugin do JTE gera Java a partir dos .jte que o sukoCompile escreve em
+// src/main/jte, e o compileJava compila-os com o resto. Em runtime não há compilação de templates
+// (gg.jte.use-precompiled-templates=true): a pasta dos templates não é código executável.
+jte {
+    sourceDirectory.set(file("src/main/jte").toPath())
+    contentType.set(gg.jte.ContentType.Html)
+    generate()
+}
+tasks.named("generateJte") { dependsOn("sukoCompile") }
 
 tasks.test { useJUnitPlatform() }
