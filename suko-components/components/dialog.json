@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "dialog",
   "version": "0.2.0",
   "description": "Diálogo modal com Alpine.js para abrir/fechar, título e conteúdo livre.",

@@ -221,13 +221,30 @@ public final class RegistryGenerator {
             ComponentManifest manifest = manifestsByName.get(registryName);
             entries.add(new RegistryIndex.Entry(
                     manifest.name(), manifest.version(), manifest.description(),
-                    manifest.category(), "components/" + registryName + ".json"));
+                    manifest.category(), "components/" + registryName + ".json",
+                    manifestFileSha256(manifest)));
         }
 
         RegistryIndex registryIndex = new RegistryIndex(
-                RegistryIndex.SCHEMA_VERSION, config.registryVersion(), config.basePackage(), entries);
+                RegistryIndex.SCHEMA_VERSION, config.registryVersion(), config.basePackage(),
+                // TEMPORARY (Task 9): placeholder schema-2 metadata; Task 10 replaces these with
+                // GeneratorConfig.RegistryMetadata supplied by the caller.
+                PLACEHOLDER_REGISTRY_ID, PLACEHOLDER_REF, PLACEHOLDER_ISSUED_AT, null, entries);
 
         return new GeneratedRegistry(registryIndex, manifestsByName);
+    }
+
+    private static final String PLACEHOLDER_REGISTRY_ID = "https://registry.suko.invalid/";
+    private static final String PLACEHOLDER_REF = "main";
+    private static final String PLACEHOLDER_ISSUED_AT = "1970-01-01T00:00:00Z";
+
+    /**
+     * SHA-256 of the exact bytes a manifest is written with on disk: its JSON
+     * ({@link RegistryJson#writeManifest}) followed by a single {@code \n}
+     * (the committed files are LF-only, see .gitattributes).
+     */
+    public static String manifestFileSha256(ComponentManifest manifest) {
+        return sha256Of((RegistryJson.writeManifest(manifest) + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     /** Parse via {@link SukoAstBuilder} only — no {@code SukoErrorListener}

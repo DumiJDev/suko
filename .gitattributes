@@ -1,1 +1,6 @@
 suko-core/src/test/resources/golden/** text eol=lf
+# Registry files are hashed/signed byte-for-byte: always LF, never converted.
+suko-components/registry.json text eol=lf
+suko-components/registry.json.sig text eol=lf
+suko-components/components/*.json text eol=lf
+suko-cli/src/test/resources/registry-fixtures/** text eol=lf

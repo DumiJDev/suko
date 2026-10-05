@@ -1,14 +1,18 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "registryVersion": "0.1.0-test",
   "basePackage": "io.suko.fixture",
+  "registryId": "https://fixture.example/",
+  "ref": "test",
+  "issuedAt": "2026-10-05T00:00:00Z",
   "components": [
     {
       "name": "x",
       "version": "0.1.0",
       "description": "Declares dependsOn a component absent from this registry's index.",
       "category": "test",
-      "manifest": "components/x.json"
+      "manifest": "components/x.json",
+      "manifestSha256": "79dfc0119a3521ec9fa269ec84b0bf9be88581ae045c7812484c77fe8d078380"
     }
   ]
 }

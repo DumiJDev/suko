@@ -1,35 +1,42 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "registryVersion": "0.1.0-test",
   "basePackage": "io.suko.fixture",
+  "registryId": "https://fixture.example/",
+  "ref": "test",
+  "issuedAt": "2026-10-05T00:00:00Z",
   "components": [
     {
       "name": "leaf",
       "version": "0.1.0",
       "description": "Shared leaf dependency with no dependencies of its own.",
       "category": "test",
-      "manifest": "components/leaf.json"
+      "manifest": "components/leaf.json",
+      "manifestSha256": "79ea8090815b92837b2cfbfa359b06df1fda9c35fea9d07653b0d7e2e8c77cef"
     },
     {
       "name": "mid-a",
       "version": "0.1.0",
       "description": "One of two components that both depend on leaf.",
       "category": "test",
-      "manifest": "components/mid-a.json"
+      "manifest": "components/mid-a.json",
+      "manifestSha256": "9d02b7a512247c2e714d7c70c90ffdaae0561f35f00a8cdb8b214d1c13f52a1f"
     },
     {
       "name": "mid-b",
       "version": "0.1.0",
       "description": "The other component that also depends on leaf (diamond).",
       "category": "test",
-      "manifest": "components/mid-b.json"
+      "manifest": "components/mid-b.json",
+      "manifestSha256": "51fe801e1326205c2853d440385804a2a6dcec3df8937c10d385f7a78dbf2dc3"
     },
     {
       "name": "top",
       "version": "0.1.0",
       "description": "Depends on both mid-a and mid-b, which both depend on leaf.",
       "category": "test",
-      "manifest": "components/top.json"
+      "manifest": "components/top.json",
+      "manifestSha256": "eed0a0a275997aaf7dd26c51d6dd9060d63d8ca11d10e8e424b53d796cebfa57"
     }
   ]
 }

@@ -10,7 +10,7 @@ class ModelTest {
 
     @Test
     void testSchemaVersion() {
-        assertEquals(1, RegistryIndex.SCHEMA_VERSION);
+        assertEquals(2, RegistryIndex.SCHEMA_VERSION);
     }
 
     @Test
@@ -57,17 +57,24 @@ class ModelTest {
                 "1.0.0",
                 "A reusable button component",
                 "UI",
-                "button.json"
+                "button.json",
+                "a".repeat(64)
         );
 
         RegistryIndex index = new RegistryIndex(
-                1,
+                2,
                 "1.0.0",
                 "io.suko.components",
+                "https://reg.example/",
+                "v1",
+                "2026-10-05T00:00:00Z",
+                null,
                 List.of(entry)
         );
 
-        assertEquals(1, index.schemaVersion());
+        assertEquals(2, index.schemaVersion());
+        assertEquals("https://reg.example/", index.registryId());
+        assertNull(index.expires());
         assertEquals("1.0.0", index.registryVersion());
         assertEquals("io.suko.components", index.basePackage());
         assertEquals(1, index.components().size());

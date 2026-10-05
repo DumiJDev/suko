@@ -58,6 +58,9 @@ public final class RegistryJson {
             .disableHtmlEscaping()
             .create();
 
+    /** Fields that may be absent or {@code null}: {@code expires} (immutable tags never expire). */
+    private static final java.util.Set<String> OPTIONAL_FIELDS = java.util.Set.of("expires");
+
     private RegistryJson() {
     }
 
@@ -135,6 +138,9 @@ public final class RegistryJson {
         // See the class javadoc for guidance on maintaining backward compatibility.
         for (RecordComponent component : recordType.getRecordComponents()) {
             String field = component.getName();
+            if (OPTIONAL_FIELDS.contains(field)) {
+                continue;
+            }
             if (!object.has(field) || object.get(field).isJsonNull()) {
                 throw new RegistryJsonException(
                         "Missing required field \"" + field + "\" in " + documentKind + " document");

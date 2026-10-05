@@ -26,8 +26,9 @@ class RegistryJsonTest {
 
     private RegistryIndex sampleIndex() {
         RegistryIndex.Entry entry = new RegistryIndex.Entry(
-                "button", "1.0.0", "A reusable button component", "UI", "components/button.json");
-        return new RegistryIndex(RegistryIndex.SCHEMA_VERSION, "0.1.0", "io.suko", List.of(entry));
+                "button", "1.0.0", "A reusable button component", "UI", "components/button.json", "a".repeat(64));
+        return new RegistryIndex(RegistryIndex.SCHEMA_VERSION, "0.1.0", "io.suko", "https://reg.example/", "v1",
+                "2026-10-05T00:00:00Z", null, List.of(entry));
     }
 
     @Test
@@ -79,6 +80,9 @@ class RegistryJsonTest {
                   "schemaVersion": 42,
                   "registryVersion": "0.1.0",
                   "basePackage": "io.suko",
+                  "registryId": "https://reg.example/",
+                  "ref": "v1",
+                  "issuedAt": "2026-10-05T00:00:00Z",
                   "components": []
                 }
                 """;
@@ -226,5 +230,20 @@ class RegistryJsonTest {
         assertTrue(ex.getMessage().contains("99"), "message should mention the found version: " + ex.getMessage());
         assertTrue(ex.getMessage().contains(String.valueOf(RegistryIndex.SCHEMA_VERSION)),
                 "message should mention the supported version: " + ex.getMessage());
+    }
+
+    @Test
+    void indexExpiresIsOptionalAndRoundTripsWhenPresent() {
+        RegistryIndex withExpiry = new RegistryIndex(RegistryIndex.SCHEMA_VERSION, "0.1.0", "io.suko",
+                "https://reg.example/", "main", "2026-10-05T00:00:00Z", "2026-11-05T00:00:00Z", List.of());
+        assertEquals(withExpiry, RegistryJson.readIndex(RegistryJson.writeIndex(withExpiry)));
+        assertNull(RegistryJson.readIndex(RegistryJson.writeIndex(sampleIndex())).expires());
+    }
+
+    @Test
+    void schema1IndexWithoutSecurityFieldsIsRejectedByName() {
+        String v1 = "{\"schemaVersion\":1,\"registryVersion\":\"0.1.0\",\"basePackage\":\"io.suko\",\"components\":[]}";
+        RegistryJsonException ex = assertThrows(RegistryJsonException.class, () -> RegistryJson.readIndex(v1));
+        assertTrue(ex.getMessage().contains("registryId"), ex.getMessage());
     }
 }

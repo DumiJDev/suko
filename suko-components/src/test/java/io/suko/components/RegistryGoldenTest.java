@@ -103,12 +103,12 @@ class RegistryGoldenTest {
         GeneratedRegistry registry = RegistryGenerator.generate(SOURCE_ROOT, buildConfig());
 
         Files.writeString(MODULE_ROOT.resolve("registry.json"),
-                RegistryJson.writeIndex(registry.index()) + System.lineSeparator());
+                RegistryJson.writeIndex(registry.index()) + "\n");
 
         Files.createDirectories(COMPONENTS_DIR);
         for (Map.Entry<String, ComponentManifest> entry : registry.manifestsByName().entrySet()) {
             Files.writeString(COMPONENTS_DIR.resolve(entry.getKey() + ".json"),
-                    RegistryJson.writeManifest(entry.getValue()) + System.lineSeparator());
+                    RegistryJson.writeManifest(entry.getValue()) + "\n");
         }
 
         System.out.println("Wrote registry.json and " + registry.manifestsByName().size()
@@ -123,6 +123,17 @@ class RegistryGoldenTest {
         String actual = Files.readString(MODULE_ROOT.resolve("registry.json")).strip();
 
         assertEquals(expected, actual, "registry.json diverges from src/main/suko; " + REGENERATE_HINT);
+    }
+
+    @Test
+    void indexManifestSha256MatchesTheCommittedManifestBytes() throws Exception {
+        io.suko.registry.RegistryIndex index = RegistryJson.readIndex(
+                Files.readString(MODULE_ROOT.resolve("registry.json")));
+        for (io.suko.registry.RegistryIndex.Entry entry : index.components()) {
+            byte[] bytes = Files.readAllBytes(MODULE_ROOT.resolve(entry.manifest()));
+            assertEquals(java.util.HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)),
+                    entry.manifestSha256(), "manifestSha256 of " + entry.name() + "; " + REGENERATE_HINT);
+        }
     }
 
     @Test
