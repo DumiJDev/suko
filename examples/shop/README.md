@@ -1,8 +1,8 @@
 # Suko Shop — loja de exemplo
 
 Loja de e-commerce executável (Spring Boot 3.3 + H2 em memória + `jte-spring-boot-starter-3`)
-cujas páginas são componentes Suko (`src/main/suko/shop/*.sk`). Serve de demonstração e,
-mais tarde, de alvo do pentest do subprojeto 14.
+cujas páginas são componentes Suko (`src/main/suko/shop/*.sk`). Serve de demonstração e
+de alvo do pentest planeado para depois da 13b (o subprojeto 14 já está concluído; ver `docs/security.md`).
 
 Rotas: catálogo (`/`), categorias (`/c/{slug}`), produto com avaliações (`/p/{id}`,
 `POST /p/{id}/reviews`), pesquisa (`/search?q=`), carrinho (`GET /cart`, `POST /cart/add`,
@@ -40,7 +40,7 @@ Em checkouts dentro de `/mnt/c` (WSL com um IDE Windows aberto) usar
   é a da loja e fica **fora do âmbito do pentest**.
 - `suko.security.strictCsp` está ligado: nenhum componente usa `style=`, `on*` ou `<script>`
   inline (o CSS está em `static/css/shop.css`). O `build/suko/security-audit.json` sai vazio
-  (nenhum `trustedUrl`/`trustedStyle`/`trustedHtml`), e um teste verifica-o.
+  (nenhum `trustedUrl`/`trustedStyle`), e um teste verifica-o.
 - `gg.jte:jte` é declarado explicitamente: o starter declara-o como dependência opcional.
 
 ## Segurança (alvo do pentest)
@@ -110,6 +110,7 @@ Estas limitações estão documentadas de propósito e não foram corrigidas:
   tipos Java (item 12).
 - O `Layout` não tem `<!DOCTYPE html>` (a gramática ainda não o aceita), por isso as páginas
   abrem em modo quirks.
+- `<img>` e `<input>` precisam de `/>`; chavetas em texto de `<style>` e `<` dentro de strings de atributos não fazem parse; `:` e `@` não são aceites em nomes de atributo (`x-on:click`, `@click`, `xlink:href`).
 - Componentes do mesmo package têm de ser importados explicitamente (`import shop.Layout;`).
 - `for` é palavra reservada e não pode ser nome de atributo: `<label for="x">` não compila. Os
   formulários põem o `<input>` dentro do `<label>`.

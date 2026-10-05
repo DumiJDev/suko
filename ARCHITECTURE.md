@@ -1079,15 +1079,81 @@ tem origem própria nesta spec):
     denominador comum, por isso ficam poucas e as tags nativas são a
     saída.
 
-14. **Segurança por omissão** — decidido pelo utilizador a 2026-10-04
-    ("aplica todas as medidas de segurança"); bloqueia a primeira release.
-    Spec em `docs/superpowers/specs/2026-10-04-suko-seguranca-por-omissao.md`.
+14. **Segurança por omissão** — **CONCLUÍDO** (2026-10-05; ramo
+    `subprojeto-14-seguranca`, ainda sem PR). Decidido pelo utilizador a
+    2026-10-04 ("aplica todas as medidas de segurança"); bloqueava a primeira
+    release. Spec em `docs/superpowers/specs/2026-10-04-suko-seguranca-por-omissao.md`,
+    plano em `docs/superpowers/plans/2026-10-05-suko-seguranca-por-omissao.md`,
+    modelo de ameaças e configuração em `docs/security.md`.
     O JTE só escapa caracteres no render; o Suko acrescenta o que depende
     do significado do valor: allowlist de protocolos de URL em todos os
-    componentes (classe `SukoSafe` gerada, sem dependência de runtime),
-    erro `UNSAFE_SINK` para valores dinâmicos em `<script>`/`<style>`/`on*`/
-    `srcdoc`/`style`/`<base>`/..., `rel="noopener"` automático, lint de CSP
-    estrita, ativação do `OwaspHtmlPolicy` do JTE via o plugin, assinatura
-    Ed25519 do índice do registry e testes com corpus XSS e CSP/Trusted Types
-    no browser. Ordem proposta: depois de integrar o 13a, antes do item 12.
-    No fim da 13b: exemplo de e-commerce Suko + JTE + JS e pentest a ele.
+    componentes (classe `SukoSafe` gerada no projeto, só JDK, sem dependência
+    de runtime), erro `UNSAFE_SINK` para valores dinâmicos em `<script>`/
+    `<style>`/`on*`/`srcdoc`/`style`/`<base>`/..., `rel="noopener"` automático,
+    lint de CSP estrita, `OwaspHtmlPolicy` do JTE ativada pelo plugin Gradle,
+    assinatura Ed25519 do índice do registry (CLI), corpus XSS (`XssCorpusTest`)
+    e a loja `examples/shop` (Spring Boot + H2) como alvo do pentest.
+
+    **Códigos novos:** `UNSAFE_SINK` (ERROR), `RESERVED_NAME` (ERROR),
+    `UPPERCASE_NAME` (ERROR), `TRUSTED_URL`/`TRUSTED_STYLE` (INFO),
+    `CSP_INLINE` (WARNING, só com `strictCsp`) e, na CLI, `REGISTRY_UNSIGNED`,
+    `REGISTRY_BAD_SIGNATURE`, `REGISTRY_MISMATCH`, `REGISTRY_EXPIRED`,
+    `REGISTRY_ROLLBACK`, `REGISTRY_MANIFEST_HASH` e `REGISTRY_INVALID`
+    (este último — schema, datas ilegíveis, caminho de manifesto inválido — não
+    estava na tabela da spec). Configuração: `suko { security { ... } }` (Gradle)
+    e `<security>` (Maven); auditoria dos `trusted*` em `security-audit.json`.
+    Alterações ao compilador feitas ao construir a loja: o emissor qualifica
+    `Map` como `java.util.Map` em `@param`/`@for`.
+
+    **Lacunas conhecidas (registadas, não corrigidas):**
+
+    - (a) **Tipos de parâmetros.** Os componentes só recebem tipos de biblioteca
+      (`String`, `List`, `Map`...); a loja usa `List<Map<String,String>>` como
+      view models. Item 12 / 11c.
+    - (b) **`<!DOCTYPE html>`** não faz parse (`PARSE_ERROR` em `<!`): as páginas
+      escritas em Suko não têm doctype e abrem em modo quirks.
+    - (c) **Política do JTE.** A loja usa o plugin `gg.jte.gradle` em modo
+      `generate()` com templates pré-compilados e uma tarefa `verifyJtePolicy`;
+      a `OwaspHtmlPolicy` está aplicada aí (provado). Para utilizadores Gradle o
+      plugin do Suko define `htmlPolicyClass` de forma preguiçosa quando
+      `gg.jte.gradle` está aplicado e `jtePolicy` é `true`. No Maven só há
+      aviso. A compilação de templates em runtime (modo de desenvolvimento do
+      JTE) é só de demonstração e fica fora do pentest.
+    - (d) **Chave do registry.** `trusted-keys.json` da CLI está vazio até à
+      primeira release: até lá, `suko add` contra o registry oficial (HTTPS)
+      falha com `REGISTRY_UNSIGNED`. O `.sig` do registry oficial é um passo de
+      release (checklist em `docs/security.md`).
+    - (e) **Maven** só avisa sobre `htmlPolicyClass` (ver c).
+    - (f) **Atributos de extensões.** Os atributos de código/URL declarados por
+      `Vocabulary` (a spec previa-os) não estão implementados; só por
+      configuração (`codeAttributes`/`urlAttributes`).
+    - (g) **LSP.** Usa as opções de segurança por omissão: o `suko.security` do
+      build não é lido (o `extensions.json` poderia transportá-las).
+    - (h) **Playwright com CSP/Trusted Types** fica para o pentest.
+    - (i) **Ed25519 no native-image da CLI.** Foi exercitado pelo
+      `NativeImageSmokeTest` com GraalVM (`list`/`add` com registry assinado),
+      mas a inclusão do recurso `trusted-keys.json` por glob só fica provada
+      quando uma release embutir uma chave real.
+    - (j) **Gramática (vista ao construir a loja).** `<img>`/`<input>` precisam de
+      `/>`; chavetas em texto de `<style>` e `<` dentro de strings de atributos
+      não fazem parse; componentes do mesmo package exigem `import` explícito;
+      `for` é palavra reservada, logo `<label for=...>` não faz parse; texto
+      como `Site (opcional)` é lido como chamada de componente.
+    - (k) **`:` e `@` em nomes de atributo** não são aceites pelo lexer, por isso
+      `x-on:click`, `@click`, `hx-on:click` e `xlink:href` não se escrevem, e os
+      ramos de `:`/`@` do verificador são código morto até o lexer os permitir.
+    - (l) **Modelo de confiança do registry** (detalhes em `docs/security.md`):
+      a assinatura protege o transporte/anfitrião, não um `suko.json` ou
+      lockfile hostil; apagar o lockfile repõe o anti-strip/rollback; o
+      lockfile guarda **um** registry (trocar `--registry` perde a memória do
+      anterior); unidades de rede mapeadas parecem locais; refs móveis sem
+      `expires` podem ser reapresentadas (a política de release deve defini-lo).
+    - (m) **Loja.** Limitações documentadas em `examples/shop/README.md`
+      (cabeçalhos em recusas do firewall/Tomcat, whitelabel, sem limites contra
+      abuso, caracteres de controlo/bidi em nomes). Uma corrida no checkout
+      (várias encomendas do mesmo carrinho) foi encontrada na revisão e
+      corrigida.
+
+    **Ordem:** 13a ✔ → 14 ✔ → item 12 → 13b → pentest à loja → 11c →
+    editores. A release continua bloqueada por 11b, 11c e item 12 (13a e 14
+    cumpridos). No fim da 13b: a loja ganha ilhas JS e é o alvo do pentest.
