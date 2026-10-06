@@ -106,7 +106,8 @@ Maven: `<security>` com `urlSchemes`, `imageDataTypes`, `codeAttributes`, `urlAt
   `target/generated-sources/suko-java`.
 - **URL dinâmico com prefixo literal não garante mesma origem.** Em `href="/${path}"`, a
   `SukoSafe.url` aceita valores relativos ao esquema: com `path = "/evil.com"` o resultado é
-  `//evil.com`, que o browser resolve para outro anfitrião. Quem precisa de mesma origem tem de
+  `//evil.com`, que o browser resolve para outro anfitrião. O mesmo vale para `/\host` (os
+  browsers tratam `/\` como `//` em http/https), que também passa inalterado. Quem precisa de mesma origem tem de
   validar ou codificar o valor (por exemplo, só aceitar segmentos de caminho); o `pathSegment`
   é aplicado apenas a embeds de origem constante.
 - `SukoSafe.pathSegment` só é seguro depois de um prefixo literal `esquema://host/`.
