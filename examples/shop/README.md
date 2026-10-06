@@ -38,9 +38,11 @@ Em checkouts dentro de `/mnt/c` (WSL com um IDE Windows aberto) usar
   `gg.jte.template-location=src/main/jte` recompila os templates em runtime; serve para
   desenvolver, mas a pasta dos templates passa a ser código executável. Essa configuração **não**
   é a da loja e fica **fora do âmbito do pentest**.
-- `suko.security.strictCsp` está ligado: nenhum componente usa `style=`, `on*` ou `<script>`
-  inline (o CSS está em `static/css/shop.css`). O `build/suko/security-audit.json` sai vazio
-  (nenhum `trustedUrl`/`trustedStyle`), e um teste verifica-o.
+- `suko.security.strictCsp` está ligado: nenhum componente da loja usa `style=`, `on*` ou `<script>`
+  inline (o CSS está em `static/css/shop.css`). As exceções estão só nas páginas do perfil lab
+  (`src/main/suko/shop/lab`): o `LabStylePage` dá três avisos `CSP_INLINE` no build, e o
+  `build/suko/security-audit.json` tem uma única entrada, o `trustedUrl` do `LabTrustedPage`.
+  `SecurityHeadersTest` verifica as duas coisas.
 - `gg.jte:jte` é declarado explicitamente: o starter declara-o como dependência opcional.
 
 ## Segurança (alvo do pentest)
@@ -82,6 +84,53 @@ A loja não tem vulnerabilidades deliberadas. O que está montado, e o teste que
   whitelabel do Spring Boot, sem detalhes.
 - **Outros**: a consola H2 está desligada (404), e não há utilizador por omissão (nem a
   "generated security password" no log).
+
+## Perfil lab (pentest)
+
+Páginas em `/lab/*` que recebem texto hostil (query string e uma lista de valores guardados) e
+usam as proteções do subprojeto 14 tal como devem ser usadas. Não há vulnerabilidades
+deliberadas: o pentest tenta contornar as proteções. **Só existem com o perfil Spring `lab`.**
+Sem ele (o por omissão), todo o `/lab/*` dá 404 (`LabProfileOffTest`). **Este perfil é só para o
+pentest e nunca pode ser ligado em produção.** A navegação da loja não tem link para o lab.
+
+```bash
+SPRING_PROFILES_ACTIVE=lab ./gradlew -p examples/shop bootRun
+# ou: java -jar build/libs/suko-shop-0.1.0.jar --spring.profiles.active=lab
+# http://localhost:8080/lab
+```
+
+Usam o mesmo `Layout`, a mesma CSP e os mesmos cabeçalhos do resto da loja. Os parâmetros
+têm no máximo 500 caracteres (acima disso, 400) e chegam ao template sem alterações. Os
+valores guardados (`shop.lab.LabItems`) vivem em memória. São semeados com valores hostis
+(esquemas com maiúsculas, TAB/LF/C0, entidades, `data:`, `//host`, `/\host`, srcset, CSS e
+caminhos), e `POST /lab/items` acrescenta outro. O POST leva CSRF, aceita 1 a 500 caracteres
+e a lista tem no máximo 100 valores. Testes: `LabPagesTest`.
+
+| Página | Entrada | O que exercita |
+|---|---|---|
+| `/lab` | — | Índice, valores guardados e formulário para acrescentar |
+| `/lab/links` | `?u=` | `href`, `src`, `action` (formulário GET, sem token CSRF) e `formaction` dinâmicos → `SukoSafe.url` |
+| `/lab/srcset` | `?s=` | `srcset` em `<img>` e em `<source>` → `SukoSafe.srcset`; `<img src>` → `SukoSafe.url` |
+| `/lab/style` | `?pct=&w=` | `style="--pct: ${pct}%"` e `style="width: ${w}"` → `SukoSafe.cssValue` |
+| `/lab/embed` | `?v=` | `<iframe src="https://www.youtube.com/embed/${v}">` → `SukoSafe.pathSegment` |
+| `/lab/rel` | `?rel=&t=&p=` | `target`/`rel` dinâmicos → `SukoSafe.rel` (sempre `noopener`); `ping` → `SukoSafe.ping` |
+| `/lab/trusted` | `?site=` | O único `trustedUrl(...)` da loja. O URL vem de uma allowlist no servidor (`LabController.SITES`); chave desconhecida → `/` |
+
+O que se deve observar, além do HTML:
+
+- **A CSP bloqueia parte das páginas, de propósito.** Os atributos `style` são ignorados pelo
+  browser (`style-src 'self'`, sem `'unsafe-inline'`). O iframe do YouTube não carrega
+  (`default-src 'self'`, sem `frame-src`). A CSP não foi aliviada para o lab.
+- **`data:image/*` é bloqueado em `img`/`source`.** O `imageDataTypes` é uma opção de todo o
+  build e não pode ser só do lab, por isso fica vazio.
+- **URLs relativos ao esquema passam.** `//evil.example/x` (e `/\evil.example`) saem
+  tal como vieram, como está documentado em `docs/security.md`.
+- **Sem `imagesrcset`.** O `<link rel="preload" as="image">` não faz parse porque `as` é palavra
+  reservada da gramática.
+- **Sem página para `x-*`/`hx-*` dinâmicos.** O compilador recusa-os (`UNSAFE_SINK`).
+
+Fora do âmbito do lab: ilhas interativas e JavaScript do cliente (13b), e autenticação (a loja
+não tem utilizadores).
 
 ## Limitações conhecidas (âmbito do pentest)
 

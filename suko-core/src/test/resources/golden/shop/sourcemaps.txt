@@ -16,3 +16,10 @@ shop/ReviewForm.sk#ReviewForm 7 -> 4:2
 shop/ReviewList.sk#ReviewList 3 -> 4:2
 shop/SearchBox.sk#SearchBox 3 -> 4:2
 shop/SearchPage.sk#SearchPage 6 -> 8:2
+shop/lab/LabEmbedPage.sk#LabEmbedPage 6 -> 8:2
+shop/lab/LabIndexPage.sk#LabIndexPage 7 -> 7:2
+shop/lab/LabLinksPage.sk#LabLinksPage 6 -> 7:2
+shop/lab/LabRelPage.sk#LabRelPage 8 -> 8:2
+shop/lab/LabSrcsetPage.sk#LabSrcsetPage 6 -> 9:2
+shop/lab/LabStylePage.sk#LabStylePage 7 -> 8:2
+shop/lab/LabTrustedPage.sk#LabTrustedPage 7 -> 8:2

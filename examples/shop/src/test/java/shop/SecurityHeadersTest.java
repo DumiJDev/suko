@@ -83,10 +83,14 @@ class SecurityHeadersTest {
     }
 
     @Test
-    void securityAuditOfTheShopIsEmpty() throws IOException {
-        // A loja não usa trustedUrl/trustedStyle/trustedHtml: o relatório do sukoCompile sai vazio.
+    void securityAuditListsOnlyTheLabTrustedUrl() throws IOException {
+        // A loja não usa trustedUrl/trustedStyle/trustedHtml. A única entrada é a do perfil lab
+        // (shop/lab/LabTrustedPage.sk), cujo destino vem sempre de uma allowlist do servidor.
         String audit = Files.readString(Path.of("build/suko/security-audit.json"));
-        assertTrue(audit.replaceAll("\\s", "").contains("\"entries\":[]"), audit);
+        String compact = audit.replaceAll("\\s", "");
+        assertEquals(1, compact.split("\"code\":", -1).length - 1, audit);
+        assertTrue(compact.contains("shop/lab/LabTrustedPage.sk\""), audit);
+        assertTrue(compact.contains("\"code\":\"TRUSTED_URL\",\"expression\":\"target\""), audit);
     }
 
     @Test
@@ -94,8 +98,11 @@ class SecurityHeadersTest {
         Pattern forbidden = Pattern.compile("style=|<script|\\son[a-z]+=|trustedUrl|trustedStyle|trustedHtml|\\$unsafe",
             Pattern.CASE_INSENSITIVE);
         List<Path> files;
+        // Fora o perfil lab (src/main/suko/shop/lab), que exercita style= e o único trustedUrl de propósito:
+        // ver labSourcesOnlyUseTheIntendedEscapeHatch.
+        Path lab = Path.of("src/main/suko/shop/lab");
         try (Stream<Path> s = Files.walk(Path.of("src/main/suko"))) {
-            files = s.filter(p -> p.toString().endsWith(".sk")).toList();
+            files = s.filter(p -> p.toString().endsWith(".sk") && !p.startsWith(lab)).toList();
         }
         assertTrue(files.size() >= 15, "componentes da loja: " + files);
         for (Path f : files) {
@@ -105,5 +112,26 @@ class SecurityHeadersTest {
                 fail(f + " contém " + m.group());
             }
         }
+    }
+
+    @Test
+    void labSourcesOnlyUseTheIntendedEscapeHatch() throws IOException {
+        Pattern forbidden = Pattern.compile("<script|\\son[a-z]+=|trustedStyle|trustedHtml|\\$unsafe|rel=\"[^\"]*opener",
+            Pattern.CASE_INSENSITIVE);
+        List<Path> files;
+        try (Stream<Path> s = Files.walk(Path.of("src/main/suko/shop/lab"))) {
+            files = s.filter(p -> p.toString().endsWith(".sk")).toList();
+        }
+        assertEquals(7, files.size(), "páginas do lab: " + files);
+        int trusted = 0;
+        for (Path f : files) {
+            String text = Files.readString(f);
+            var m = forbidden.matcher(text);
+            if (m.find()) {
+                fail(f + " contém " + m.group());
+            }
+            trusted += text.split("trustedUrl\\(", -1).length - 1;
+        }
+        assertEquals(1, trusted, "um só trustedUrl(...) no lab");
     }
 }

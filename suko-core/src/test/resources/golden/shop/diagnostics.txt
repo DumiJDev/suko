@@ -1,1 +1,1 @@
-
+shop/lab/LabTrustedPage.sk|INFO|TRUSTED_URL|17:30|Uso de trustedUrl(...) dispensa a verificação de URL: target

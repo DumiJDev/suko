@@ -1,0 +1,24 @@
+package shop.lab;
+
+import shop.Layout;
+
+// Perfil lab: o ÚNICO trustedUrl da loja (aparece em build/suko/security-audit.json). O target vem
+// sempre da allowlist do servidor (LabController.SITES); o pedido só escolhe a chave.
+public component LabTrustedPage(String title, int cartCount, List<Map<String, String>> categories, String site, String target, List<String> sites) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Lab de trustedUrl</h1>
+    <form class="lab-input" method="get" action="/lab/trusted">
+      <label>Chave
+        <input type="text" name="site" value=${site} maxlength="500" />
+      </label>
+      <button type="submit">Ver</button>
+    </form>
+    <p>Chave recebida <code class="lab-value">${site}</code></p>
+    <p><a class="lab-trusted" href=${trustedUrl(target)}>destino da allowlist</a></p>
+    <ul class="lab-sites">
+      for (String k : sites) {
+        <li><code>${k}</code></li>
+      }
+    </ul>
+  }
+}
