@@ -137,7 +137,7 @@ public class JteEmitter {
         for (Param param : component.params()) {
             out.append("@param ").append(jteParamDeclaration(param, slotNames)).append('\n');
         }
-        out.append('\n');
+        if (!startsWithDoctype(component)) out.append('\n');
         for (Statement statement : component.body()) {
             emitStatement(statement, out, slotNames);
         }
@@ -163,7 +163,7 @@ public class JteEmitter {
         for (Param param : component.params()) {
             probe.append("@param ").append(jteParamDeclaration(param, slotNames)).append('\n');
         }
-        probe.append('\n');
+        if (!startsWithDoctype(component)) probe.append('\n');
         int lineSoFar = countLines(probe.toString());
 
         for (Statement statement : component.body()) {
@@ -174,6 +174,19 @@ public class JteEmitter {
         }
 
         return new EmitResult(jteSource, entries);
+    }
+
+    /**
+     * Um componente que abre com `<!DOCTYPE html>`, ou que delega logo no layout (primeira
+     * instrução = chamada de componente, o padrão das páginas), não leva a linha em branco que
+     * separa os `@param` do corpo: o JTE devolvê-la-ia como "\n" e o doctype deixava de ser a
+     * primeira saída (o modo quirks exige o doctype primeiro).
+     */
+    private static boolean startsWithDoctype(ComponentDecl component) {
+        if (component.body().isEmpty()) return false;
+        Statement first = component.body().get(0);
+        return first instanceof Statement.ComponentCallStmt
+            || (first instanceof Statement.TextRun run && run.text().startsWith("<!DOCTYPE"));
     }
 
     private int countLines(String text) {

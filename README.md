@@ -115,6 +115,11 @@ component Card(String title, List<String> items, String emptyLabel = "Sem itens"
 }
 ```
 
+A page-level component may open with `<!DOCTYPE html>`. It is accepted only as the first
+item of a component body (case-insensitive); any other `<!...>` declaration, or a doctype
+anywhere else, is rejected with `INVALID_DOCTYPE`. Lexing caveat: `a<!b` starts a
+declaration, so write `a < !b`.
+
 ### Using Components
 
 ```suko
@@ -286,7 +291,7 @@ Forbidden schemes in `urlSchemes` (`javascript`, `vbscript`, `data`, `blob`,
 third-party HTML remain the application's job; `examples/shop` shows one way.
 
 Known gaps (see ARCHITECTURE.md, item 14): the LSP ignores the build's
-`suko.security`; `<!DOCTYPE html>` does not parse yet; `:`/`@` are not allowed in attribute
+`suko.security`; `:`/`@` are not allowed in attribute
 names (`x-on:click`, `@click`); components only take library parameter types.
 
 ## Project Structure

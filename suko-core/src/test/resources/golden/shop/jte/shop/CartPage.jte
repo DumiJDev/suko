@@ -6,7 +6,6 @@
 @param java.util.List<java.util.Map<String, String>> lines
 @param String total
 @param String totalCents
-
 @template.shop.Layout(title = title, cartCount = cartCount, categories = categories, children = @`<h1>Carrinho</h1>@if(lines.isEmpty())
 <p class="${"empty"}">O carrinho está vazio.</p><p><a href="${"/"}">Ver produtos</a></p>
 @else
