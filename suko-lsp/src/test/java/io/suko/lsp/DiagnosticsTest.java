@@ -46,6 +46,30 @@ class DiagnosticsTest {
     }
 
     @Test
+    void aLeadingDoctypeProducesNoDiagnostics(@TempDir Path folder) throws IOException {
+        TestSupport t = new TestSupport(folder);
+        t.open("Page.sk", "component Page() {\n  <!DOCTYPE html>\n  <html><body>x</body></html>\n}\n");
+        t.scheduler.fire();
+
+        PublishDiagnosticsParams published = t.client.lastFor(t.uri("Page.sk"));
+        assertNotNull(published);
+        assertTrue(published.getDiagnostics().isEmpty(), published.getDiagnostics().toString());
+    }
+
+    @Test
+    void aMisplacedDoctypeIsReported(@TempDir Path folder) throws IOException {
+        TestSupport t = new TestSupport(folder);
+        t.open("Page.sk", "component Page() {\n  <p>x</p>\n  <!DOCTYPE html>\n}\n");
+        t.scheduler.fire();
+
+        PublishDiagnosticsParams published = t.client.lastFor(t.uri("Page.sk"));
+        assertNotNull(published);
+        assertFalse(published.getDiagnostics().isEmpty(), "um doctype fora do sítio tem de ser sinalizado");
+        assertTrue(published.getDiagnostics().stream().anyMatch(d -> "INVALID_DOCTYPE".equals(d.getCode().getLeft())),
+            published.getDiagnostics().toString());
+    }
+
+    @Test
     void fixingTheFileClearsItsDiagnostics(@TempDir Path folder) throws IOException {
         TestSupport t = new TestSupport(folder);
         t.open("Broken.sk", BROKEN);

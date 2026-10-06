@@ -108,8 +108,6 @@ Estas limitações estão documentadas de propósito e não foram corrigidas:
 - Os componentes recebem `Map<String,String>` e `List<Map<String,String>>` (montados em
   `shop.view.Views`): a gramática ainda não aceita nomes de tipo qualificados nem importa
   tipos Java (item 12).
-- O `Layout` não tem `<!DOCTYPE html>` (a gramática ainda não o aceita), por isso as páginas
-  abrem em modo quirks.
 - `<img>` e `<input>` precisam de `/>`; chavetas em texto de `<style>` e `<` dentro de strings de atributos não fazem parse; `:` e `@` não são aceites em nomes de atributo (`x-on:click`, `@click`, `xlink:href`).
 - Componentes do mesmo package têm de ser importados explicitamente (`import shop.Layout;`).
 - `for` é palavra reservada e não pode ser nome de atributo: `<label for="x">` não compila. Os

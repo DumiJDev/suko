@@ -1,7 +1,7 @@
 package shop;
 
 public component Layout(String title, int cartCount, List<Map<String, String>> categories, Component children) {
-  // Sem <!DOCTYPE html>: a gramática ainda não o aceita (PARSE_ERROR em "<!") — lacuna registada na Task 15.
+  <!DOCTYPE html>
   <html lang="pt">
     <head>
       <meta charset="utf-8" />

@@ -1131,8 +1131,16 @@ tem origem própria nesta spec):
     - (a) **Tipos de parâmetros.** Os componentes só recebem tipos de biblioteca
       (`String`, `List`, `Map`...); a loja usa `List<Map<String,String>>` como
       view models. Item 12 / 11c.
-    - (b) **`<!DOCTYPE html>`** não faz parse (`PARSE_ERROR` em `<!`): as páginas
-      escritas em Suko não têm doctype e abrem em modo quirks.
+    - (b) ~~`<!DOCTYPE html>`~~ **fechada**: `<!DOCTYPE html>` é aceite como
+      PRIMEIRO item do corpo de um componente (`componentBody`), sem distinguir
+      maiúsculas, e fica no AST como o primeiro `TextRun` com o texto canónico
+      `<!DOCTYPE html>`. Qualquer outra declaração `<!...>`, ou o doctype fora do
+      primeiro lugar, dá `INVALID_DOCTYPE`. Limitação de lexing: `a<!b` lê-se como
+      início de declaração — escrever `a < !b`. O emissor omite a linha em branco
+      entre os `@param` e o corpo quando o componente abre com o doctype ou com uma
+      chamada de componente (as páginas que delegam no layout), para o doctype ser
+      a primeira saída. A loja (`Layout`) já o usa e os testes afirmam
+      `Document.QuirksMode.noQuirks`.
     - (c) **Política do JTE.** A loja usa o plugin `gg.jte.gradle` em modo
       `generate()` com templates pré-compilados e uma tarefa `verifyJtePolicy`;
       a `OwaspHtmlPolicy` está aplicada aí (provado). Para utilizadores Gradle o
@@ -1198,8 +1206,6 @@ tem origem própria nesta spec):
       atributo `on*` como handler — o `on:click=${lambda}` da 13b precisa de uma
       exceção explícita; (e) item 12: uma classe Java que implemente `Component`
       escreve HTML cru (mesma confiança que os slots) e o checker nunca a vê.
-    - `<!DOCTYPE html>` não faz parse, logo todas as páginas escritas em Suko
-      renderizam em modo quirks — corrigir antes do pentest (portão).
     - Loja/pentest: a loja expõe pouco a um pentest (`cssValue`, `pathSegment`,
       `srcset`/`imageDataTypes`, `rel`/`noopener`, `ping`, `hx-*` e `trusted*`
       nunca recebem input HTTP; não há área autenticada) — criar um conjunto de
@@ -1220,7 +1226,7 @@ tem origem própria nesta spec):
 
     **Portão de release/pentest (explícito):** checklist de release em
     `docs/security.md` (incluindo o `.sig` do registry oficial e a chave embutida),
-    o pentest à loja, o `<!DOCTYPE html>` e o teste com `mvn` real do `<security>`.
+    o pentest à loja e o teste com `mvn` real do `<security>`.
 
     **Ordem:** 13a ✔ → 14 ✔ → item 12 → 13b → pentest à loja → 11c →
     editores. A release continua bloqueada por 11b, 11c e item 12 (13a e 14
