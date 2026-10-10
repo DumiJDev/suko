@@ -34,6 +34,16 @@ class CatalogPagesTest {
     }
 
     @Test
+    void pagesStartWithDoctypeAndAvoidQuirksMode() throws Exception {
+        for (String url : new String[] {"/", "/p/1", "/cart"}) {
+            String html = mvc.perform(get(java.net.URI.create(url))).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+            assertTrue(html.startsWith("<!DOCTYPE html>"), url + ": " + html.substring(0, Math.min(60, html.length())));
+            assertEquals(Document.QuirksMode.noQuirks, Jsoup.parse(html).quirksMode(), url);
+        }
+    }
+
+    @Test
     void categoryListsOnlyItsProducts() throws Exception {
         Document d = page("/c/livros");
         assertFalse(d.select(".product-card").isEmpty());

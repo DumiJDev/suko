@@ -103,9 +103,9 @@ public class SukoAstBuilder {
                     }
                 }
             }
-            List<Statement> body = ctx.templateBlock() == null
+            List<Statement> body = ctx.componentBody() == null
                 ? List.of()
-                : buildStatements(ctx.templateBlock().templateStatement());
+                : buildComponentBody(ctx.componentBody());
             SourceSpan span;
             try {
                 span = spanOf(ctx);
@@ -134,7 +134,7 @@ public class SukoAstBuilder {
             }
         }
 
-        List<Statement> body = buildStatements(ctx.templateBlock().templateStatement());
+        List<Statement> body = buildComponentBody(ctx.componentBody());
 
         return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, spanOf(ctx),
             ctx.PUBLIC() != null, spanOf(ctx.Identifier().getSymbol()));
@@ -197,6 +197,19 @@ public class SukoAstBuilder {
         }
         int arrayDimensions = ctx.arrayMarker().size();
         return new Type(ctx.Identifier().getText(), typeArguments, arrayDimensions);
+    }
+
+    /** O doctype (único `<!DOCTYPE html>` aceite, só como 1.º item — ver `componentBody`)
+     * fica no AST como o primeiro TextRun do corpo, com o texto canónico
+     * independentemente de maiúsculas/espaço no fonte; sem nó novo no AST. */
+    private List<Statement> buildComponentBody(SukoParser.ComponentBodyContext ctx) {
+        List<Statement> statements = new ArrayList<>();
+        org.antlr.v4.runtime.tree.TerminalNode doctype = ctx.DOCTYPE();
+        if (doctype != null && doctype.getSymbol().getStartIndex() >= 0) {
+            statements.add(new Statement.TextRun("<!DOCTYPE html>", spanOf(doctype.getSymbol())));
+        }
+        statements.addAll(buildStatements(ctx.templateStatement()));
+        return statements;
     }
 
     List<Statement> buildStatements(List<SukoParser.TemplateStatementContext> ctxs) {

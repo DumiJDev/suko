@@ -39,7 +39,7 @@ qualifiedName
 // --- Declaração de componente ---
 
 componentDecl
-    : PUBLIC? COMPONENT Identifier typeParameters? LPAREN paramList? RPAREN templateBlock
+    : PUBLIC? COMPONENT Identifier typeParameters? LPAREN paramList? RPAREN componentBody
     ;
 
 typeParameters
@@ -71,6 +71,13 @@ arrayMarker
     ;
 
 // --- Corpo do componente ---
+
+// Corpo de um componente: o ÚNICO sítio onde `<!DOCTYPE html>` é aceite, e só
+// como primeiro item. Regra separada de templateBlock (partilhado por
+// if/for/switch) de propósito: um doctype a meio de uma página é HTML inválido.
+componentBody
+    : LBRACE DOCTYPE? templateStatement* RBRACE
+    ;
 
 templateBlock
     : LBRACE templateStatement* RBRACE
@@ -118,7 +125,7 @@ templateStatement
 // "custa ${price" como texto e o "}" sobra, silenciosamente. É a mesma
 // mecânica das duas limitações já documentadas em ARCHITECTURE.md.
 textRun
-    : ( ~(LBRACE | RBRACE | LT | LTSLASH | EXPR_INTERP_START) )+
+    : ( ~(LBRACE | RBRACE | LT | LTSLASH | EXPR_INTERP_START | DOCTYPE | INVALID_DECL) )+
     ;
 
 varDecl

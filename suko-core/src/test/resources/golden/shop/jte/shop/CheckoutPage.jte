@@ -8,7 +8,6 @@
 @param String totalCents
 @param java.util.Map<String, String> form
 @param java.util.Map<String, String> errors
-
 @template.shop.Layout(title = title, cartCount = cartCount, categories = categories, children = @`<h1>Finalizar compra</h1>@if(errors.containsKey("general"))
 <p class="${"error"}">${errors.get("general")}</p>
 @endif

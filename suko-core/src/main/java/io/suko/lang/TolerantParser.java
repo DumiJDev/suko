@@ -53,7 +53,7 @@ public final class TolerantParser {
         // início de um componente ao lexer, que não tem modos.
         boolean wholeIsFaithful = wholeParser.getNumberOfSyntaxErrors() == 0
             || (whole.componentDecl().size() == starts.size()
-                && whole.componentDecl().stream().allMatch(c -> c.templateBlock() != null));
+                && whole.componentDecl().stream().allMatch(c -> c.componentBody() != null));
         if (wholeIsFaithful) {
             return SukoAstBuilder.tolerant(source).build(whole);
         }

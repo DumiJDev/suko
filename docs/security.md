@@ -211,6 +211,6 @@ desenvolvimento do JTE (compilar templates em runtime) é só para demos e fica 
 
 ## 8. Lacunas conhecidas
 
-Estão em `ARCHITECTURE.md` (item 14): tipos de componentes, `<!DOCTYPE html>`,
+Estão em `ARCHITECTURE.md` (item 14): tipos de componentes,
 `suko.security` no LSP, atributos de extensões, Playwright com CSP/Trusted Types,
 `:`/`@` em nomes de atributo e a chave do registry na CLI.

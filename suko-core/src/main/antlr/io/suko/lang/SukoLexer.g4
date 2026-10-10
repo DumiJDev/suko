@@ -70,6 +70,26 @@ RBRACE
     ;
 LBRACKET  : '[';
 RBRACKET  : ']';
+// `<!DOCTYPE html>` (sem distinção de maiúsculas, espaço em branco livre) é a
+// única declaração `<!...>` aceite — e só como primeiro item do corpo de um
+// componente (regra `componentBody` do parser). Tem de vir ANTES de LT/LE
+// (maximal-munch: ficaria '<' + '!' + ...) e de INVALID_DECL (mesmo
+// comprimento => ganha a regra declarada primeiro).
+DOCTYPE
+    : '<!' [dD][oO][cC][tT][yY][pP][eE] [ \t\r\n]+ [hH][tT][mM][lL] [ \t\r\n]* '>'
+    ;
+
+// Qualquer outra declaração HTML `<!DOCTYPE html PUBLIC ...>`, `<!ELEMENT ...>`,
+// `<!-- ... -->`, `<![CDATA[ ... ]]>`: o lexer só a isola num token para o
+// SukoErrorListener a reportar como INVALID_DECL com mensagem clara (só se
+// aceita `<!DOCTYPE html>`). Exige letra, '-' ou '[' a seguir a `<!`; assim
+// `a < !b` (com espaço) continua a ser '<' + '!' + b. Limitação aceite: a
+// forma colada `a<!b` (negação sem espaço depois de '<') passa a ser lida
+// como declaração inválida.
+INVALID_DECL
+    : '<!' ( [a-zA-Z] | '--' | '[' ) ~[>]* '>'?
+    ;
+
 LE        : '<=';
 GE        : '>=';
 LT        : '<';
