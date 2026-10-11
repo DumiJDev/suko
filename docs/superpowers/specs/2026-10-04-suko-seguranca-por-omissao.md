@@ -66,7 +66,8 @@ sinks partilhadas entre o servidor (aqui) e o cliente (13b).
   `SukoSafe.url(...)` (ou `srcset(...)`).
 - **`SukoSafe`** é gerada pelo alvo JTE **no output do projeto**, no pacote
   `<basePackage do projeto>.suko.SukoSafe` (por projeto, nunca partilhado entre
-  artefactos), só com JDK — "nenhuma dependência do Suko em runtime" mantém-se.
+  artefactos; **o pacote real é o `generatedPackage`, ver "Atualização
+  2026-10-11" no fim desta secção**), só com JDK — "nenhuma dependência do Suko em runtime" mantém-se.
 - **`url(Object v)`:** `null` → `null` (o JTE omite o atributo — "smart
   attribute"); `Component`/`Content` num atributo de URL é erro de compilação;
   caso contrário `s = String.valueOf(v)`:
@@ -78,7 +79,8 @@ sinks partilhadas entre o servidor (aqui) e o cliente (13b).
   3. sem `:` antes de `/?#` → relativo, permitido. `//host`, `/\host`, `\\host`
      e `\/host` são absolutos de rede (o browser trata `\` como `/`): permitidos
      com a allowlist por omissão porque `https:` já o é; documentados como não
-     "same-origin";
+     "same-origin"; **[superado a 2026-10-11: agora bloqueados por omissão, ver
+     "Atualização 2026-10-11"]**;
   4. permitido → devolve o valor original sem alterações; bloqueado →
      `about:invalid#suko-blocked`. Nunca decodifica entidades nem
      percent-encoding.
@@ -95,7 +97,24 @@ sinks partilhadas entre o servidor (aqui) e o cliente (13b).
 - Literais (`href="/carrinho"`) não são tocados.
 - **Paridade:** o `sanitizeUrl` do cliente (13b) implementa a mesma
   classificação; o teste compara permitido/bloqueado (não a string, porque o
-  cliente resolve contra `baseURI`).
+  cliente resolve contra `baseURI`). **[superado a 2026-10-11: ver abaixo]**
+
+> **Atualização 2026-10-11 (M1; o texto acima fica como registo do desenho
+> original).**
+>
+> - **URLs relativos ao esquema.** `//host`, `/\host`, `\/host` e `\\host`
+>   (valor normalizado que começa por dois caracteres de `/`/`\`) são
+>   **bloqueados por omissão**; a opção `allowSchemeRelative` (Gradle/Maven/
+>   `SecurityOptions`, omissão `false`) volta a permiti-los. Entregue no PR #12.
+>   O passo 3 acima descreve o desenho original, já não o comportamento.
+> - **Paridade.** A regra "só permitido/bloqueado" está superada pela
+>   13b: o cliente é um **porte passo a passo do `SukoSafe.url`** (sem `new URL`
+>   nem `baseURI`), e a exigência é de **igualdade de string** em todos os
+>   vetores partilhados. Ver a secção "URLs" da spec
+>   `2026-10-04-suko-reatividade-ilhas.md` ("Paridade mais estrita do que a M1
+>   do 14").
+> - **Pacote da `SukoSafe`.** É o `generatedPackage` (omissão
+>   `io.suko.generated.<projeto>`), não `<basePackage>.suko`.
 
 ### M2 — Sinks perigosos (`UNSAFE_SINK`, ERROR, todos os componentes)
 

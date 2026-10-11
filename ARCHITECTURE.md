@@ -1177,6 +1177,9 @@ tem origem própria nesta spec):
     - (k) **`:` e `@` em nomes de atributo** não são aceites pelo lexer, por isso
       `x-on:click`, `@click`, `hx-on:click` e `xlink:href` não se escrevem, e os
       ramos de `:`/`@` do verificador são código morto até o lexer os permitir.
+      **Decidido a 2026-10-11 (13b, Q4):** a 13b abre `prefixo:nome` (sem `@`;
+      `@click` continua erro de sintaxe), o que torna os ramos `:` código vivo,
+      com testes na 13b.
     - (l) **Modelo de confiança do registry** (detalhes em `docs/security.md`):
       a assinatura protege o transporte/anfitrião, não um `suko.json` ou
       lockfile hostil; apagar o lockfile repõe o anti-strip/rollback; o
@@ -1199,12 +1202,17 @@ tem origem própria nesta spec):
       `SukoSafe`; o `sanitizeUrl` do cliente (~286, `new URL(v, baseURI)`) é outro
       algoritmo face ao `SukoSafe.url` (`ｊａｖａｓｃｒｉｐｔ:` em largura total difere)
       — especificar o cliente como port do `SukoSafe.url` com vetores partilhados
-      do `xss-corpus.txt`. A spec **não** foi editada; só fica o registo.
+      do `xss-corpus.txt`. **Fechado:** a spec foi alinhada com o 14 no commit
+      `9ebac82` e atualizada com as decisões do utilizador de 2026-10-11 (pasta
+      de build para o JS, `prefixo:nome`, `style` reativo, ilhas a partir de
+      Java; ver a secção "Decisões (utilizador, 2026-10-11)" da spec).
     - API v2 (decisões para o próximo incremento de `VERSION`): (a) `SecurityOptions`
       é específica de HTML mas é o único canal de opções (`generatedPackage` e
       `generatedJavaDir` deviam ser opções de projeto); (b) o `ProjectOutputWriter`
       escreve `RESOURCE` na raiz dos templates e a limpeza só segue `JAVA_SOURCE`
-      (o JS da 13b vai para `static/suko`); (c) o `SecurityAudit` do core fixa os
+      (o JS da 13b vai para uma pasta de build registada como recursos, decidido a
+      2026-10-11: `build/generated-resources/suko/static/suko` no Gradle e
+      `target/generated-resources/suko/static/suko` no Maven); (c) o `SecurityAudit` do core fixa os
       códigos `TRUSTED_*` do `suko-jte` e analisa a mensagem após `": "` — usar uma
       carga estruturada no diagnóstico; (d) o `HtmlSecurityChecker` trata todo o
       atributo `on*` como handler — o `on:click=${lambda}` da 13b precisa de uma
