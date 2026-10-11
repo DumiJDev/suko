@@ -21,7 +21,8 @@ public final class SukoSafeSource {
         return TEMPLATE
             .replace("@@PACKAGE@@", options.generatedPackage())
             .replace("@@URL_SCHEMES@@", literals(options.urlSchemes()))
-            .replace("@@IMAGE_DATA_TYPES@@", literals(options.imageDataTypes()));
+            .replace("@@IMAGE_DATA_TYPES@@", literals(options.imageDataTypes()))
+            .replace("@@ALLOW_SCHEME_RELATIVE@@", String.valueOf(options.allowSchemeRelative()));
     }
 
     /** Ex.: {@code io/suko/generated/SukoSafe.java}. */

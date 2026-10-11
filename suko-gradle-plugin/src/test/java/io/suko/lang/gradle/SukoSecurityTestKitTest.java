@@ -160,4 +160,23 @@ class SukoSecurityTestKitTest {
         GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath().withArguments("sukoCompile").build();
         assertFalse(Files.exists(audit), "auditoria antiga removida quando não há fontes");
     }
+
+    @Test
+    void allowSchemeRelativeDefaultsToFalseAndFlowsIntoSukoSafeWhenSet(@TempDir Path project) throws Exception {
+        write(project.resolve("settings.gradle.kts"), "rootProject.name = \"x\"");
+        write(project.resolve("build.gradle.kts"), "plugins { id(\"io.suko.lang\") }");
+        write(project.resolve("src/main/suko/A.sk"), "component A(String u) { <a href=${u}>l</a> }");
+        GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath().withArguments("sukoCompile").build();
+        Path safe = project.resolve("build/generated-src/suko-java/io/suko/generated/x/SukoSafe.java");
+        assertTrue(Files.readString(safe).contains("ALLOW_SCHEME_RELATIVE = false;"), Files.readString(safe));
+
+        // Mudar só a opção tem de invalidar o up-to-date (assinatura @Input) e regenerar a SukoSafe.
+        write(project.resolve("build.gradle.kts"), """
+            plugins { id("io.suko.lang") }
+            suko { security { allowSchemeRelative.set(true) } }
+            """);
+        BuildResult result = GradleRunner.create().withProjectDir(project.toFile()).withPluginClasspath()
+            .withArguments("sukoCompile").build();
+        assertTrue(Files.readString(safe).contains("ALLOW_SCHEME_RELATIVE = true;"), result.getOutput());
+    }
 }

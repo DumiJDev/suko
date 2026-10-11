@@ -14,6 +14,7 @@ public class SukoSecurity {
     private final ListProperty<String> codeAttributes;
     private final ListProperty<String> urlAttributes;
     private final Property<Boolean> jtePolicy;
+    private final Property<Boolean> allowSchemeRelative;
 
     @Inject
     public SukoSecurity(ObjectFactory objects) {
@@ -23,6 +24,7 @@ public class SukoSecurity {
         this.codeAttributes = objects.listProperty(String.class);
         this.urlAttributes = objects.listProperty(String.class);
         this.jtePolicy = objects.property(Boolean.class);
+        this.allowSchemeRelative = objects.property(Boolean.class);
     }
 
     public ListProperty<String> getUrlSchemes() { return urlSchemes; }
@@ -31,4 +33,6 @@ public class SukoSecurity {
     public ListProperty<String> getCodeAttributes() { return codeAttributes; }
     public ListProperty<String> getUrlAttributes() { return urlAttributes; }
     public Property<Boolean> getJtePolicy() { return jtePolicy; }
+    /** {@code true} deixa passar URLs relativos ao esquema ({@code //host}, {@code /\host}); por omissão são bloqueados. */
+    public Property<Boolean> getAllowSchemeRelative() { return allowSchemeRelative; }
 }

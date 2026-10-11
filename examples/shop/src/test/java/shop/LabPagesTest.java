@@ -49,6 +49,16 @@ class LabPagesTest {
         "data:image/png;base64,iVBORw0KGgo=",
         "blob:https://example.com/x");
 
+    /** URLs relativos ao esquema (pentest ronda 1, F1): outro anfitrião; bloqueados por omissão (allowSchemeRelative=false). */
+    static final List<String> SCHEME_RELATIVE_URLS = List.of(
+        "//evil.example/x",
+        "/\\evil.example",
+        "\\/evil.example",
+        "\\\\evil.example",
+        "  //evil.example/x",
+        "\t/\\evil.example",
+        "/\t/evil.example");
+
     static final Set<String> URL_ATTRIBUTES = Set.of("href", "src", "action", "formaction", "srcset", "imagesrcset",
         "ping", "poster", "cite", "data");
 
@@ -76,6 +86,8 @@ class LabPagesTest {
                     String v = url.replaceAll("[\\u0000-\\u0020]", "").toLowerCase(Locale.ROOT);
                     assertFalse(v.startsWith("javascript:") || v.startsWith("vbscript:") || v.startsWith("data:text"),
                         e.tagName() + " " + a.getKey() + "=" + a.getValue());
+                    // F1: nenhum URL relativo ao esquema (// /\ \/ \\ — o browser trata '\' como '/').
+                    assertFalse(v.matches("^[/\\\\][/\\\\].*"), e.tagName() + " " + a.getKey() + "=" + a.getValue());
                 }
             }
         }
@@ -122,8 +134,46 @@ class LabPagesTest {
             Document d = page(get("/lab/links").param("u", u));
             assertEquals(u, d.select("a.lab-href").attr("href"), u);
         }
-        // Limitação documentada (docs/security.md): um URL relativo ao esquema passa — é outro anfitrião.
-        assertEquals("//evil.example/x", page(get("/lab/links").param("u", "//evil.example/x")).select("a.lab-href").attr("href"));
+    }
+
+    @Test
+    void schemeRelativeUrlsAreBlockedInHrefSrcActionAndFormaction() throws Exception {
+        for (String u : SCHEME_RELATIVE_URLS) {
+            Document d = page(get("/lab/links").param("u", u));
+            assertEquals(BLOCKED, d.select("a.lab-href").attr("href"), u);
+            assertEquals(BLOCKED, d.select("img.lab-src").attr("src"), u);
+            assertEquals(BLOCKED, d.select("form.lab-action").attr("action"), u);
+            assertEquals(BLOCKED, d.select("button.lab-formaction").attr("formaction"), u);
+            noExecutableUrls(d);
+        }
+        // Um só '/' (ou '//' fora do início) continua a ser um caminho da própria origem.
+        for (String u : List.of("/a/b?c=d//e", "/p//1")) {
+            assertEquals(u, page(get("/lab/links").param("u", u)).select("a.lab-href").attr("href"), u);
+        }
+    }
+
+    @Test
+    void schemeRelativeUrlsAreDroppedFromSrcsetAndPing() throws Exception {
+        for (String u : SCHEME_RELATIVE_URLS) {
+            Document d = page(get("/lab/srcset").param("s", u.strip() + " 1x, /img/produto.svg 2x"));
+            assertEquals("/img/produto.svg 2x", d.select("img.lab-srcset").attr("srcset"), u);
+            assertEquals("/img/produto.svg 2x", d.select("picture source.lab-source").attr("srcset"), u);
+            assertEquals(BLOCKED, page(get("/lab/srcset").param("s", u)).select("img.lab-img-src").attr("src"), u);
+            noExecutableUrls(d);
+        }
+        Document r = page(get("/lab/rel").param("p", "//evil.example/p /local /\\evil.example \\\\evil.example"));
+        assertEquals("/local", r.select("a.lab-ping").attr("ping"));
+        noExecutableUrls(r);
+    }
+
+    @Test
+    void srcsetDropsCandidatesWithInvalidDescriptors() throws Exception {
+        // F2: java<TAB>script:x é o URL "java" com o descritor inválido "script:x" — o candidato cai inteiro.
+        Document d = page(get("/lab/srcset").param("s", "java\tscript:alert(1) 1x, /img/produto.svg 2x"));
+        assertEquals("/img/produto.svg 2x", d.select("img.lab-srcset").attr("srcset"));
+        assertEquals("/img/produto.svg 2x", d.select("picture source.lab-source").attr("srcset"));
+        assertEquals("/img/produto.svg 1.5x", page(get("/lab/srcset").param("s", "/img/produto.svg 1.5x, /x.svg foo"))
+            .select("img.lab-srcset").attr("srcset"));
     }
 
     @Test

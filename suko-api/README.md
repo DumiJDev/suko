@@ -103,7 +103,10 @@ LSP só carrega extensões em workspaces confiáveis.
 
 `SecurityOptions` (em `io.suko.ext`) é um record entregue às extensões em `EmitContext`
 e `CheckContext` (`ctx.options()`): `generatedPackage`, `urlSchemes` (por omissão `http`,
-`https`, `mailto`, `tel`), `imageDataTypes`, `strictCsp`, `codeAttributes`, `urlAttributes`.
+`https`, `mailto`, `tel`), `imageDataTypes`, `strictCsp`, `codeAttributes`, `urlAttributes`,
+`allowSchemeRelative` (por omissão `false`: a `SukoSafe` bloqueia `//host`, `/\host`, `\/host`, `\\host`;
+`withAllowSchemeRelative(true)` deixa-os passar). O construtor de 6 argumentos anterior continua
+disponível e fixa `allowSchemeRelative = false`.
 O construtor valida: `generatedPackage` tem de ser um package Java sem palavras reservadas,
 `urlSchemes` não pode ser vazio nem conter `javascript`, `vbscript`, `data`, `blob` ou
 `filesystem`, `imageDataTypes` é um subconjunto de `png`, `gif`, `jpeg`, `webp`, `avif`.

@@ -123,8 +123,13 @@ O que se deve observar, além do HTML:
   (`default-src 'self'`, sem `frame-src`). A CSP não foi aliviada para o lab.
 - **`data:image/*` é bloqueado em `img`/`source`.** O `imageDataTypes` é uma opção de todo o
   build e não pode ser só do lab, por isso fica vazio.
-- **URLs relativos ao esquema passam.** `//evil.example/x` (e `/\evil.example`) saem
-  tal como vieram, como está documentado em `docs/security.md`.
+- **URLs relativos ao esquema são bloqueados.** `//evil.example/x`, `/\evil.example`,
+  `\/evil.example` e `\\evil.example` saem como `about:invalid#suko-blocked` em `href`, `src`,
+  `action` e `formaction`, e caem do `srcset` e do `ping` (a loja fica com
+  `allowSchemeRelative` desligado, a omissão; ver `docs/security.md`). Até ao achado F1 do
+  pentest (`docs/pentest-loja-lab.md`) passavam inalterados.
+- **Descritores de `srcset` inválidos fazem cair o candidato.** `java<TAB>script:x 1x` é o URL
+  `java` com o descritor `script:x`; o candidato inteiro é removido (achado F2).
 - **Sem `imagesrcset`.** O `<link rel="preload" as="image">` não faz parse porque `as` é palavra
   reservada da gramática.
 - **Sem página para `x-*`/`hx-*` dinâmicos.** O compilador recusa-os (`UNSAFE_SINK`).

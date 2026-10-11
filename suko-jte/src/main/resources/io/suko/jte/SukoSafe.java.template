@@ -17,6 +17,10 @@ public final class SukoSafe {
 
     private static final Set<String> SCHEMES = Set.of(@@URL_SCHEMES@@);
     private static final Set<String> IMAGE_DATA_TYPES = Set.of(@@IMAGE_DATA_TYPES@@);
+    /** {@code suko.security.allowSchemeRelative}: com {@code false} (omissão) {@code //host} e {@code /\host} são bloqueados. */
+    private static final boolean ALLOW_SCHEME_RELATIVE = @@ALLOW_SCHEME_RELATIVE@@;
+    private static final java.util.regex.Pattern DESCRIPTOR =
+        java.util.regex.Pattern.compile("[+-]?[0-9]*\\.?[0-9]+(e[+-]?[0-9]+)?[wxh]", java.util.regex.Pattern.CASE_INSENSITIVE);
 
     private SukoSafe() {
     }
@@ -124,6 +128,9 @@ public final class SukoSafe {
         }
         String s = String.valueOf(v);
         String t = normalize(s);
+        if (!ALLOW_SCHEME_RELATIVE && isSchemeRelative(t)) {
+            return BLOCKED;
+        }
         int colon = t.indexOf(':');
         if (colon >= 0) {
             int slash = firstOf(t, "/?#");
@@ -161,6 +168,18 @@ public final class SukoSafe {
         return b.toString();
     }
 
+    /**
+     * {@code //host}, {@code /\host}, {@code \/host}, {@code \\host}: os browsers tratam {@code \} como {@code /}
+     * em http(s), logo todos mudam de origem. Nunca se decodifica ({@code /%5Chost} continua um caminho).
+     */
+    private static boolean isSchemeRelative(String t) {
+        return t.length() >= 2 && isSlash(t.charAt(0)) && isSlash(t.charAt(1));
+    }
+
+    private static boolean isSlash(char c) {
+        return c == '/' || c == '\\';
+    }
+
     private static int firstOf(String s, String chars) {
         for (int i = 0; i < s.length(); i++) {
             if (chars.indexOf(s.charAt(i)) >= 0) {
@@ -190,7 +209,23 @@ public final class SukoSafe {
         return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
     }
 
-    /** Candidatos de srcset como na WHATWG; um candidato com URL bloqueado é removido. */
+    /** Cada descritor tem de ser {@code <número>w|x|h}; senão o browser descarta o candidato e nós também. */
+    private static boolean descriptorsValid(String descriptors) {
+        if (descriptors.isEmpty()) {
+            return true;
+        }
+        for (String d : descriptors.split("[ \\t\\n\\r\\f]+")) {
+            if (!DESCRIPTOR.matcher(d).matches()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Candidatos de srcset como na WHATWG; um candidato com URL bloqueado ou com um descritor
+     * inválido (ex.: {@code java<TAB>script:x 1x}) é removido inteiro.
+     */
     private static String srcset(Object v, boolean image) {
         if (v == null) {
             return null;
@@ -238,7 +273,7 @@ public final class SukoSafe {
                     i++;
                 }
             }
-            if (url.isEmpty()) {
+            if (url.isEmpty() || !descriptorsValid(descriptors)) {
                 continue;
             }
             String checked = check(url, image);

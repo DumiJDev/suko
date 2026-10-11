@@ -30,8 +30,13 @@ Tudo vale para os componentes que usam o vocabulário `html` (o do alvo `jte`).
 **URLs (M1).** Todo o valor dinâmico num atributo de URL (`href`, `src`, `action`,
 `formaction`, `poster`, `ping`, `srcset`, `hx-get`... ) passa por `SukoSafe.url`
 (ou `srcset`/`imageUrl`/`ping`). Só passam os esquemas de `urlSchemes` (por omissão
-`http`, `https`, `mailto`, `tel`) e URLs relativos. O resto vira
-`about:invalid#suko-blocked`. Literais não são tocados.
+`http`, `https`, `mailto`, `tel`) e URLs relativos. URLs relativos ao esquema
+(`//host`, `/\host`, `\/host`, `\\host`, depois de tirar os mesmos C0/espaços/TAB/LF/CR que o
+browser tira; os browsers tratam `\` como `/` em http/https) também são bloqueados, salvo com
+`allowSchemeRelative`. O resto vira `about:invalid#suko-blocked`. Nada é decodificado (`/%5Chost`
+é um caminho). No `srcset`, um candidato cujo URL é bloqueado, ou com um descritor que não seja
+`<número>w|x|h`, cai inteiro (como o browser, que descarta descritores inválidos).
+Literais não são tocados.
 
 ```
 // antes (o JTE escapava, mas deixava passar javascript:)
@@ -85,6 +90,7 @@ suko {
     urlSchemes.set(listOf("http", "https", "mailto", "tel"))  // omissão
     imageDataTypes.set(listOf("png", "webp"))   // subconjunto de png,gif,jpeg,webp,avif; só img/source
     strictCsp.set(true)
+    allowSchemeRelative.set(false)   // omissão; true deixa passar //host e /\host
     codeAttributes.add("x-meu")      // tratados como UNSAFE_SINK se dinâmicos
     urlAttributes.add("data-url")    // verificados como URLs
     jtePolicy.set(true)              // omissão
@@ -93,8 +99,8 @@ suko {
 }
 ```
 
-Maven: `<security>` com `urlSchemes`, `imageDataTypes`, `codeAttributes`, `urlAttributes` e
-`strictCsp` na configuração do plugin; `generatedPackage` (`-Dsuko.package`) e
+Maven: `<security>` com `urlSchemes`, `imageDataTypes`, `codeAttributes`, `urlAttributes`,
+`strictCsp` e `allowSchemeRelative` na configuração do plugin; `generatedPackage` (`-Dsuko.package`) e
 `generatedJavaDir` (`-Dsuko.generatedJavaDir`).
 
 - Esquemas proibidos em `urlSchemes` (`javascript`, `vbscript`, `data`, `blob`,
@@ -104,12 +110,13 @@ Maven: `<security>` com `urlSchemes`, `imageDataTypes`, `codeAttributes`, `urlAt
   `generatedPackage`: Gradle, por omissão `io.suko.generated.<projeto>`; Maven, derivado do
   `artifactId`. Pasta: Gradle `build/generated-src/suko-java`; Maven
   `target/generated-sources/suko-java`.
-- **URL dinâmico com prefixo literal não garante mesma origem.** Em `href="/${path}"`, a
-  `SukoSafe.url` aceita valores relativos ao esquema: com `path = "/evil.com"` o resultado é
-  `//evil.com`, que o browser resolve para outro anfitrião. O mesmo vale para `/\host` (os
-  browsers tratam `/\` como `//` em http/https), que também passa inalterado. Quem precisa de mesma origem tem de
-  validar ou codificar o valor (por exemplo, só aceitar segmentos de caminho); o `pathSegment`
-  é aplicado apenas a embeds de origem constante.
+- **URLs relativos ao esquema são bloqueados por omissão.** Em `href="/${path}"`, com
+  `path = "/evil.com"` o valor seria `//evil.com` (outro anfitrião); a `SukoSafe.url` devolve
+  `about:invalid#suko-blocked`. O mesmo para `/\host`, `\/host` e `\\host`. Quem precisa deles
+  (por exemplo, um CDN `//cdn.exemplo/x.js` vindo de configuração) liga `allowSchemeRelative`;
+  prefira um URL absoluto `https://`. Isto não garante caminho válido: `path = "../admin"` continua
+  a ser um caminho da própria origem, por isso valide ou codifique os segmentos (por exemplo, só
+  aceitar segmentos de caminho); o `pathSegment` é aplicado apenas a embeds de origem constante.
 - `SukoSafe.pathSegment` só é seguro depois de um prefixo literal `esquema://host/`.
 
 ## 3. O que não é do Suko

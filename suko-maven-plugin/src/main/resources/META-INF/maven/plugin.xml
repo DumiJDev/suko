@@ -65,7 +65,7 @@
           <type>io.suko.lang.maven.SukoCompileMojo$Security</type>
           <required>false</required>
           <editable>true</editable>
-          <description>Seguranca: urlSchemes, imageDataTypes, codeAttributes, urlAttributes, strictCsp.</description>
+          <description>Seguranca: urlSchemes, imageDataTypes, codeAttributes, urlAttributes, strictCsp, allowSchemeRelative.</description>
         </parameter>
         <parameter>
           <name>targets</name>

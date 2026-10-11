@@ -110,4 +110,22 @@ class SecurityOptionsTest {
         assertThrows(IllegalArgumentException.class, () -> SecurityOptions.DEFAULT.withGeneratedPackage("_"));
         assertEquals("a._b", SecurityOptions.DEFAULT.withGeneratedPackage("a._b").generatedPackage());
     }
+
+    @Test
+    void allowSchemeRelativeIsOffByDefaultAndPreservedByOtherWithers() {
+        assertFalse(SecurityOptions.DEFAULT.allowSchemeRelative());
+        SecurityOptions on = SecurityOptions.DEFAULT.withAllowSchemeRelative(true);
+        assertTrue(on.allowSchemeRelative());
+        assertTrue(on.withStrictCsp(true).withGeneratedPackage("a.b").withUrlSchemes(Set.of("https"))
+            .withImageDataTypes(Set.of("png")).withCodeAttributes(Set.of("data-x")).withUrlAttributes(Set.of("data-href"))
+            .allowSchemeRelative());
+        assertFalse(on.withAllowSchemeRelative(false).allowSchemeRelative());
+        assertNotEquals(SecurityOptions.DEFAULT.toString(), on.toString()); // entra na assinatura @Input do Gradle
+    }
+
+    @Test
+    void legacySixArgConstructorKeepsSchemeRelativeBlocked() {
+        SecurityOptions o = new SecurityOptions("a.b", Set.of("https"), Set.of(), false, Set.of(), Set.of());
+        assertFalse(o.allowSchemeRelative());
+    }
 }

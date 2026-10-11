@@ -108,6 +108,7 @@ public class SukoExtension {
             io.suko.ext.SecurityOptions o = io.suko.ext.SecurityOptions.DEFAULT
                 .withGeneratedPackage(generatedPackage.get())
                 .withStrictCsp(security.getStrictCsp().getOrElse(false))
+                .withAllowSchemeRelative(security.getAllowSchemeRelative().getOrElse(false))
                 .withImageDataTypes(new java.util.TreeSet<>(security.getImageDataTypes().getOrElse(java.util.List.of())))
                 .withCodeAttributes(new java.util.TreeSet<>(security.getCodeAttributes().getOrElse(java.util.List.of())))
                 .withUrlAttributes(new java.util.TreeSet<>(security.getUrlAttributes().getOrElse(java.util.List.of())));
