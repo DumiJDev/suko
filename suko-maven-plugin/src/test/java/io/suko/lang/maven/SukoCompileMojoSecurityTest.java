@@ -40,6 +40,23 @@ class SukoCompileMojoSecurityTest {
     }
 
     @Test
+    void allowSchemeRelativeDefaultsToFalseAndFlowsIntoSukoSafeWhenSet(@TempDir Path dir) throws Exception {
+        Files.createDirectories(dir.resolve("src"));
+        Files.writeString(dir.resolve("src/A.sk"), "component A(String u) { <a href=${u}>l</a> }");
+        Path safe = dir.resolve("target/generated-sources/suko/io/suko/generated/x/SukoSafe.java");
+
+        mojo(dir, "x").execute();
+        assertTrue(Files.readString(safe).contains("ALLOW_SCHEME_RELATIVE = false;"));
+
+        SukoCompileMojo m = mojo(dir, "x");
+        m.security = new SukoCompileMojo.Security();
+        assertFalse(m.security.allowSchemeRelative);
+        m.security.allowSchemeRelative = true;
+        m.execute();
+        assertTrue(Files.readString(safe).contains("ALLOW_SCHEME_RELATIVE = true;"));
+    }
+
+    @Test
     void forbiddenSchemeIsAMojoExecutionException(@TempDir Path dir) throws Exception {
         Files.createDirectories(dir.resolve("src"));
         Files.writeString(dir.resolve("src/A.sk"), "component A() { <p>x</p> }");

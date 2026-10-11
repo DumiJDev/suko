@@ -13,7 +13,8 @@ import java.util.regex.Pattern;
  * Os conjuntos são ordenados para o código gerado ser determinístico.
  */
 public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, Set<String> imageDataTypes,
-                              boolean strictCsp, Set<String> codeAttributes, Set<String> urlAttributes) {
+                              boolean strictCsp, Set<String> codeAttributes, Set<String> urlAttributes,
+                              boolean allowSchemeRelative) {
 
     public static final Set<String> DEFAULT_URL_SCHEMES = sorted(Set.of("http", "https", "mailto", "tel"));
     private static final Set<String> FORBIDDEN_SCHEMES = Set.of("javascript", "vbscript", "data", "blob", "filesystem");
@@ -29,7 +30,16 @@ public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, S
         "throw", "throws", "transient", "try", "void", "volatile", "while", "true", "false", "null", "_");
 
     public static final SecurityOptions DEFAULT = new SecurityOptions(
-        "io.suko.generated", DEFAULT_URL_SCHEMES, Set.of(), false, Set.of(), Set.of());
+        "io.suko.generated", DEFAULT_URL_SCHEMES, Set.of(), false, Set.of(), Set.of(), false);
+
+    /**
+     * Construtor anterior a {@code allowSchemeRelative} (fica {@code false}: URLs relativos ao esquema,
+     * {@code //host} e {@code /\host}, são bloqueados pelo {@code SukoSafe}).
+     */
+    public SecurityOptions(String generatedPackage, Set<String> urlSchemes, Set<String> imageDataTypes,
+                           boolean strictCsp, Set<String> codeAttributes, Set<String> urlAttributes) {
+        this(generatedPackage, urlSchemes, imageDataTypes, strictCsp, codeAttributes, urlAttributes, false);
+    }
 
     public SecurityOptions {
         if (generatedPackage == null || !PACKAGE.matcher(generatedPackage).matches()) {
@@ -79,27 +89,35 @@ public record SecurityOptions(String generatedPackage, Set<String> urlSchemes, S
     }
 
     public SecurityOptions withGeneratedPackage(String value) {
-        return new SecurityOptions(value, urlSchemes, imageDataTypes, strictCsp, codeAttributes, urlAttributes);
+        return new SecurityOptions(value, urlSchemes, imageDataTypes, strictCsp, codeAttributes, urlAttributes, allowSchemeRelative);
     }
 
     public SecurityOptions withUrlSchemes(Set<String> value) {
-        return new SecurityOptions(generatedPackage, value, imageDataTypes, strictCsp, codeAttributes, urlAttributes);
+        return new SecurityOptions(generatedPackage, value, imageDataTypes, strictCsp, codeAttributes, urlAttributes, allowSchemeRelative);
     }
 
     public SecurityOptions withImageDataTypes(Set<String> value) {
-        return new SecurityOptions(generatedPackage, urlSchemes, value, strictCsp, codeAttributes, urlAttributes);
+        return new SecurityOptions(generatedPackage, urlSchemes, value, strictCsp, codeAttributes, urlAttributes, allowSchemeRelative);
     }
 
     public SecurityOptions withStrictCsp(boolean value) {
-        return new SecurityOptions(generatedPackage, urlSchemes, imageDataTypes, value, codeAttributes, urlAttributes);
+        return new SecurityOptions(generatedPackage, urlSchemes, imageDataTypes, value, codeAttributes, urlAttributes, allowSchemeRelative);
     }
 
     public SecurityOptions withCodeAttributes(Set<String> value) {
-        return new SecurityOptions(generatedPackage, urlSchemes, imageDataTypes, strictCsp, value, urlAttributes);
+        return new SecurityOptions(generatedPackage, urlSchemes, imageDataTypes, strictCsp, value, urlAttributes, allowSchemeRelative);
     }
 
     public SecurityOptions withUrlAttributes(Set<String> value) {
-        return new SecurityOptions(generatedPackage, urlSchemes, imageDataTypes, strictCsp, codeAttributes, value);
+        return new SecurityOptions(generatedPackage, urlSchemes, imageDataTypes, strictCsp, codeAttributes, value, allowSchemeRelative);
+    }
+
+    /**
+     * {@code true} deixa passar URLs relativos ao esquema ({@code //host/x}, {@code /\host}, {@code \/host},
+     * {@code \\host}) nos atributos de URL; por omissão ({@code false}) o {@code SukoSafe} bloqueia-os.
+     */
+    public SecurityOptions withAllowSchemeRelative(boolean value) {
+        return new SecurityOptions(generatedPackage, urlSchemes, imageDataTypes, strictCsp, codeAttributes, urlAttributes, value);
     }
 
     /** Troca {@code [^A-Za-z0-9_]} por {@code _} e prefixa {@code _} se começar por dígito, ficar vazio ou for uma palavra reservada do Java. */

@@ -1,0 +1,28 @@
+package shop.lab;
+
+import shop.Layout;
+
+// Perfil lab: iframe de origem constante; a parte dinâmica passa pela SukoSafe.pathSegment.
+// A CSP da loja (default-src 'self', sem frame-src) não deixa o browser carregar o YouTube (de propósito).
+public component LabEmbedPage(String title, int cartCount, List<Map<String, String>> categories, String v, List<Map<String, String>> items) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Lab de embed</h1>
+    <form class="lab-input" method="get" action="/lab/embed">
+      <label>Id do vídeo
+        <input type="text" name="v" value=${v} maxlength="500" />
+      </label>
+      <button type="submit">Ver</button>
+    </form>
+    <p>Valor recebido <code class="lab-value">${v}</code></p>
+    <iframe class="lab-embed" src="https://www.youtube.com/embed/${v}" title="vídeo" width="320" height="180"></iframe>
+    <h2>Valores guardados</h2>
+    <ul class="lab-items">
+      for (Map<String, String> i : items) {
+        <li>
+          <code>${i.get("value")}</code>
+          <iframe class="lab-item-embed" src="https://www.youtube.com/embed/${i.get("value")}" title="vídeo" width="80" height="45"></iframe>
+        </li>
+      }
+    </ul>
+  }
+}

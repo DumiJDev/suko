@@ -1125,6 +1125,10 @@ tem origem própria nesta spec):
     e `<security>` (Maven); auditoria dos `trusted*` em `security-audit.json`.
     Alterações ao compilador feitas ao construir a loja: o emissor qualifica
     `Map` como `java.util.Map` em `@param`/`@for`.
+    Depois da ronda 1 do pentest (`docs/pentest-loja-lab.md`, F1/F2): a `SukoSafe`
+    bloqueia URLs relativos ao esquema (`//host`, `/\host`, `\/host`, `\\host`) por
+    omissão, com a opção nova `allowSchemeRelative` (Gradle/Maven/`SecurityOptions`)
+    para os deixar passar, e o `srcset` descarta candidatos com descritores inválidos.
 
     **Lacunas conhecidas (registadas, não corrigidas):**
 

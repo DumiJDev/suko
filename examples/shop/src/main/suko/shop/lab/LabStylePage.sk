@@ -1,0 +1,29 @@
+package shop.lab;
+
+import shop.Layout;
+
+// Perfil lab: style só na forma 'propriedade: ${valor}'; o valor passa pela SukoSafe.cssValue.
+// A CSP da loja não tem 'unsafe-inline' em style-src: o browser ignora estes atributos style (de propósito).
+public component LabStylePage(String title, int cartCount, List<Map<String, String>> categories, String pct, String w, List<Map<String, String>> items) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Lab de style</h1>
+    <form class="lab-input" method="get" action="/lab/style">
+      <label>Percentagem
+        <input type="text" name="pct" value=${pct} maxlength="500" />
+      </label>
+      <label>Largura
+        <input type="text" name="w" value=${w} maxlength="500" />
+      </label>
+      <button type="submit">Ver</button>
+    </form>
+    <p>Valores recebidos <code class="lab-value">${pct}</code> e <code class="lab-value">${w}</code></p>
+    <div class="lab-pct" style="--pct: ${pct}%">barra</div>
+    <div class="lab-width" style="width: ${w}">largura</div>
+    <h2>Valores guardados</h2>
+    <ul class="lab-items">
+      for (Map<String, String> i : items) {
+        <li class="lab-item-style" style="width: ${i.get("value")}"><code>${i.get("value")}</code></li>
+      }
+    </ul>
+  }
+}

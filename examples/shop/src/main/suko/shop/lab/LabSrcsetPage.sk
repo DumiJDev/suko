@@ -1,0 +1,36 @@
+package shop.lab;
+
+import shop.Layout;
+
+// Perfil lab: srcset/imagesrcset dinâmicos passam pela SukoSafe.srcset (candidatos bloqueados caem).
+// A loja não configura imageDataTypes: data:image/* também é bloqueado em img/source.
+// Sem imagesrcset: <link rel="preload" as="image"> não faz parse (`as` é palavra reservada da gramática).
+public component LabSrcsetPage(String title, int cartCount, List<Map<String, String>> categories, String s, List<Map<String, String>> items) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Lab de srcset</h1>
+    <form class="lab-input" method="get" action="/lab/srcset">
+      <label>srcset
+        <input type="text" name="s" value=${s} maxlength="500" />
+      </label>
+      <button type="submit">Ver</button>
+    </form>
+    if (!s.isEmpty()) {
+      <p>Valor recebido <code class="lab-value">${s}</code></p>
+      <img class="lab-srcset" src="/img/produto.svg" srcset=${s} alt="srcset dinâmico" width="160" height="100" />
+      <picture>
+        <source class="lab-source" srcset=${s} />
+        <img src="/img/produto.svg" alt="picture com source dinâmico" width="160" height="100" />
+      </picture>
+      <img class="lab-img-src" src=${s} alt="src dinâmico" width="160" height="100" />
+    }
+    <h2>Valores guardados</h2>
+    <ul class="lab-items">
+      for (Map<String, String> i : items) {
+        <li>
+          <code>${i.get("value")}</code>
+          <img class="lab-item-srcset" src="/img/produto.svg" srcset=${i.get("value")} alt="" width="16" height="16" />
+        </li>
+      }
+    </ul>
+  }
+}

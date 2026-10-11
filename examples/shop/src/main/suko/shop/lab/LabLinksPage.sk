@@ -1,0 +1,33 @@
+package shop.lab;
+
+import shop.Layout;
+
+// Perfil lab: href, src, action e formaction dinâmicos passam pela SukoSafe.url.
+public component LabLinksPage(String title, int cartCount, List<Map<String, String>> categories, String u, List<Map<String, String>> items) {
+  Layout(title = title, cartCount = cartCount, categories = categories) {
+    <h1>Lab de links</h1>
+    <form class="lab-input" method="get" action="/lab/links">
+      <label>URL
+        <input type="text" name="u" value=${u} maxlength="500" />
+      </label>
+      <button type="submit">Ver</button>
+    </form>
+    if (!u.isEmpty()) {
+      <p>Valor recebido <code class="lab-value">${u}</code></p>
+      <p><a class="lab-href" href=${u}>href dinâmico</a></p>
+      <p><img class="lab-src" src=${u} alt="src dinâmico" width="32" height="32" /></p>
+      <form class="lab-action" method="get" action=${u}>
+        <button class="lab-formaction" type="submit" formaction=${u}>formaction dinâmico</button>
+      </form>
+    }
+    <h2>Valores guardados</h2>
+    <ul class="lab-items">
+      for (Map<String, String> i : items) {
+        <li>
+          <a class="lab-item" href=${i.get("value")}>${i.get("value")}</a>
+          <img class="lab-item-src" src=${i.get("value")} alt="" width="16" height="16" />
+        </li>
+      }
+    </ul>
+  }
+}

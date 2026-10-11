@@ -51,7 +51,7 @@ public class SukoCompileMojo extends AbstractMojo {
     @Parameter(property = "suko.generatedJavaDir", defaultValue = "${project.build.directory}/generated-sources/suko-java")
     File generatedJavaDir;
 
-    /** Security configuration (urlSchemes, imageDataTypes, codeAttributes, urlAttributes, strictCsp). */
+    /** Security configuration (urlSchemes, imageDataTypes, codeAttributes, urlAttributes, strictCsp, allowSchemeRelative). */
     @Parameter
     Security security;
 
@@ -65,6 +65,8 @@ public class SukoCompileMojo extends AbstractMojo {
         public java.util.List<String> codeAttributes;
         public java.util.List<String> urlAttributes;
         public boolean strictCsp;
+        /** {@code true} deixa passar URLs relativos ao esquema ({@code //host}, {@code /\host}); por omissão são bloqueados. */
+        public boolean allowSchemeRelative;
     }
 
     @Parameter(property = "suko.targets", defaultValue = "jte")
@@ -91,7 +93,7 @@ public class SukoCompileMojo extends AbstractMojo {
         try {
             io.suko.ext.SecurityOptions o = io.suko.ext.SecurityOptions.DEFAULT.withGeneratedPackage(effectiveGeneratedPackage());
             if (security != null) {
-                o = o.withStrictCsp(security.strictCsp);
+                o = o.withStrictCsp(security.strictCsp).withAllowSchemeRelative(security.allowSchemeRelative);
                 if (security.imageDataTypes != null) o = o.withImageDataTypes(new java.util.TreeSet<>(security.imageDataTypes));
                 if (security.codeAttributes != null) o = o.withCodeAttributes(new java.util.TreeSet<>(security.codeAttributes));
                 if (security.urlAttributes != null) o = o.withUrlAttributes(new java.util.TreeSet<>(security.urlAttributes));

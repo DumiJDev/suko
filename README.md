@@ -241,7 +241,9 @@ release yet and no pentest has been done (the shop below is the planned target).
 - **URLs:** dynamic values in URL attributes (`href`, `src`, `action`, `srcset`, ...) go
   through a generated `SukoSafe` class (JDK only, written into your project). Only
   `urlSchemes` (default `http`, `https`, `mailto`, `tel`) and relative URLs pass;
-  anything else becomes `about:invalid#suko-blocked`.
+  anything else becomes `about:invalid#suko-blocked`. Scheme-relative URLs (`//host`,
+  `/\host`) are blocked too unless `allowSchemeRelative` is set; srcset candidates with
+  invalid descriptors are dropped.
 - **Sinks:** a dynamic value in `<script>`/`<style>` content, `on*`, `srcdoc`, `style`,
   `<base>`, dynamic embeds, `x-*`/`hx-on*`, ... is a compile error, `UNSAFE_SINK`.
 - **Automatic:** `target` adds `rel="noopener"`; `UPPERCASE_NAME` catches names the JTE
@@ -267,6 +269,7 @@ suko {
     urlSchemes.set(listOf("http", "https", "mailto", "tel"))  // default
     imageDataTypes.set(listOf("png", "webp"))  // subset of png,gif,jpeg,webp,avif
     strictCsp.set(true)
+    allowSchemeRelative.set(false)             // default; true lets //host and /\host through
     codeAttributes.add("x-custom")
     urlAttributes.add("data-url")
     jtePolicy.set(true)                        // default
@@ -279,6 +282,7 @@ suko {
   <security>
     <urlSchemes><urlScheme>https</urlScheme></urlSchemes>
     <strictCsp>true</strictCsp>
+    <allowSchemeRelative>false</allowSchemeRelative> <!-- default -->
   </security>
 </configuration>
 ```

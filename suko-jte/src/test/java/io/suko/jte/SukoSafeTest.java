@@ -48,8 +48,8 @@ class SukoSafeTest {
     @ParameterizedTest
     @ValueSource(strings = {
         "https://example.com/a?b=c#d", "http://example.com", "mailto:a@b.com", "tel:+244123", "HTTPS://EXAMPLE.COM",
-        "/carrinho", "relative/path", "../up", "#frag", "?q=1", "//cdn.example.com/x.js", "/\\evil.example",
-        "\\\\evil.example", "https:evil", ""
+        "/carrinho", "relative/path", "../up", "#frag", "?q=1", "https:evil", "",
+        "/a/b?c=d//e", "/a//b", "/%5Cevil.example", "/%2F/evil.example", "a//b", " /path"
     })
     void allowedValuesComeBackUnchanged(String value) throws Exception {
         assertEquals(value, safe.url(value));
@@ -98,7 +98,8 @@ class SukoSafeTest {
 
     @Test
     void srcsetDescriptorsMayContainParenthesesWithCommas() throws Exception {
-        assertEquals("/a.png image-set(1x, 2x)", safe.call("srcset", "/a.png image-set(1x, 2x)"));
+        // A vírgula dentro dos parênteses não separa candidatos; o descritor é inválido e o candidato cai inteiro.
+        assertEquals("/b.png 2x", safe.call("srcset", "/a.png image-set(1x, 2x), /b.png 2x"));
     }
 
     @Test
@@ -146,7 +147,8 @@ class SukoSafeTest {
 
     @Test
     void srcsetParenthesesDoNotNest() throws Exception {
-        assertEquals("/a.png ((1x)", safe.call("srcset", "/a.png ((1x), javascript:alert(1) 2x"));
+        // Com contador de aninhamento tudo seria um só candidato; sem ele, a vírgula após ')' separa.
+        assertEquals("/b.png 2x", safe.call("srcset", "/a.png ((1x), /b.png 2x"));
     }
 
     @Test
@@ -168,5 +170,67 @@ class SukoSafeTest {
     void pathSegmentEncodesSurrogatePairsAndSpaces() throws Exception {
         assertEquals("%F0%9F%98%80", safe.call("pathSegment", "\uD83D\uDE00"));
         assertEquals("a%20b", safe.call("pathSegment", "a b"));
+    }
+
+    // ---- F1: URLs relativos ao esquema (pentest ronda 1) ------------------
+
+    static final String[] SCHEME_RELATIVE = {
+        "//evil.example/x", "/\\evil.example", "\\/evil", "\\\\evil", "//cdn.example.com/x.js",
+        "  //evil.example", "\t//evil.example", "\u0000//evil.example", "\u001f/\\evil.example", "\n\\\\evil",
+        "/\t/evil.example", "/\n\\evil.example", "//evil.example:443/x", "///evil.example"
+    };
+
+    @Test
+    void schemeRelativeUrlsAreBlockedByDefault() throws Exception {
+        for (String v : SCHEME_RELATIVE) {
+            assertEquals(BLOCKED, safe.url(v), v);
+            assertEquals(BLOCKED, safe.call("imageUrl", v), v);
+            assertEquals("", safe.call("srcset", v + " 1x"), v);
+            assertEquals("", safe.call("imageSrcset", v + " 1x"), v);
+        }
+        assertEquals("/ok.png 2x", safe.call("srcset", "//evil.example/a.png 1x, /ok.png 2x"));
+        assertEquals("/ok.png 2x", safe.call("srcset", "/\\evil.example/a.png 1x, /ok.png 2x"));
+        assertEquals("/p https://a.example/q", safe.call("ping", "/p //evil.example/x /\\evil.example \\\\evil https://a.example/q"));
+    }
+
+    @Test
+    void schemeRelativeUrlsPassWhenAllowed() throws Exception {
+        try (CompiledSukoSafe c = new CompiledSukoSafe(SecurityOptions.DEFAULT.withAllowSchemeRelative(true))) {
+            for (String v : SCHEME_RELATIVE) {
+                assertEquals(v, c.url(v), v);
+                assertEquals(v, c.call("imageUrl", v), v);
+            }
+            assertEquals("//evil.example/a.png 1x, /ok.png 2x",
+                c.call("srcset", "//evil.example/a.png 1x, /ok.png 2x"));
+            assertEquals("//evil.example/x /p", c.call("ping", "//evil.example/x /p"));
+            assertEquals(BLOCKED, c.url("javascript:alert(1)"));
+        }
+    }
+
+    // ---- F2: descritores de srcset ----------------------------------------
+
+    @Test
+    void srcsetDropsCandidatesWithInvalidDescriptors() throws Exception {
+        assertEquals("/ok.png 2x", safe.call("srcset", "java\tscript:alert(1) 1x, /ok.png 2x"));
+        assertEquals("/ok.png 2x", safe.call("srcset", "java\nscript:alert(1) 1x, /ok.png 2x"));
+        assertEquals("", safe.call("srcset", "/a.png foo"));
+        assertEquals("", safe.call("srcset", "/a.png 1y"));
+        assertEquals("", safe.call("srcset", "/a.png 1x junk"));
+        assertEquals("", safe.call("srcset", "/a.png x"));
+        assertEquals("", safe.call("srcset", "/a.png 1.x"));
+        assertEquals("/b.png", safe.call("srcset", "/a.png 1x:javascript, /b.png"));
+    }
+
+    @Test
+    void srcsetKeepsValidDescriptors() throws Exception {
+        assertEquals("/a.png 1x", safe.call("srcset", "/a.png 1x"));
+        assertEquals("/a.png 100w", safe.call("srcset", "/a.png 100w"));
+        assertEquals("/a.png 1.5x", safe.call("srcset", "/a.png 1.5x"));
+        assertEquals("/a.png 10h", safe.call("srcset", "/a.png 10h"));
+        assertEquals("/a.png 100W", safe.call("srcset", "/a.png 100W"));
+        assertEquals("/a.png .5x", safe.call("srcset", "/a.png .5x"));
+        assertEquals("/a.png 1e1x", safe.call("srcset", "/a.png 1e1x"));
+        assertEquals("/a.png 100w 50h", safe.call("srcset", "/a.png 100w 50h"));
+        assertEquals("/a.png", safe.call("srcset", "/a.png"));
     }
 }
