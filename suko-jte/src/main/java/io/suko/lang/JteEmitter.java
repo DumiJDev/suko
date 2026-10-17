@@ -360,6 +360,10 @@ public class JteEmitter {
                 }
             }
             case Statement.HtmlElement element -> emitHtmlElement(element, out, slotNames);
+            case Statement.StateDecl state -> throw new IllegalStateException(
+                "state '" + state.name() + "' não é emitido pelo alvo jte (13b, plano 2)");
+            case Statement.DerivedDecl derived -> throw new IllegalStateException(
+                "derived '" + derived.name() + "' não é emitido pelo alvo jte (13b, plano 2)");
             case Statement.VarDecl varDecl ->
                 out.append("!{var ").append(varDecl.name()).append(" = ")
                     .append(emitExpr(varDecl.value(), slotNames)).append(";}\n");
@@ -827,6 +831,14 @@ public class JteEmitter {
                 String left = emitExpr(elvis.left(), slotNames);
                 yield "(" + left + " == null ? " + emitExpr(elvis.right(), slotNames) + " : " + left + ")";
             }
+            // 13b, plano 1: um reactive component nunca chega aqui (REACTIVE_UNSUPPORTED enquanto o alvo não
+            // declarar a capacidade, REACTIVE_REQUIRED fora dele). Falhar alto, nunca emitir algo errado.
+            case Expr.LambdaExpr lambda -> throw new IllegalStateException(
+                "lambda não é emitida pelo alvo jte (13b, plano 2): " + lambda.pretty());
+            case Expr.AssignExpr assign -> throw new IllegalStateException("atribuição fora de um handler: " + assign.pretty());
+            case Expr.UpdateExpr update -> throw new IllegalStateException(
+                "'" + update.operator() + "' fora de um handler: " + update.pretty());
+            case Expr.NewExpr newExpr -> "new " + newExpr.typeName() + "(" + emitArgs(newExpr.args(), slotNames) + ")";
         };
     }
 

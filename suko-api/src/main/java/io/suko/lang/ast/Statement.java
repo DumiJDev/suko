@@ -3,12 +3,19 @@ package io.suko.lang.ast;
 import java.util.List;
 
 public sealed interface Statement permits Statement.HtmlElement, Statement.TextRun, Statement.Interpolation,
-        Statement.VarDecl, Statement.IfStmt, Statement.ForStmt, Statement.SwitchStmt, Statement.ComponentCallStmt {
+        Statement.VarDecl, Statement.IfStmt, Statement.ForStmt, Statement.SwitchStmt, Statement.ComponentCallStmt,
+        Statement.StateDecl, Statement.DerivedDecl {
 
     SourceSpan span();
 
+    /** {@code directives} (13b): os {@code on:}/{@code bind:} do elemento, que nunca são atributos HTML. */
     record HtmlElement(String tagName, List<Attribute> attributes, List<Statement> children,
-                        boolean selfClosing, SourceSpan span) implements Statement {
+                        boolean selfClosing, SourceSpan span, List<Directive> directives) implements Statement {
+        /** Sem diretivas (antes da 13b e AST construído à mão). */
+        public HtmlElement(String tagName, List<Attribute> attributes, List<Statement> children,
+                           boolean selfClosing, SourceSpan span) {
+            this(tagName, attributes, children, selfClosing, span, List.of());
+        }
     }
 
     /** `legacyBraceForm` = o valor sem aspas foi escrito `attr={expr}`,
@@ -73,5 +80,25 @@ public sealed interface Statement permits Statement.HtmlElement, Statement.TextR
                         List<Statement> body) {
             this(paramName, lambdaParamName, body, SourceSpan.NONE);
         }
+    }
+
+    /** {@code on:evento=${lambda}} ({@link Kind#ON}; {@code value} é um {@link Expr.LambdaExpr}) ou
+     * {@code bind:nome=${state}} ({@link Kind#BIND}). Sintaxe Suko, não HTML (13b, API v2 (d)): fica fora de
+     * {@link HtmlElement#attributes()}, por isso nenhum checker de atributos a confunde com um {@code on*} e
+     * nenhum alvo a escreve tal como está. {@code name} é o que vem depois de {@code :} ({@code click},
+     * {@code value}); {@code nameSpan} cobre {@code on:click}.
+     */
+    record Directive(Kind kind, String name, Expr value, SourceSpan span, SourceSpan nameSpan) {
+        public enum Kind { ON, BIND }
+    }
+
+    /** {@code state T nome = valor;} ou {@code state var nome = valor;} ({@code type} vazio = {@code var}). 13b. */
+    record StateDecl(java.util.Optional<Type> type, String name, Expr value, SourceSpan span,
+                     SourceSpan nameSpan) implements Statement {
+    }
+
+    /** {@code derived T nome = valor;}: recalculado quando um state/derived de que depende muda; não atribuível. 13b. */
+    record DerivedDecl(java.util.Optional<Type> type, String name, Expr value, SourceSpan span,
+                       SourceSpan nameSpan) implements Statement {
     }
 }

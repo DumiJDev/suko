@@ -43,8 +43,8 @@ class ExtensionRegistryTest {
     @Test
     void registersContributionsAndOrdersCheckersByExtensionId() {
         var registry = ExtensionRegistry.of(List.of(
-            new Ext("b.ext", 1, List.of(target("b"), checker("b-check"))),
-            new Ext("a.ext", 1, List.of(checker("a-check")))));
+            new Ext("b.ext", ExtensionApi.VERSION, List.of(target("b"), checker("b-check"))),
+            new Ext("a.ext", ExtensionApi.VERSION, List.of(checker("a-check")))));
         assertEquals(Set.of("b"), registry.targetIds());
         assertEquals(List.of("a-check", "b-check"), registry.checkers().stream().map(Checker::id).toList());
         assertEquals("b.ext", registry.ownerOf(registry.target("b").orElseThrow()));
@@ -54,8 +54,8 @@ class ExtensionRegistryTest {
     @Test
     void duplicateTargetIdIsAConflictAndTheFirstByExtensionIdWins() {
         var registry = ExtensionRegistry.of(List.of(
-            new Ext("z.ext", 1, List.of(target("demo"))),
-            new Ext("a.ext", 1, List.of(target("demo")))));
+            new Ext("z.ext", ExtensionApi.VERSION, List.of(target("demo"))),
+            new Ext("a.ext", ExtensionApi.VERSION, List.of(target("demo")))));
         assertEquals("a.ext", registry.ownerOf(registry.target("demo").orElseThrow()));
         SukoDiagnostic d = registry.loadDiagnostics().get(0);
         assertEquals("EXTENSION_CONFLICT", d.code());
@@ -92,7 +92,7 @@ class ExtensionRegistryTest {
             public boolean open() { return false; }
             public Optional<TagSpec> tag(String name) { return Optional.empty(); }
         };
-        var registry = ExtensionRegistry.of(List.of(new Ext("a.ext", 1, List.of(v))));
+        var registry = ExtensionRegistry.of(List.of(new Ext("a.ext", ExtensionApi.VERSION, List.of(v))));
         assertSame(v, registry.vocabulary("demo").orElseThrow());
         assertTrue(io.suko.lang.project.ProjectView.EMPTY.entries().isEmpty());
     }
@@ -101,16 +101,16 @@ class ExtensionRegistryTest {
     void throwingOrBlankIdBecomesExtensionFailedAndOthersStillLoad() {
         SukoExtension throwing = new SukoExtension() {
             public String id() { throw new IllegalStateException("no id"); }
-            public int apiVersion() { return 1; }
+            public int apiVersion() { return ExtensionApi.VERSION; }
             public void register(ExtensionContext ctx) { }
         };
         SukoExtension nullId = new SukoExtension() {
             public String id() { return null; }
-            public int apiVersion() { return 1; }
+            public int apiVersion() { return ExtensionApi.VERSION; }
             public void register(ExtensionContext ctx) { }
         };
         var registry = ExtensionRegistry.of(List.of(throwing, nullId,
-            new Ext("ok.ext", 1, List.of(target("ok")))));
+            new Ext("ok.ext", ExtensionApi.VERSION, List.of(target("ok")))));
         assertEquals(2, registry.loadDiagnostics().size());
         assertTrue(registry.loadDiagnostics().stream().allMatch(d -> d.code().equals("EXTENSION_FAILED")));
         assertTrue(registry.target("ok").isPresent());

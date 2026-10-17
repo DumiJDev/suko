@@ -170,7 +170,7 @@ public class SemanticChecker {
         }
     }
 
-    // EXAUSTIVO SOBRE AS 8 VARIANTES DE `Statement`, sem `default` — de
+    // EXAUSTIVO SOBRE AS 10 VARIANTES DE `Statement`, sem `default` — de
     // propósito. A versão anterior tinha `default -> {}` e não descia a
     // if/for/switch, e nenhum percurso do checker descia a corpos de slot
     // fill: Alert.sk, Badge.sk e Button.sk têm o corpo INTEIRO dentro de um
@@ -218,6 +218,8 @@ public class SemanticChecker {
                     checkSyntaxInStatements(fill.body(), paramNames);
                 }
             }
+            case Statement.StateDecl state -> checkBareBraceInExpr(state.value(), paramNames, state.span());
+            case Statement.DerivedDecl derived -> checkBareBraceInExpr(derived.value(), paramNames, derived.span());
         }
     }
 
@@ -358,8 +360,13 @@ public class SemanticChecker {
                 for (Statement.Attribute attribute : element.attributes()) {
                     checkExprForComponentCalls(attribute.value());
                 }
+                for (Statement.Directive directive : element.directives()) {
+                    checkExprForComponentCalls(directive.value());
+                }
                 checkStatementList(element.children(), currentScopeSlots);
             }
+            case Statement.StateDecl state -> checkExprForComponentCalls(state.value());
+            case Statement.DerivedDecl derived -> checkExprForComponentCalls(derived.value());
             default -> {}
         }
     }

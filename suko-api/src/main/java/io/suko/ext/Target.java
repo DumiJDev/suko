@@ -17,6 +17,14 @@ public interface Target {
 
     Emitted emit(ComponentDecl component, EmitContext ctx);
 
+    /** Capacidade: o alvo materializa componentes reativos (13b). Sem ela, um reactive component dá REACTIVE_UNSUPPORTED. */
+    String CAPABILITY_REACTIVE = "reactive";
+
+    /** Capacidades opcionais do alvo, lidas pelo core (ex.: {@link #CAPABILITY_REACTIVE}). Por omissão nenhuma. */
+    default Set<String> capabilities() {
+        return Set.of();
+    }
+
     /** Ficheiros do projeto inteiro (não por componente). Por omissão nenhum. */
     default java.util.List<ProjectOutput> emitProject(ProjectEmitContext ctx) {
         return java.util.List.of();

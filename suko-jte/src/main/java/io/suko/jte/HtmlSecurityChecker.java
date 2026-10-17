@@ -65,7 +65,18 @@ public final class HtmlSecurityChecker implements Checker {
             switch (s) {
                 case Statement.HtmlElement e -> {
                     element(e, slots, ctx);
+                    for (Statement.Directive d : e.directives()) {
+                        scan(d.value(), ctx);
+                    }
                     walk(e.children(), slots, ctx);
+                }
+                case Statement.StateDecl st -> {
+                    reserved(st.name(), st.nameSpan(), "state", ctx);
+                    scan(st.value(), ctx);
+                }
+                case Statement.DerivedDecl d -> {
+                    reserved(d.name(), d.nameSpan(), "derived", ctx);
+                    scan(d.value(), ctx);
                 }
                 case Statement.IfStmt i -> {
                     scan(i.condition(), ctx);
@@ -146,6 +157,13 @@ public final class HtmlSecurityChecker implements Checker {
                 scan(x.left(), ctx);
                 scan(x.right(), ctx);
             }
+            case Expr.LambdaExpr l -> l.body().forEach(x -> scan(x, ctx));
+            case Expr.AssignExpr a -> {
+                scan(a.target(), ctx);
+                scan(a.value(), ctx);
+            }
+            case Expr.UpdateExpr u -> scan(u.target(), ctx);
+            case Expr.NewExpr n -> n.args().forEach(x -> scan(x, ctx));
         }
     }
 
@@ -289,6 +307,8 @@ public final class HtmlSecurityChecker implements Checker {
                         return true;
                     }
                 }
+                case Statement.StateDecl st -> { }
+                case Statement.DerivedDecl d -> { }
                 case Statement.IfStmt i -> {
                     if (hasDynamicContent(i.thenBranch()) || hasDynamicContent(i.elseBranch())) {
                         return true;
