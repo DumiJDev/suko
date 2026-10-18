@@ -98,7 +98,12 @@ public class JteCompiler {
         }
 
         try {
-            return new SukoAstBuilder(sukoSource).build(compilationUnitCtx);
+            SukoAstBuilder builder = new SukoAstBuilder(sukoSource);
+            SukoFile file = builder.build(compilationUnitCtx);
+            for (SukoAstBuilder.SyntaxIssue issue : builder.syntaxIssues()) {
+                diagnostics.add(new SukoDiagnostic(Severity.ERROR, issue.message(), "PARSE_ERROR", fileName, issue.span()));
+            }
+            return builder.syntaxIssues().isEmpty() ? file : null;
         } catch (IllegalStateException e) {
             diagnostics.add(new SukoDiagnostic(
                 Severity.ERROR,

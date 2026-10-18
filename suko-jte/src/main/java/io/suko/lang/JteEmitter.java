@@ -624,6 +624,13 @@ public class JteEmitter {
     }
 
     private void emitHtmlElement(Statement.HtmlElement element, StringBuilder out, java.util.Set<String> slotNames) {
+        // R2/S6: on:/bind: não são HTML. Falhar alto em vez de as largar em silêncio, mesmo que um consumidor do
+        // AST tenha ignorado o syntaxIssues() ou o REACTIVE_UNSUPPORTED.
+        if (!element.directives().isEmpty()) {
+            Statement.Directive d = element.directives().get(0);
+            throw new IllegalStateException("diretiva '" + (d.kind() == Statement.Directive.Kind.ON ? "on:" : "bind:")
+                + d.name() + "' não é emitida pelo alvo jte (13b, plano 2)");
+        }
         out.append('<').append(element.tagName());
         boolean noopener = io.suko.jte.HtmlSecurityRules.needsNoopener(element);
         boolean hasRel = false;
