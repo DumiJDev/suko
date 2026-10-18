@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -34,14 +35,21 @@ final class NodeRunner {
             throw new AssertionError("o Node não arranca ('" + node + "'): os testes do cliente da 13b precisam do Node 18+"
                 + " no PATH (ou SUKO_NODE). " + e.getMessage(), e);
         }
+        CompletableFuture<byte[]> output = CompletableFuture.supplyAsync(() -> {
+            try {
+                return process.getInputStream().readAllBytes();
+            } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
+            }
+        });
         try (OutputStream in = process.getOutputStream()) {
             in.write(module.getBytes(StandardCharsets.UTF_8));
         }
-        String out = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         if (!process.waitFor(120, TimeUnit.SECONDS)) {
             process.destroyForcibly();
             throw new AssertionError("o Node não terminou em 120 s");
         }
+        String out = new String(output.get(5, TimeUnit.SECONDS), StandardCharsets.UTF_8);
         if (process.exitValue() != 0) {
             throw new AssertionError("o Node saiu com " + process.exitValue() + ":\n" + out + "\n--- módulo ---\n" + module);
         }

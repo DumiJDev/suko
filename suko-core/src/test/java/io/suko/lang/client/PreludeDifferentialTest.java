@@ -26,6 +26,26 @@ class PreludeDifferentialTest {
     }
 
     @Test
+    void preludeRecordMapAndNullHelpers() throws Exception {
+        String module = IMPORT + """
+            const r = (f) => { try { return String(f()); } catch (e) { return e.constructor.name; } };
+            const record = $suko.rec(["constructor", "__proto__"], [7, "safe"]);
+            const map = new Map([["k", "v"]]);
+            console.log(Object.getPrototypeOf(record) === null);
+            console.log($suko.field(record, "constructor"));
+            console.log($suko.field(record, "__proto__"));
+            console.log(r(() => $suko.field(JSON.parse('{"__proto__":1}'), "toString")));
+            console.log($suko.mget(map, "k"));
+            console.log($suko.mget(map, "missing"));
+            console.log($suko.mhas(map, "k") + " " + $suko.mhas(map, "missing"));
+            console.log(r(() => $suko.nn(null)));
+            console.log(r(() => $suko.nn(undefined)));
+            """;
+        assertEquals(List.of("true", "7", "safe", "TypeError", "v", "null", "true false", "TypeError", "TypeError"),
+            NodeRunner.run(module).lines().toList());
+    }
+
+    @Test
     void doubleToStringMatchesJava() throws Exception {
         List<Double> values = new ArrayList<>(List.of(0.0, -0.0, 1.0, -1.0, 0.1, 0.3, 0.1 + 0.2, 100.0, 1e7, 9999999.0,
             9999999.999, 1e-3, 0.00099, 1e23, 2e22, 1e21, 123456789.0, 1.5e300, Double.MIN_VALUE, Double.MAX_VALUE,
