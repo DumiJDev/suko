@@ -56,6 +56,7 @@ public class SemanticChecker {
         for (ComponentDecl component : sukoFile.components()) {
             checkComponent(component);
         }
+        new ReactiveChecker(diagnostics, sourceFile, resolver).check(sukoFile);
     }
 
     private void reportImportProblems() {

@@ -193,6 +193,7 @@ public class JteCompiler {
     private void runExtensionChecks(SukoFile sukoFile, ProjectView project, DiagnosticCollector diagnostics) {
         List<Target> resolved = targets.stream().flatMap(id -> registry.target(id).stream()).toList();
         VocabularyChecker.check(sukoFile, fileName, resolved, registry, diagnostics);
+        io.suko.lang.ext.CapabilityChecker.check(sukoFile, fileName, resolved, registry, diagnostics);
         java.util.Set<String> active = new java.util.TreeSet<>();
         for (Target t : resolved) {
             try {
