@@ -285,7 +285,9 @@ public final class HtmlSecurityChecker implements Checker {
             return;
         }
         String text = v instanceof Expr.StringLiteralExpr s ? Expr.pretty(s.parts()).trim().toLowerCase(Locale.ROOT) : "";
-        boolean inline = name.equals("style") || name.startsWith("on") || name.startsWith("x-")
+        // mesma normalização do sinkReason: htmx/Alpine aceitam o prefixo data- (data-hx-on:click, data-x-data)
+        String code = name.startsWith("data-") ? name.substring(5) : name;
+        boolean inline = name.equals("style") || name.startsWith("on") || code.startsWith("x-") || code.startsWith("hx-on")
             || (HtmlSecurityRules.isUrlAttribute(tag, name, ctx.options()) && text.replaceAll("[\\t\\n\\r]", "").startsWith("javascript:"));
         if (inline) {
             ctx.report(Severity.WARNING, "CSP_INLINE",
