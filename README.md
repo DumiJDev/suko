@@ -173,7 +173,7 @@ A `reactive component` holds client-side state. `state` and `derived` are declar
 reactive component Counter(int start) {
   state int count = start;
   state var step = 1;
-  derived label = "Clicked " + count + " times";
+  derived String label = "Clicked " + count + " times";
 
   <button on:click=${() -> count += step}>${label}</button>
   <input type="number" bind:value=${step} />
@@ -181,7 +181,7 @@ reactive component Counter(int start) {
 }
 ```
 
-- `state T x = ...;` / `state var x = ...;`, `derived x = ...;` (derived values are recomputed; cycles are `DERIVED_CYCLE`).
+- `state T x = ...;` / `state var x = ...;`, `derived T x = ...;` / `derived var x = ...;` (derived values are recomputed; cycles are `DERIVED_CYCLE`).
 - `on:event=${lambda}`: the lambda may take zero or one parameter. `bind:value` (input, textarea, select; `String`, `int` or `double` state) and `bind:checked` (input; `boolean` state) need `${expression}` without quotes. `on:`/`bind:` are Suko syntax, never HTML attributes.
 - `prefix:name` attributes are accepted (`xlink:href`, `hx-on:click`, `x-on:click`); `@click` is still a syntax error. Dynamic `hx-on:*` / `x-on:*` stay `UNSAFE_SINK`.
 - `for (var x : xs)` now parses.

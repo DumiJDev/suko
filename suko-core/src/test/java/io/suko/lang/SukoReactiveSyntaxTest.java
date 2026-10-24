@@ -302,4 +302,24 @@ class SukoReactiveSyntaxTest {
         return body.stream().filter(Statement.HtmlElement.class::isInstance).map(Statement.HtmlElement.class::cast)
             .findFirst().orElseThrow();
     }
+
+    /** Fixa os exemplos `suko` da secção "Reactive components" do README: tem de fazer parse. */
+    @Test
+    void readmeReactiveExamplesParse() throws Exception {
+        String readme = java.nio.file.Files.readString(Path.of("..", "README.md"));
+        int from = readme.indexOf("### Reactive components");
+        assertTrue(from >= 0, "secção em falta no README");
+        int to = readme.indexOf("\n### ", from + 1);
+        String section = readme.substring(from, to < 0 ? readme.length() : to);
+        var m = java.util.regex.Pattern.compile("```suko\\n(.*?)```", java.util.regex.Pattern.DOTALL).matcher(section);
+        int blocks = 0;
+        while (m.find()) {
+            ComponentDecl c = parse(m.group(1)).components().get(0);
+            // `derived x = ...` sem tipo parseava como texto livre: exige-se que as declarações sejam reconhecidas.
+            assertEquals(2, c.body().stream().filter(Statement.StateDecl.class::isInstance).count());
+            assertEquals(1, c.body().stream().filter(Statement.DerivedDecl.class::isInstance).count());
+            blocks++;
+        }
+        assertTrue(blocks >= 1, "nenhum bloco suko no README");
+    }
 }
