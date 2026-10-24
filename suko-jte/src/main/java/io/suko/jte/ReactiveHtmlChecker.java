@@ -220,32 +220,41 @@ public final class ReactiveHtmlChecker implements Checker {
         if (code == null) {
             return;
         }
-        if (severity == Severity.ERROR && overlapsOneOf(ctx, span, SUPPRESSED_BY.getOrDefault(code, Set.of()), code.equals("CLIENT_UNSAFE_SINK"))) {
+        if (severity == Severity.ERROR && suppressed(ctx, code, span)) {
             return;
         }
         ctx.report(severity, code, message, span);
     }
 
-    /** O endIndex do SourceSpan é inclusivo: spans adjacentes (fim + 1 = início) não se sobrepõem. */
-    private static boolean overlapsOneOf(CheckContext ctx, SourceSpan span, Set<String> codes, boolean ignoreEnclosing) {
+    /**
+     * Um diagnóstico por sítio, sem esconder o que está dentro ou fora do sítio. Funde-se quando o span do diagnóstico
+     * existente (do par declarado) é IGUAL ao nosso; excepções: o mesmo código (RESERVED_NAME/BIND_TARGET, spans pequenos
+     * de atributo/diretiva, por sobreposição) e CLIENT_UNSUPPORTED (span de uma subexpressão), que o RESERVED_NAME do
+     * atributo que a contém funde, e o UNSAFE_SINK também, salvo o de conteúdo de um elemento (esse envolve o elemento
+     * inteiro e é outro problema). O endIndex do SourceSpan é inclusivo.
+     */
+    private static boolean suppressed(CheckContext ctx, String code, SourceSpan span) {
+        Set<String> codes = SUPPRESSED_BY.getOrDefault(code, Set.of());
         if (codes.isEmpty() || span == null || span.isNone() || span.startIndex() < 0) {
             return false;
         }
         for (SukoDiagnostic d : ctx.diagnostics().getDiagnostics()) {
             SourceSpan o = d.span();
-            if (codes.contains(d.code()) && o != null && !o.isNone() && o.startIndex() >= 0
-                    && Objects.equals(d.sourceFile(), ctx.fileName())
-                    && o.startIndex() <= span.endIndex() && span.startIndex() <= o.endIndex()
-                    && !(ignoreEnclosing && encloses(o, span))) {
+            if (!codes.contains(d.code()) || o == null || o.isNone() || o.startIndex() < 0
+                    || !Objects.equals(d.sourceFile(), ctx.fileName())) {
+                continue;
+            }
+            boolean equal = o.startIndex() == span.startIndex() && o.endIndex() == span.endIndex();
+            boolean overlap = o.startIndex() <= span.endIndex() && span.startIndex() <= o.endIndex();
+            boolean encloses = o.startIndex() <= span.startIndex() && o.endIndex() >= span.endIndex();
+            boolean hit = equal
+                || (d.code().equals(code) && overlap)
+                || (code.equals("CLIENT_UNSUPPORTED") && encloses
+                    && (d.code().equals("RESERVED_NAME") || !d.message().startsWith("Conteúdo dinâmico")));
+            if (hit) {
                 return true;
             }
         }
         return false;
-    }
-
-    /** Desvio do plano (S2): um UNSAFE_SINK de um elemento (span = elemento inteiro) não pode esconder o CLIENT_UNSAFE_SINK de um filho. */
-    private static boolean encloses(SourceSpan outer, SourceSpan inner) {
-        return outer.startIndex() <= inner.startIndex() && outer.endIndex() >= inner.endIndex()
-            && (outer.startIndex() != inner.startIndex() || outer.endIndex() != inner.endIndex());
     }
 }

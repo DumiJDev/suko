@@ -130,18 +130,31 @@ class ReactiveHtmlCheckerTest {
     void anEnclosingErrorDoesNotHideTheProblemsInsideIt() {
         String upper = "reactive component R() { state boolean open = false; <MAIN> if (open) { <iframe></iframe> } </MAIN>"
             + " <b on:click=${() -> open = !open}>t</b> }";
-        assertTrue(codes(upper).containsAll(Set.of("UPPERCASE_NAME", "CLIENT_UNSAFE_SINK")), diagnostics(upper).toString());
+        assertEquals(1, count(upper, "UPPERCASE_NAME"), diagnostics(upper).toString());
+        assertEquals(1, count(upper, "CLIENT_UNSAFE_SINK"), diagnostics(upper).toString());
         // o corpo de <script> é texto cru (o <iframe> não é elemento); <foreignObject> também é CONTENT_SINK mas tem filhos HTML
         String script = "reactive component R(String x) { state boolean open = false;"
             + " <svg><foreignObject> if (open) { <iframe></iframe> } ${x}</foreignObject></svg> <b on:click=${() -> open = !open}>t</b> }";
-        assertTrue(codes(script).containsAll(Set.of("UNSAFE_SINK", "CLIENT_UNSAFE_SINK")), diagnostics(script).toString());
+        assertEquals(1, count(script, "UNSAFE_SINK"), diagnostics(script).toString());
+        assertEquals(1, count(script, "CLIENT_UNSAFE_SINK"), diagnostics(script).toString());
+        // sentido inverso: o UNSAFE_SINK de um FILHO não esconde o CLIENT_UNSAFE_SINK do elemento exterior
+        String child = "reactive component R(String x) { state boolean open = false;"
+            + " if (open) { <iframe><script>${x}</script></iframe> } <b on:click=${() -> open = !open}>t</b> }";
+        assertEquals(1, count(child, "UNSAFE_SINK"), diagnostics(child).toString());
+        assertEquals(1, count(child, "CLIENT_UNSAFE_SINK"), diagnostics(child).toString());
+        // CLIENT_UNSUPPORTED dentro de um elemento com UNSAFE_SINK de conteúdo não fica escondido
+        String unsupported = "reactive component R(String x) { state boolean open = false;"
+            + " <svg><foreignObject> if (open) { <p>${x ?: \"y\"}</p> } ${x}</foreignObject></svg> <b on:click=${() -> open = !open}>t</b> }";
+        assertEquals(1, count(unsupported, "UNSAFE_SINK"), diagnostics(unsupported).toString());
+        assertEquals(1, count(unsupported, "CLIENT_UNSUPPORTED"), diagnostics(unsupported).toString());
     }
 
     @Test
     void twoDistinctSinksGiveTwoDiagnosticsEvenWhenTheirSpansAreAdjacent() {
         String apart = "reactive component R(String x) { state String s = \"\"; state boolean open = false;"
             + " <b onclick=${x} on:click=${() -> open = !open}>t</b> if (open) { <iframe></iframe> } }";
-        assertEquals(Set.of("UNSAFE_SINK", "CLIENT_UNSAFE_SINK"), codes(apart), diagnostics(apart).toString());
+        assertEquals(1, count(apart, "UNSAFE_SINK"), diagnostics(apart).toString());
+        assertEquals(1, count(apart, "CLIENT_UNSAFE_SINK"), diagnostics(apart).toString());
         String adjacent = "reactive component R(String x) { state String s = \"\"; <script>${x}</script><iframe title=${s}></iframe>"
             + " <b on:click=${() -> s = \"y\"}>t</b> }";
         assertEquals(1, count(adjacent, "UNSAFE_SINK"), diagnostics(adjacent).toString());
