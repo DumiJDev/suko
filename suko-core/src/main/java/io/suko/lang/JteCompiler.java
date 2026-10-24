@@ -100,10 +100,11 @@ public class JteCompiler {
         try {
             SukoAstBuilder builder = new SukoAstBuilder(sukoSource);
             SukoFile file = builder.build(compilationUnitCtx);
-            for (SukoAstBuilder.SyntaxIssue issue : builder.syntaxIssues()) {
+            List<SukoAstBuilder.SyntaxIssue> issues = builder.syntaxIssues();
+            for (SukoAstBuilder.SyntaxIssue issue : issues) {
                 diagnostics.add(new SukoDiagnostic(Severity.ERROR, issue.message(), "PARSE_ERROR", fileName, issue.span()));
             }
-            return builder.syntaxIssues().isEmpty() ? file : null;
+            return issues.isEmpty() ? file : null;
         } catch (IllegalStateException e) {
             diagnostics.add(new SukoDiagnostic(
                 Severity.ERROR,

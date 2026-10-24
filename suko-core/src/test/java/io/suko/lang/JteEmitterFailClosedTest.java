@@ -8,6 +8,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * S6 (revisão de segurança da 13b): quem constrói o AST sem ler {@code syntaxIssues()} (ProjectIndex, LSP,
@@ -22,7 +23,8 @@ class JteEmitterFailClosedTest {
     })
     void directivesAreNeverEmittedSilently(String source) {
         ComponentDecl component = SukoReactiveSyntaxTest.parse(source).components().get(0);
-        assertThrows(IllegalStateException.class, () -> new JteEmitter().emit(component), source);
+        IllegalStateException e = assertThrows(IllegalStateException.class, () -> new JteEmitter().emit(component), source);
+        assertTrue(e.getMessage().startsWith("diretiva '"), e.getMessage());
     }
 
     @Test
@@ -37,7 +39,9 @@ class JteEmitterFailClosedTest {
             Statement.HtmlElement el = new Statement.HtmlElement("a", List.of(new Statement.Attribute("title", value, false, s)),
                 List.of(), true, s);
             ComponentDecl component = new ComponentDecl("A", List.of(), List.of(), List.of(el), s, false, s);
-            assertThrows(IllegalStateException.class, () -> new JteEmitter().emit(component), value.toString());
+            IllegalStateException e = assertThrows(IllegalStateException.class, () -> new JteEmitter().emit(component),
+                value.toString());
+            assertTrue(e.getMessage().contains(value.pretty()), e.getMessage());
         }
     }
 }

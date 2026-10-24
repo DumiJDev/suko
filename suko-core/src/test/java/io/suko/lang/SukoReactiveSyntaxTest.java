@@ -192,10 +192,32 @@ class SukoReactiveSyntaxTest {
         "reactive component A() { if (true) { state int n = 0; } }",
         "component A() { <p>${new String(value = \"x\")}</p> }",
         "component A(String s) { <p title=\"${() -> s}\">x</p> }",
+        "reactive component A() { state int n = 0; <b on :click=\"n++\">x</b> }",
+        "reactive component A() { state int n = 0; <b on: click=\"n++\">x</b> }",
     })
     void malformedReactiveSyntaxIsOnlyAParseError(String source) {
         Set<String> codes = codes(source);
         assertEquals(Set.of("PARSE_ERROR"), codes, source + " -> " + diagnostics(source));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "<b On:click=${() -> n++}>x</b>",
+        "<b ON:click=${() -> n++}>x</b>",
+        "<b on :click=\"a\">x</b>",
+        "<b on: click=\"a\">x</b>",
+    })
+    void builderLevelMistakesGiveExactlyOneDiagnostic(String tag) {
+        String source = "reactive component A() { state int n = 0; " + tag + " }";
+        List<SukoDiagnostic> found = diagnostics(source);
+        assertEquals(1, found.size(), source + " -> " + found);
+        assertEquals("PARSE_ERROR", found.get(0).code());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"hx-on:click", "x-on:click", "online:x", "HX-ON:click"})
+    void dynamicEventLikePrefixedAttributesStayUnsafeSinks(String attr) {
+        assertTrue(codes("component A(String u) { <b " + attr + "=${u}>x</b> }").contains("UNSAFE_SINK"), attr);
     }
 
     @Test

@@ -482,20 +482,22 @@ public class SukoAstBuilder {
             String name = prefixed ? prefix + ":" + local : prefix;
             SourceSpan span = spanOf(attrCtx);
             SourceSpan nameSpan = spanOf(nameCtx);
-            if (prefixed && !adjacent(nameCtx)) {
+            boolean spaced = prefixed && !adjacent(nameCtx);
+            if (spaced) {
                 issue("'" + name + "': um nome de atributo com ':' escreve-se sem espaços", nameSpan);
             }
             if (prefixed && (prefix.equals("on") || prefix.equals("bind"))) {
-                directives.add(buildDirective(attrCtx, prefix.equals("on"), local, span, nameSpan));
+                directives.add(buildDirective(attrCtx, prefix.equals("on"), local, span, nameSpan, spaced));
                 continue;
             }
-            if (prefixed && (prefix.equalsIgnoreCase("on") || prefix.equalsIgnoreCase("bind"))) {
+            boolean reserved = prefixed && (prefix.equalsIgnoreCase("on") || prefix.equalsIgnoreCase("bind"));
+            if (reserved) {
                 String lower = prefix.toLowerCase(java.util.Locale.ROOT);
                 issue("'" + prefix + ":' é um prefixo reservado do Suko e escreve-se em minúsculas: " + lower + ":" + local,
                     nameSpan);
             }
             boolean lambda = attrCtx.lambdaInterpolation() != null;
-            if (lambda) {
+            if (lambda && !reserved) { // com prefixo reservado já há um PARSE_ERROR neste nome
                 issue("uma lambda só é aceite como valor de on:evento (ex.: on:click=${() -> ...})"
                     + " ou como argumento de um componente reativo", span);
             }
@@ -522,14 +524,15 @@ public class SukoAstBuilder {
     }
 
     private Statement.Directive buildDirective(SukoParser.AttributeContext attrCtx, boolean on, String local,
-                                               SourceSpan span, SourceSpan nameSpan) {
+                                               SourceSpan span, SourceSpan nameSpan, boolean spaced) {
         Expr value;
         if (on && attrCtx.lambdaInterpolation() != null) {
             value = buildLambda(attrCtx.lambdaInterpolation().lambda());
         } else if (!on && attrCtx.interpolation() != null && attrCtx.interpolation().legacy == null) {
             value = buildExpr(attrCtx.interpolation().expression());
         } else {
-            issue(on
+            // um só PARSE_ERROR por sítio: a adjacência já falhou neste nome
+            if (!spaced) issue(on
                 ? "on:" + local + " espera uma lambda: on:" + local + "=${() -> ...} (sem aspas)"
                 : "bind:" + local + " espera o nome de um state: bind:" + local + "=${nome} (sem aspas)", span);
             value = new Expr.PrimaryExpr("null", span);
