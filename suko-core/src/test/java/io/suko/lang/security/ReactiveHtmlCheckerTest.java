@@ -149,6 +149,14 @@ class ReactiveHtmlCheckerTest {
         assertEquals(1, count(unsupported, "CLIENT_UNSUPPORTED"), diagnostics(unsupported).toString());
     }
 
+    /** A exceção do CLIENT_UNSUPPORTED depende deste prefixo: tem de estar na mensagem real do UNSAFE_SINK. */
+    @Test
+    void dynamicContentMessagePrefixIsInTheRealUnsafeSinkMessage() {
+        String sk = "reactive component R(String x) { <script>${x}</script> }";
+        SukoDiagnostic d = diagnostics(sk).stream().filter(x -> x.code().equals("UNSAFE_SINK")).findFirst().orElseThrow();
+        assertTrue(d.message().startsWith(HtmlSecurityRules.DYNAMIC_CONTENT_MESSAGE_PREFIX), d.message());
+    }
+
     @Test
     void twoDistinctSinksGiveTwoDiagnosticsEvenWhenTheirSpansAreAdjacent() {
         String apart = "reactive component R(String x) { state String s = \"\"; state boolean open = false;"

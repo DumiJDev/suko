@@ -21,6 +21,9 @@ import java.util.stream.Stream;
  */
 public final class HtmlSecurityRules {
 
+    /** Início da mensagem do UNSAFE_SINK de conteúdo dinâmico (o ReactiveHtmlChecker distingue-o pelo prefixo). */
+    public static final String DYNAMIC_CONTENT_MESSAGE_PREFIX = "Conteúdo dinâmico dentro de <";
+
     /** Conteúdo que o browser executa ou reinterpreta (era privado no HtmlSecurityChecker). */
     public static final Set<String> CONTENT_SINKS = Set.of("script", "style", "noscript", "foreignobject");
     /** Elementos de animação SVG cujos attributeName/values/to/from/by o 14 vigia (era privado no HtmlSecurityChecker). */

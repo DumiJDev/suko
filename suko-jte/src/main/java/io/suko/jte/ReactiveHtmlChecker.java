@@ -250,7 +250,7 @@ public final class ReactiveHtmlChecker implements Checker {
             boolean hit = equal
                 || (d.code().equals(code) && overlap)
                 || (code.equals("CLIENT_UNSUPPORTED") && encloses
-                    && (d.code().equals("RESERVED_NAME") || !d.message().startsWith("Conteúdo dinâmico")));
+                    && (d.code().equals("RESERVED_NAME") || !d.message().startsWith(HtmlSecurityRules.DYNAMIC_CONTENT_MESSAGE_PREFIX)));
             if (hit) {
                 return true;
             }

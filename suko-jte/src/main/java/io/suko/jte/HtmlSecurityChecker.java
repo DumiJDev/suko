@@ -192,7 +192,7 @@ public final class HtmlSecurityChecker implements Checker {
 
         if (CONTENT_SINKS.contains(tag) && hasDynamicContent(e.children())) {
             ctx.report(Severity.ERROR, "UNSAFE_SINK",
-                "Conteúdo dinâmico dentro de <" + e.tagName() + "> é executado ou reinterpretado pelo browser; use texto literal"
+                HtmlSecurityRules.DYNAMIC_CONTENT_MESSAGE_PREFIX + e.tagName() + "> é executado ou reinterpretado pelo browser; use texto literal"
                     + (tag.equals("script") || tag.equals("style") ? " e passe os dados por atributos data-*" : ""), e.span());
         }
         if (options.strictCsp()) {
