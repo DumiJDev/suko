@@ -1,7 +1,7 @@
 # Suko — Subprojeto 13b: reatividade em ilhas no alvo JTE
 
 Data: 2026-10-04
-Estado: **rascunho para revisão do utilizador.** Desenho aprovado secção a
+Estado: **plano 1 (linguagem, API v2, tradutor) implementado no ramo `feat/13b-ilhas`; plano 2 (ilhas no `jte`) por fazer.** Desenho aprovado secção a
 secção na conversa de 2026-10-04.
 Ordem: **spec agora, implementação depois do item 12** (interop Java),
 decidido pelo utilizador a 2026-10-04. Depende do 13a (API de extensões).
@@ -326,12 +326,13 @@ além de records. Cresce por decisão explícita.
   (`PROP_MAP_KEYS`) já tem severidade onde cair, e o Gradle e o Maven
   imprimem-no em sucesso (R3 do 14).
 
-**Ainda por fazer: o que a 13b exige e sobe `ExtensionApi.VERSION` para 2**
-(nada foi publicado):
+**O que a 13b exigia e sobe `ExtensionApi.VERSION` para 2** (feito no plano 1,
+`VERSION = 2`, exceto onde indicado; nada foi publicado):
 
 - `Target.emit` devolve um só `Emitted`. Os `.js` por componente precisam de
   várias saídas por componente, ou então de serem emitidos por
-  `emitProject` (que vê o projeto inteiro). Escolhe-se no plano.
+  `emitProject` (que vê o projeto inteiro). Escolhe-se no plano. *(Por fazer:
+  decidido para o plano 2, R11, `Emitted.companions`/`CLIENT_ASSET`.)*
 - **Capacidades do alvo** (`reactive`), lidas pelo verificador. O
   `CheckContext` expõe vocabulários ativos, não alvos, e o
   `REACTIVE_UNSUPPORTED` precisa dos alvos.

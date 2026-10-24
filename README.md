@@ -181,7 +181,7 @@ reactive component Counter(int start) {
 }
 ```
 
-- `state T x = ...;` / `state var x = ...;`, `derived T x = ...;` / `derived var x = ...;` (derived values are recomputed; cycles are `DERIVED_CYCLE`).
+- `state T x = ...;` / `state var x = ...;`, `derived T x = ...;` / `derived var x = ...;` (derived values are recomputed; cycles are `DERIVED_CYCLE`; a repeated name among parameters, `state` and `derived` is `DUPLICATE_NAME`; `__proto__`, `constructor` and `prototype` are `RESERVED_NAME`).
 - `on:event=${lambda}`: the lambda may take zero or one parameter. `bind:value` (input, textarea, select; `String`, `int` or `double` state) and `bind:checked` (input; `boolean` state) need `${expression}` without quotes. `on:`/`bind:` are Suko syntax, never HTML attributes.
 - `prefix:name` attributes are accepted (`xlink:href`, `hx-on:click`, `x-on:click`); `@click` is still a syntax error. Dynamic `hx-on:*` / `x-on:*` stay `UNSAFE_SINK`.
 - `for (var x : xs)` now parses.
@@ -387,6 +387,8 @@ gradle build
 gradle test
 ```
 
+`:suko-core:test` needs Node.js 18+ on the `PATH` (or `SUKO_NODE` pointing at the executable): the subproject 13b client tests run the generated JavaScript and fail without it.
+
 ### Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed pipeline architecture and design decisions.
@@ -398,6 +400,7 @@ Each subproject has a specification document in `docs/superpowers/specs/` and an
 ## Requirements
 
 - Java 21+ (records, sealed interfaces, pattern-matching `switch`)
+- Node.js 18+ (only to run the `suko-core` tests; or set `SUKO_NODE`)
 - Gradle 9.x (no wrapper is committed — use a system install) or Maven 3.9+
 
 ## License
