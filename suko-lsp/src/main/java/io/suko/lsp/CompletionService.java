@@ -32,7 +32,7 @@ import java.util.Set;
  */
 final class CompletionService {
 
-    private static final List<String> KEYWORDS = List.of("if", "else", "for", "switch", "case", "default");
+    private static final List<String> KEYWORDS = List.of("if", "else", "for", "switch", "case", "default", "state", "derived");
 
     private CompletionService() {
     }

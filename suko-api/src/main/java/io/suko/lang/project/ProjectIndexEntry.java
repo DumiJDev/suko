@@ -30,4 +30,4 @@ public record ProjectIndexEntry(
     public int paramCount() {
         return params.size();
     }
-}
+}

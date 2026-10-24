@@ -18,4 +18,4 @@ public record ComponentDecl(String name, List<String> typeParameters, List<Param
                          List<Statement> body, SourceSpan span, boolean isPublic) {
         this(name, typeParameters, params, body, span, isPublic, span, false);
     }
-}
+}

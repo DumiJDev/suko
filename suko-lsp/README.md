@@ -35,7 +35,7 @@ O server traz o alvo `jte` embutido. As extensões do projeto (alvos, vocabulár
 
 ## Severidades
 
-`ERROR`, `WARNING` e `INFO` do compilador viram `Error`, `Warning` e `Information` do LSP. O
+`ERROR`, `WARNING` e `INFO` do compilador viram `Error`, `Warning` e `Information` do LSP. `HINT` (13b: `REACTIVE_UNUSED`) vira `Hint`. A completion do corpo oferece também `state` e `derived`. O
 `INFO` é novo (subprojeto 14): `TRUSTED_URL`/`TRUSTED_STYLE` marcam os usos de
 `trustedUrl(...)`/`trustedStyle(...)`. O server verifica com as opções de segurança por
 omissão: o `suko.security` do build (`strictCsp`, `urlSchemes`, `codeAttributes`...) não é

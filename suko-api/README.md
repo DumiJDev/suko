@@ -3,9 +3,9 @@
 O contrato das extensões de compile-time do Suko (subprojeto 13a). Só depende do
 JDK e dos tipos de leitura do compilador que as assinaturas expõem (AST,
 diagnósticos, `ProjectView`). Uma extensão corre **apenas no build e no LSP**,
-nunca em runtime. `ExtensionApi.VERSION` é hoje `1`.
+nunca em runtime. `ExtensionApi.VERSION` é hoje `2`.
 
-**A API v1 é provisória até à primeira release.** Qualquer mudança incompatível
+**A API é provisória até à primeira release.** Qualquer mudança incompatível
 (novo subtipo selado de `Statement`/`Expr`/`Param`, novo componente de record num
 contexto ou em `ProjectIndexEntry`, mudança de assinatura) incrementa `VERSION`.
 
@@ -132,6 +132,24 @@ corpus XSS** (`suko-core/src/test/resources/security/xss-corpus.txt`, `XssCorpus
 O core não conhece a `SukoSafe` nem nenhum alvo; um alvo que ignore isto abre XSS por URL
 em todos os componentes (incluindo os do registry). `Vocabulary` ainda não declara
 atributos de código/URL: só `codeAttributes`/`urlAttributes` da configuração.
+
+## API v2 (13b)
+
+`VERSION = 2`. O que muda, e **o que parte numa extensão de terceiros**:
+
+- `switch` exaustivos sobre `Statement` (novos `StateDecl`, `DerivedDecl`), `Expr` (novos
+  `LambdaExpr`, `AssignExpr`, `UpdateExpr`, `NewExpr`) e `SukoDiagnostic.Severity` (novo
+  `HINT`) deixam de compilar.
+- Padrões de record e chamadas posicionais aos construtores canónicos de `ComponentDecl`,
+  `HtmlElement` e `ProjectIndexEntry` mudam de aridade (os construtores antigos continuam).
+- Uma extensão compilada contra a API 1 dá `EXTENSION_API_MISMATCH` e não é registada
+  (nunca rebenta o build).
+
+Novo: `Target.capabilities()` e `Target.CAPABILITY_REACTIVE` (um alvo que não a declara
+recusa `reactive component` com `REACTIVE_UNSUPPORTED`), e `ExprNames` (nomes lidos por uma
+expressão). **Aviso:** `on:`/`bind:` estão em `HtmlElement.directives()` e nunca em
+`attributes()`; quem percorre só `attributes()` não os vê (falha fechada), e o `JteEmitter`
+lança se encontra diretivas.
 
 ## Limitações conhecidas e checklist para o item 12
 

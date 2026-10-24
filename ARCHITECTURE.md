@@ -14,6 +14,7 @@ Análise semântica [subprojeto 2 — CONCLUÍDO]
         │  - tabela de símbolos de componentes
         │  - valida chamadas de componente
         │  - valida slots (presença/cardinalidade/parâmetros)
+        │  - regras da 13b independentes do alvo (ReactiveChecker)
         │  - (não valida estrutura HTML; o escape de caracteres é do JTE em
         │    runtime, ContentType.Html. Sinks perigosos e URLs: subprojeto 14,
         │    HtmlSecurityChecker no suko-jte + SukoSafe gerado no projeto)
@@ -29,7 +30,9 @@ Análise semântica [subprojeto 2 — CONCLUÍDO]
         ▼
   Checkers e vocabulários das extensões [subprojeto 13a — CONCLUÍDO]
        │  corre depois do SemanticChecker: UNKNOWN_TAG por alvo
-       │  (vocabulários fechados) e os Checker registados
+       │  (vocabulários fechados) e os Checker registados;
+       │  REACTIVE_UNSUPPORTED por capacidade do alvo (CapabilityChecker)
+       │  e html-reactive do suko-jte (ReactiveHtmlChecker)
        ▼
   Emissão por alvo (Target, fornecido por uma extensão)
        │  o JteEmitter (módulo suko-jte) é o alvo embutido "jte";
@@ -574,6 +577,18 @@ arquitetura):
   assumir que `$` está livre. Mitigação disponível hoje: o escape `\$`
   (`x-data="\$store.foo"`). Manter `$ident` foi decisão explícita do
   utilizador no subprojeto 9 (D3 rejeitada), com este custo aceite.
+- **13b (plano 1): palavras, tokens e formas que mudam.** (a) `reactive`,
+  `state`, `derived` e `new` são palavras reservadas (R3): continuam a valer
+  em nomes HTML e depois de `.`/`?.`, mas um parâmetro ou variável com esse
+  nome deixa de fazer parse. (b) `++`, `--`, `+=` são tokens (R4): `a--b`,
+  `${1--1}`, `data--x` (dois hífenes seguidos num nome de atributo) e um
+  `--`/`++` solto numa expressão passam a `PARSE_ERROR`; escreve-se `a - -b`;
+  `data-x` e o texto livre não mudam. (c) Lambdas só em `on:` e em argumentos
+  de componentes; atribuições só em handlers (R5). (d) `hx-on::evento` (dois
+  `:`) não se escreve. (e) As limitações acima sobre o `Dialog` sem botão de
+  fecho e sobre a colisão de `$ident` com o Alpine mudaram: `x-on:click="..."`
+  **já se escreve** desde a 13b, e a colisão de `$store`/`$dispatch` **morde
+  agora** (mitigação: `\$`).
 - **Não há escape para um `${` literal fora de uma string.** Dentro de uma
   string escreve-se `\$` (`"literal \${x}"` sobrevive intacto ao `gg.jte`
   real, confirmado por sonda na Task 5); em texto livre não há forma de
@@ -1093,7 +1108,21 @@ tem origem própria nesta spec):
     com `reactive component`, `state`/`derived` (com `var`), `on:evento=${lambda}`
     e `bind:`; spec em
     `docs/superpowers/specs/2026-10-04-suko-reatividade-ilhas.md`,
-    implementação depois do item 12; (gerar JS a partir de expressões mantendo o escape) e
+    implementação depois do item 12; **estado da 13b: plano 1 (linguagem, API v2,
+    tradutor) implementado; plano 2 (ilhas no `jte`) por fazer.** Rulings do
+    plano 1 que mudam promessas: R1 (o alvo `jte` recusa `reactive component`
+    com `REACTIVE_UNSUPPORTED` até ao plano 2), R2, R13 (records/enums de Java
+    desconhecidos até o item 12 ou outra fonte de tipos), R14 (`Map` só de
+    leitura), R15, R16 (`int` de 32 bits como Java: a "diferença assumida" do
+    overflow deixou de existir), R18, R20, R26 (contrato do `style` reativo:
+    `cssValue` normalizado, só `setProperty`), R27 (lista de elementos proibidos
+    alargada e única), R28 (`PROP_SENSITIVE` por tokens, `PROP_*` por campo no
+    plano 2) e R29 (gate do `trusted*` no modo filho); R10 revisto (supressão só
+    por pares declarados). API v2: `Statement.Directive`/`StateDecl`/`DerivedDecl`,
+    `Expr.LambdaExpr`/`AssignExpr`/`UpdateExpr`/`NewExpr`, `SukoDiagnostic.Severity.HINT`,
+    `Target.capabilities()`, `ExprNames`, novos campos nos records; fica decidido
+    para o plano 2 (R11) o `Emitted.companions`/`CLIENT_ASSET`, e fora da 13b
+    (R12, (c)) a carga estruturada no diagnóstico. (gerar JS a partir de expressões mantendo o escape) e
     exige revisão do `security-specialist`. Riscos: a matriz de testes
     cresce com cada alvo (começar com dois — JTE, já existente, e
     TamboUI, da issue #7); as primitivas neutras tendem para o mínimo
@@ -1177,6 +1206,8 @@ tem origem própria nesta spec):
     - (k) **`:` e `@` em nomes de atributo** não são aceites pelo lexer, por isso
       `x-on:click`, `@click`, `hx-on:click` e `xlink:href` não se escrevem, e os
       ramos de `:`/`@` do verificador são código morto até o lexer os permitir.
+      **FECHADA na 13b (plano 1):** `prefixo:nome` escreve-se e os ramos `:`
+      estão vivos (`PrefixedAttributeSecurityTest`); `@click` continua erro.
       **Decidido a 2026-10-11 (13b, Q4):** a 13b abre `prefixo:nome` (sem `@`;
       `@click` continua erro de sintaxe), o que torna os ramos `:` código vivo,
       com testes na 13b.
@@ -1215,8 +1246,9 @@ tem origem própria nesta spec):
       `target/generated-resources/suko/static/suko` no Maven); (c) o `SecurityAudit` do core fixa os
       códigos `TRUSTED_*` do `suko-jte` e analisa a mensagem após `": "` — usar uma
       carga estruturada no diagnóstico; (d) o `HtmlSecurityChecker` trata todo o
-      atributo `on*` como handler — o `on:click=${lambda}` da 13b precisa de uma
-      exceção explícita; (e) item 12: uma classe Java que implemente `Component`
+      atributo `on*` como handler — **resolvido na 13b** por `Statement.Directive`
+      (`on:`/`bind:` não são atributos); (a)/(b) seguem para o plano 2 e (c) fica
+      por decidir fora da 13b; (e) item 12: uma classe Java que implemente `Component`
       escreve HTML cru (mesma confiança que os slots) e o checker nunca a vê.
     - Loja/pentest: a loja expõe pouco a um pentest (`cssValue`, `pathSegment`,
       `srcset`/`imageDataTypes`, `rel`/`noopener`, `ping`, `hx-*` e `trusted*`
