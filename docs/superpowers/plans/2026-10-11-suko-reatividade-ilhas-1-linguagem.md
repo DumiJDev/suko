@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-04-suko-reatividade-ilhas.md` (aprovada; inclui as decisões Q1–Q6 de 2026-10-11). O plano **segue a spec**; onde a spec deixa espaço ou se contradiz, ver "Rulings do plano". Ler também `docs/superpowers/specs/2026-10-04-suko-seguranca-por-omissao.md`, `docs/security.md` e `ARCHITECTURE.md` (itens 13 e 14, "Pendentes do subprojeto 14").
 
-**Pré-condição antes de executar (ver "Perguntas ao utilizador" no fim):** a revisão obrigatória do `security-specialist` sobre as alterações de 2026-10-11 da spec (Q4/Q5/Q6, um diagnóstico por sítio) tem de estar feita — afeta as Tasks 2, 4 e 9. Os rulings R13 e R14 foram confirmados pelo utilizador (R13 = A, R14 = B).
+**Revisão de segurança feita (2026-10-24):** a revisão do `security-specialist` sobre as alterações de 2026-10-11 da spec (Q4/Q5/Q6, um diagnóstico por sítio) está em `.superpowers/sdd/13b-plano1/security-review.md` (nenhum achado bloqueia). As correções estão aplicadas a este plano: S6 e S7 nas Tasks 2 e 4; S1, S2, S8, S9 e S10 nas Tasks 9 e 10 e nos rulings R10 e R26–R29; S3, S4 e S5 nos rulings R26–R27, na Task 10 e nos requisitos do plano 2 (a spec foi corrigida quanto ao S3). Os rulings R13 e R14 foram confirmados pelo utilizador (R13 = A, R14 = B).
 
 ## Global Constraints
 
@@ -20,7 +20,7 @@
 - **Nenhuma dependência nova** em nenhum módulo (nem de teste). Node é uma ferramenta do ambiente, invocada por `ProcessBuilder` (`node --input-type=module`, lote único por teste).
 - **Sem `node` no `PATH`, os testes do cliente FALHAM, não são saltados** (spec, "Testes"; a lacuna (i) do item 14 foi um teste saltado em silêncio). Nunca `Assumptions.assume*` nem `@Disabled` nesses testes. `SUKO_NODE` pode apontar para outro executável.
 - **Códigos novos, com a severidade da spec:** `REACTIVE_REQUIRED` (ERROR), `REACTIVE_UNUSED` (**HINT**), `CLIENT_UNSUPPORTED` (ERROR), `PROP_NOT_SERIALIZABLE` (ERROR), `PROP_SENSITIVE` (WARNING), `PROP_MAP_KEYS` (INFO), `LAMBDA_ACROSS_BOUNDARY` (ERROR), `BIND_TARGET` (ERROR), `CLIENT_UNSAFE_SINK` (ERROR), `TYPE_NOT_INFERRED` (ERROR), `DERIVED_CYCLE` (ERROR), `REACTIVE_UNSUPPORTED` (ERROR). Reutilizados: `UNSAFE_SINK`, `INVALID_DOCTYPE`, `RESERVED_NAME`, `PARSE_ERROR`. Nenhum outro código novo.
-- **Listas fechadas da spec, exatas:** `bind:value` só em `input`/`textarea`/`select`, `bind:checked` só em `input`; elementos de `CLIENT_UNSAFE_SINK` (a): `script`, `style`, `iframe`, `frame`, `object`, `embed`, `base`, `meta`, `link`, `template`, `animate`, `set`, `animateMotion`, `animateTransform`, `foreignObject` (comparação sem distinguir maiúsculas, pelo nome local); nomes sensíveis de `PROP_SENSITIVE`: `password, passwd, pwd, secret, token, apikey, privatekey, credential, hash, session, cookie, jwt, auth, ssn` (sem distinguir maiúsculas, como prefixo ou sufixo); subconjunto do cliente: o da secção "Expressões no cliente" da spec, mais o R14.
+- **Listas fechadas (da spec, com as duas extensões da revisão de segurança, R27 e R28):** `bind:value` só em `input`/`textarea`/`select`, `bind:checked` só em `input`; elementos de `CLIENT_UNSAFE_SINK` (a): os da spec — `script`, `style`, `iframe`, `frame`, `object`, `embed`, `base`, `meta`, `link`, `template`, `animate`, `set`, `animateMotion`, `animateTransform`, `foreignObject` — mais `noscript` (já em `CONTENT_SINKS` do 14), `fencedframe`, `portal`, `applet` e `frameset`, numa **constante única** `HtmlSecurityRules.CLIENT_FORBIDDEN_ELEMENTS` (comparação sem distinguir maiúsculas, pelo nome local); nomes sensíveis de `PROP_SENSITIVE`: `password, passwd, pwd, secret, token, apikey, privatekey, credential, hash, session, cookie, jwt, auth, ssn` (os da spec) mais `csrf, nonce, otp, pin, cvv, salt, bearer, refresh`, comparados **por tokens** do nome (camelCase/snake_case, sem distinguir maiúsculas) e não por prefixo/sufixo; subconjunto do cliente: o da secção "Expressões no cliente" da spec, mais o R14.
 - **A suite existente fica verde sem alterar asserções.** Única exceção autorizada: em `ExtensionRegistryTest` (Task 1) as fixtures que escrevem a versão da API como literal `1` passam a `ExtensionApi.VERSION` (é a fixture, não a asserção) — as asserções desse ficheiro não mudam.
 - **Goldens:** nenhum golden é regenerado neste plano. `GoldenParityTest`, os goldens do site e os testes da loja têm de passar intactos — é a prova de que as palavras e tokens novos não mudam nenhum `.sk` existente.
 - **Fins de linha:** os ficheiros abaixo estão em CRLF e continuam em CRLF (linhas novas também em CRLF); os restantes são LF; ficheiros novos são LF. Ver "Ficheiros CRLF" e o comando de verificação.
@@ -69,7 +69,7 @@ Cada ruling diz o custo se estiver errado. R13 e R14 foram confirmados pelo util
 - **R7 — `for (var x : xs)` passa a fazer parse.** O exemplo da spec usa-o e hoje não faz parse (`var` é palavra reservada e `type` só aceita `Identifier`). Fica no AST como `Type("var")` e o emissor escreve `@for(var x : ...)`, que o JTE aceita.
 - **R8 — `new T(args)` no servidor é Java tal como está** (o emissor escreve `new T(...)`, o javac/JTE validam, como qualquer chamada Java em `${...}`); no cliente só cria records conhecidos (R13).
 - **R9 — Arrumação dos códigos por módulo.** Core (linguagem, todos os alvos): `REACTIVE_REQUIRED`, `REACTIVE_UNUSED`, `DERIVED_CYCLE`, `BIND_TARGET` quando o alvo não é um state simples, `LAMBDA_ACROSS_BOUNDARY`, `INVALID_DOCTYPE` de um reactive component, `REACTIVE_UNSUPPORTED`. `suko-jte` (o cliente é JS, logo o subconjunto é do alvo): `CLIENT_UNSUPPORTED`, `TYPE_NOT_INFERRED`, `CLIENT_UNSAFE_SINK`, `BIND_TARGET` de nome/elemento/tipo, `PROP_*`, `RESERVED_NAME` de `trusted*` no cliente. **Desvio parcial da spec** ("core: … `BIND_TARGET`"): os nomes de elementos HTML (`input`, `textarea`, `select`) ficam no `suko-jte`, pelo R10 do subprojeto 14 (o core continua sem regras de HTML). *Custo:* `BIND_TARGET` sai de dois sítios; o R10 garante um só por diretiva.
-- **R10 — Um diagnóstico por sítio.** O core corre antes das extensões e o `JteExtension` regista o `html-security` antes do `html-reactive`; os checkers da 13b não reportam um ERROR cujo span se sobreponha a um ERROR já presente no mesmo ficheiro (`UNSAFE_SINK` ganha a `CLIENT_UNSAFE_SINK`, o `BIND_TARGET` do core ganha ao do `suko-jte`, o `RESERVED_NAME` ganha ao `CLIENT_UNSUPPORTED` da mesma chamada). *Custo:* um segundo problema real dentro do mesmo sítio só aparece depois de corrigido o primeiro.
+- **R10 — Um diagnóstico por sítio, só por pares declarados (revisão de segurança, S2).** O core corre antes das extensões e o `JteExtension` regista o `html-security` antes do `html-reactive`. O `ReactiveHtmlChecker` só omite um ERROR seu quando o span se sobrepõe ao de um diagnóstico **já presente no mesmo ficheiro cujo código pertence ao par declarado** (`SUPPRESSED_BY`): `CLIENT_UNSAFE_SINK` ← `UNSAFE_SINK`; `BIND_TARGET` ← `BIND_TARGET` (o do core ganha ao do `suko-jte`); `CLIENT_UNSUPPORTED` ← `RESERVED_NAME`, `UNSAFE_SINK`; `RESERVED_NAME` ← `RESERVED_NAME` (o problema do tradutor para `trusted*` e o do `html-security` descrevem a mesma chamada; sem este par saem dois); `TYPE_NOT_INFERRED` e `PROP_*` nunca são omitidos. Um ERROR cujo span envolve o sítio (`<MAIN>` com `UPPERCASE_NAME`, `<script>` com `UNSAFE_SINK`) **não** esconde os problemas dentro dele. `endIndex` do `SourceSpan` é inclusivo, por isso spans adjacentes não se sobrepõem. *Custo:* dois problemas distintos no mesmo elemento aparecem ambos (corrige-se um de cada vez); só o par declarado se funde num diagnóstico.
 - **R11 — Saídas por componente (API v2 (b)): forma decidida, implementação no plano 2.** O módulo JS de cada componente é emitido pelo `Target.emit` (os nomes com hash do conteúdo obrigam a ter o JS antes de escrever o `.jte`): `Emitted` ganha `List<ProjectOutput> companions` (com construtor de 3 argumentos mantido) e `ProjectOutput.Kind` ganha `CLIENT_ASSET` (vai para `js.outputDir`, limpeza por manifesto). Fica para o plano 2 junto com o encaminhamento no core e as pastas dos plugins, como mudança da v2 no lugar (precedente: R1 do 14 — nada publicado). *Custo:* o plano 2 mexe outra vez na API v2 antes da release.
 - **R12 — API v2 (a), (c) e (e).** (a) as opções `js { outputDir; basePath }` e a separação `generatedPackage`/opções de projeto ficam no plano 2 (só aí há consumidor); (c) a carga estruturada no diagnóstico fica **fora da 13b** — nenhum consumidor a pede, e com a Q6 `trusted*` só existe no servidor, onde o `SecurityAudit` já funciona; (e) sem mudança (item 12). O `CheckContext` não ganha os alvos ativos: o `REACTIVE_UNSUPPORTED` é do core, que já os tem.
 - **R13 — Tipos Java desconhecidos (confirmado: opção A).** O compilador não conhece records nem enums de Java (item 12 adiado a 2026-10-06; a spec assumia-o feito, D8). O plano cria uma porta `JavaTypes` (só no `suko-jte`) com `JavaTypes.NONE` em produção: um tipo Java que não é da lista do subconjunto fica `Named` — pode ser passado e comparado com `null`, mas acessores, `new` e métodos dão `CLIENT_UNSUPPORTED`, e um parâmetro desse tipo lido no cliente dá `PROP_NOT_SERIALIZABLE` (falha fechada). Os testes exercitam records com uma `JavaTypes` em memória. *Custo:* o exemplo `TodoList` da spec (records) só compila quando houver uma fonte de tipos; **a origem dos tipos tem de ser decidida antes do plano 2** (pergunta 2).
@@ -85,6 +85,10 @@ Cada ruling diz o custo se estiver errado. R13 e R14 foram confirmados pelo util
 - **R23 — `NodeRunner`:** `node` do `PATH` (ou `SUKO_NODE`), Node ≥ 18 (`Object.hasOwn`), o `prelude.js` importado por URL `data:`; um `node` que não arranca é `AssertionError` com instruções.
 - **R24 — `state` só vê parâmetros e states anteriores; `derived` vê parâmetros, todos os states e os outros `derived` (grafo, ordem topológica).** Um `var` do servidor usado no cliente dá `CLIENT_UNSUPPORTED` com a sugestão de o declarar `derived`. Um `for` cujo corpo tem código do cliente que lê a variável do ciclo passa inteiro para o cliente.
 - **R25 — `HINT`:** o LSP mostra-o como `Hint`; Gradle e Maven imprimem-no ao nível info com o rótulo `[HINT]` (o Maven já imprime `[<severidade>]`).
+- **R26 — `style` reativo no cliente: o contrato fecha-se aqui (revisão de segurança, S3/S4/S5; é o que a spec deixava "para o plano").** (1) O porte de `SukoSafe.cssValue` devolve o valor **depois** de `String.valueOf(v).trim()` com a regra `<= U+0020` (nunca `String.prototype.trim()`), como o Java faz — não "o original", como dizia a spec (corrigida); `null` e um `Boxed` nulo dão `unset`, nunca o texto `null`; regex `^...$` ASCII, sem flags `i`/`u`/`m` e sem `\d`. (2) A escrita no DOM é **só** `style.setProperty(nomeLiteral, valor)` e `style.removeProperty(nomeLiteral)`: nome de propriedade literal fixado em compile-time, sem o 3.º argumento (`!important`), e **nunca** `cssText`, `style[prop] =`, `setAttribute("style", ...)` nem `setAttributeNS`. Razão: o valor passa pelo parser CSS como um valor único (um `;` não abre outra declaração) e não depende de `style-src 'unsafe-inline'`; `setAttribute("style")` falha em silêncio sob `style-src 'self'`. (3) O plano 2 prova em Playwright, sob `style-src 'self'`, que `setProperty` aplica e que `setAttribute('style', ...)` é bloqueado (não assume), e o varrimento por allowlist só aceita estas duas operações de estilo. (4) O teste diferencial do plano 2 inclui, no mínimo: `null`/`Boxed` nulo (→ `unset`), `double` via `$suko.dstr` (`1.0E10`, `1.0E-5`, `NaN`, `Infinity`, `-0.0`, `100.0`), `Integer.MIN_VALUE`, `boolean`, strings com `\u0000`/`\u0001`/U+00A0/U+FEFF/U+2028 nas pontas, `1e3`, `5 5`, `5;color:red`, `url(x)`, `expression(x)`, dígitos e letras de largura total, um surrogate isolado, e `bind:value` com os mesmos valores. *Custo:* um autor não pode usar `cssText` no cliente (não há razão para o fazer).
+- **R27 — `CLIENT_FORBIDDEN_ELEMENTS` é uma constante única em `HtmlSecurityRules` e alarga a lista (a) da spec (revisão de segurança, S8).** `CONTENT_SINKS` (`script`, `style`, `noscript`, `foreignobject`) e `ANIMATION` (`animate`, `set`, `animatemotion`, `animatetransform`) passam de privados do `HtmlSecurityChecker` para públicos do `HtmlSecurityRules`, e a constante é a união dos dois com `iframe`, `frame`, `object`, `embed`, `base`, `meta`, `link`, `template` e os embebimentos que nem o 14 nem a spec cobrem: `fencedframe`, `portal`, `applet`, `frameset`. **Decidido aqui (o utilizador pode inverter):** entram todos — o cliente nunca precisa de criar nenhum, e uma cópia manual da lista desvia-se do 14 sem ninguém ver (o `noscript` já faltava na lista da spec). Um teste fixa `CONTENT_SINKS ∪ ANIMATION ⊆ CLIENT_FORBIDDEN_ELEMENTS`. O alinhamento do render do servidor do 14 com os quatro elementos novos (M2 do 14) é do 14 e não bloqueia a 13b. *Custo:* um elemento que um dia o cliente precise de criar sai da lista por decisão escrita.
+- **R28 — `PROP_SENSITIVE` por tokens e `PROP_*` por campo (revisão de segurança, S9, S10).** (1) O nome divide-se em tokens (`authToken` → `auth`, `token`; `APIKey` → `api`, `key`; `_`/`-`/`$` separam) e compara-se cada token (e os pares de tokens seguidos, para `apikey`/`privatekey`), com um `s` final tolerado (`credentials`); `author`, `authority`, `pinned` e `spinner` deixam de casar. A lista ganha `csrf`, `nonce`, `otp`, `pin`, `cvv`, `salt`, `bearer`, `refresh`. Limites conhecidos, só WARNING: um nome todo em minúsculas e sem separador (`accesstoken`) é um único token e não casa; `commitHash` casa `hash` (a lista da spec tem `hash` sozinho). (2) R18 minimiza por parâmetro, não por campo: um `User user` lido só por `user.name()` serializa todos os campos (incluindo `passwordHash`). **Requisito do plano 2:** o serializador gerado emite só os campos que o `ClientModel` lê; enquanto não o fizer, um `PROP_SENSITIVE` num campo de record que o cliente não lê passa a ERROR. (3) Callbacks (`Consumer`/`Runnable`) de um parâmetro de raiz de ilha chamados a partir de `component` ou de Java ficam `undefined` no cliente: o plano 2 dá um erro de montagem claro em vez de um `TypeError`. (4) `docs/security.md` (Task 10) avisa que dados não confiáveis ligados a `position`/`display`/`visibility`/`pointer-events`/`opacity` deixam o utilizador escolher entre identificadores válidos (redressing de UI, como no servidor desde o 14).
+- **R29 — `trusted*` no modo "filho reativo" (plano 2) é um gate escrito (revisão de segurança, S1).** Este plano trata os parâmetros como constantes (vista de raiz de ilha, R18), por isso `trustedUrl(param)` num atributo de um reactive component continua `TRUSTED_URL` (aceite, só no servidor). Quando o plano 2 juntar o modo filho, os parâmetros passam a reativos e um pai que muda o argumento faz o cliente reescrever o atributo sem passar pelo porte do `SukoSafe` — o que quebra a Q6 e deixa o `security-audit.json` incompleto. **Requisito do plano 2, na mesma task que junta o modo filho:** um `trusted*` cujo argumento lê um parâmetro de um reactive component que é chamado a partir de outro reactive component dá `RESERVED_NAME` (ou o atributo passa a ser tratado como atualizado no cliente); o teste `@Disabled("plano 2: ...")` da Task 9 é o gate — o plano 2 remove o `@Disabled` e fá-lo passar. (Única exceção à regra de nunca desativar testes: não é um teste do cliente em Node e descreve comportamento que ainda não existe.)
 
 ## Review Focus
 
@@ -5807,19 +5811,20 @@ git commit -m "feat(13b): ClientModel — regiões do cliente, sites traduzidos 
 
 ### Task 9: `ReactiveHtmlChecker` e `trusted*` só no servidor (Q6)
 
-**Pré-condição:** a revisão do `security-specialist` sobre as alterações de 2026-10-11 da spec (Q4/Q5/Q6, um diagnóstico por sítio) está feita; se mudar alguma regra desta task, aplicar antes de executar.
+**Pré-condição cumprida:** a revisão do `security-specialist` (`.superpowers/sdd/13b-plano1/security-review.md`) está feita e as suas correções para esta task (S1, S2, S8, S9) já estão no texto abaixo; os rulings R10 e R26–R29 são o contexto.
 
 **Files:**
 - Create: `suko-jte/src/main/java/io/suko/jte/ReactiveHtmlChecker.java`
-- Modify: `suko-jte/src/main/java/io/suko/jte/HtmlSecurityChecker.java`, `suko-jte/src/main/java/io/suko/jte/JteExtension.java`
+- Modify: `suko-jte/src/main/java/io/suko/jte/HtmlSecurityChecker.java`, `suko-jte/src/main/java/io/suko/jte/HtmlSecurityRules.java`, `suko-jte/src/main/java/io/suko/jte/JteExtension.java`
 - Test (create): `suko-core/src/test/java/io/suko/lang/security/ReactiveHtmlCheckerTest.java`
 
 **Interfaces:**
 - Consumes: `ClientModel`, `Callees`, `JavaTypes` (Task 8), `CheckContext` (`report`, `diagnostics()`, `fileName()`, `project()`, `activeVocabularies()`).
 - Produces:
-  - Checker `html-reactive` (`ReactiveHtmlChecker`, registado pelo `io.suko.jte` **depois** do `html-security`): `CLIENT_UNSUPPORTED`/`TYPE_NOT_INFERRED` (os `problems()` do `ClientModel`), `CLIENT_UNSAFE_SINK` (R20), `BIND_TARGET` de nome/elemento/tipo (R21; só quando o alvo é um state simples), `PROP_NOT_SERIALIZABLE` (ERROR), `PROP_SENSITIVE` (WARNING, também nos componentes de records conhecidos), `PROP_MAP_KEYS` (INFO), com o R10 (nenhum ERROR por cima de outro ERROR do mesmo ficheiro).
+  - Checker `html-reactive` (`ReactiveHtmlChecker`, registado pelo `io.suko.jte` **depois** do `html-security`): `CLIENT_UNSUPPORTED`/`TYPE_NOT_INFERRED` (os `problems()` do `ClientModel`), `CLIENT_UNSAFE_SINK` (R20), `BIND_TARGET` de nome/elemento/tipo (R21; só quando o alvo é um state simples), `PROP_NOT_SERIALIZABLE` (ERROR), `PROP_SENSITIVE` (WARNING, também nos componentes de records conhecidos), `PROP_MAP_KEYS` (INFO), com o R10 revisto (um ERROR só é omitido por um diagnóstico do par declarado em `SUPPRESSED_BY`; `PROP_*` e `TYPE_NOT_INFERRED` nunca).
   - `public ReactiveHtmlChecker()` (produção, `JavaTypes.NONE`, R13) e `public ReactiveHtmlChecker(JavaTypes)` (formas de records conhecidas; só os testes a usam).
-  - `HtmlSecurityChecker`: num reactive component, `trustedUrl`/`trustedStyle` como valor de um atributo atualizado no cliente dá `RESERVED_NAME` (e não `TRUSTED_*`), por isso `security-audit.json` só regista usos do servidor (Q6).
+  - `HtmlSecurityChecker`: num reactive component, `trustedUrl`/`trustedStyle` como valor de um atributo atualizado no cliente dá `RESERVED_NAME` (e não `TRUSTED_*`), por isso `security-audit.json` só regista usos do servidor (Q6). O gate do modo "filho reativo" é o teste `@Disabled` abaixo (R29).
+  - `HtmlSecurityRules.CONTENT_SINKS`, `ANIMATION` (agora públicos) e `CLIENT_FORBIDDEN_ELEMENTS` (constante única, R27) — `ReactiveHtmlChecker` e `HtmlSecurityChecker` usam-nas, sem cópia.
 
 - [ ] **Step 1: Testes (falham)**
 
@@ -5829,6 +5834,7 @@ git commit -m "feat(13b): ClientModel — regiões do cliente, sites traduzidos 
 package io.suko.lang.security;
 
 import io.suko.ext.*;
+import io.suko.jte.HtmlSecurityRules;
 import io.suko.jte.ReactiveHtmlChecker;
 import io.suko.jte.client.ClientTypes;
 import io.suko.jte.client.JavaTypes;
@@ -5836,6 +5842,7 @@ import io.suko.lang.JteCompiler;
 import io.suko.lang.ast.ComponentDecl;
 import io.suko.lang.diagnostic.SukoDiagnostic;
 import io.suko.lang.ext.ExtensionRegistry;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -5930,7 +5937,8 @@ class ReactiveHtmlCheckerTest {
     @ValueSource(strings = {"<script>1</script>", "<style>p</style>", "<iframe></iframe>", "<frame/>", "<object></object>",
         "<embed/>", "<base/>", "<meta/>", "<link/>", "<template>x</template>", "<svg><animate/></svg>", "<svg><set/></svg>",
         "<svg><animateMotion/></svg>", "<svg><animateTransform/></svg>", "<svg><foreignObject>x</foreignObject></svg>",
-        "<svg><script>1</script></svg>"})
+        "<svg><script>1</script></svg>", "<noscript>x</noscript>", "<fencedframe></fencedframe>", "<portal></portal>",
+        "<applet></applet>", "<frameset></frameset>"})
     void dangerousElementsAreNeverCreatedOnTheClient(String element) {
         String client = "reactive component R() { state boolean open = false; if (open) { " + element + " } }";
         assertEquals(1, count(client, "CLIENT_UNSAFE_SINK"), client + " -> " + diagnostics(client));
@@ -5948,6 +5956,61 @@ class ReactiveHtmlCheckerTest {
             "a origem constante é aceite no servidor (14) mas o cliente não a implementa");
         String bind = "reactive component R() { state String s = \"\"; derived String d = s; <div bind:value=${d}></div> }";
         assertEquals(1, count(bind, "BIND_TARGET"), diagnostics(bind).toString());
+    }
+
+    /** R10 (S2): só os pares declarados se fundem; um ERROR que envolve o sítio não esconde o que está dentro. */
+    @Test
+    void anEnclosingErrorDoesNotHideTheProblemsInsideIt() {
+        String upper = "reactive component R() { state boolean open = false; <MAIN> if (open) { <iframe></iframe> } </MAIN>"
+            + " <b on:click=${() -> open = !open}>t</b> }";
+        assertTrue(codes(upper).containsAll(Set.of("UPPERCASE_NAME", "CLIENT_UNSAFE_SINK")), diagnostics(upper).toString());
+        // se o parse recusar este corpo de <script>, ajustar o fixture mantendo a ideia: um ERROR que envolve + um sink dentro
+        String script = "reactive component R(String x) { state boolean open = false;"
+            + " <script>${x} if (open) { <iframe></iframe> }</script> <b on:click=${() -> open = !open}>t</b> }";
+        assertTrue(codes(script).containsAll(Set.of("UNSAFE_SINK", "CLIENT_UNSAFE_SINK")), diagnostics(script).toString());
+    }
+
+    @Test
+    void twoDistinctSinksGiveTwoDiagnosticsEvenWhenTheirSpansAreAdjacent() {
+        String apart = "reactive component R(String x) { state String s = \"\"; state boolean open = false;"
+            + " <b onclick=${x} on:click=${() -> open = !open}>t</b> if (open) { <iframe></iframe> } }";
+        assertEquals(Set.of("UNSAFE_SINK", "CLIENT_UNSAFE_SINK"), codes(apart), diagnostics(apart).toString());
+        String adjacent = "reactive component R(String x) { state String s = \"\"; <script>${x}</script><iframe title=${s}></iframe>"
+            + " <b on:click=${() -> s = \"y\"}>t</b> }";
+        assertEquals(1, count(adjacent, "UNSAFE_SINK"), diagnostics(adjacent).toString());
+        assertEquals(1, count(adjacent, "CLIENT_UNSAFE_SINK"), diagnostics(adjacent).toString());
+    }
+
+    @Test
+    void propDiagnosticsAreNeverSuppressedByAnotherError() {
+        String sk = "reactive component R(long v, String x) { state var copy = v; <script>${x}</script> }";
+        assertEquals(1, count(sk, "PROP_NOT_SERIALIZABLE"), diagnostics(sk).toString());
+        assertEquals(1, count(sk, "UNSAFE_SINK"), diagnostics(sk).toString());
+    }
+
+    /** R27 (S8): uma só constante, sem cópia que se desvie do 14. */
+    @Test
+    void theForbiddenElementsAreOneConstantThatIncludesTheRulesOf14() {
+        Set<String> forbidden = HtmlSecurityRules.CLIENT_FORBIDDEN_ELEMENTS;
+        assertTrue(forbidden.containsAll(HtmlSecurityRules.CONTENT_SINKS), forbidden.toString());
+        assertTrue(forbidden.containsAll(HtmlSecurityRules.ANIMATION), forbidden.toString());
+        assertTrue(forbidden.containsAll(Set.of("script", "style", "iframe", "frame", "object", "embed", "base", "meta", "link",
+            "template", "animate", "set", "animatemotion", "animatetransform", "foreignobject",
+            "noscript", "fencedframe", "portal", "applet", "frameset")), forbidden.toString());
+    }
+
+    /** R20/S8: o elemento proibido está no render do servidor (14 aceita), mas um atributo seu é atualizado no cliente. */
+    @ParameterizedTest
+    @ValueSource(strings = {"<iframe src=\"https://h/${s}\"></iframe>", "<script title=${s}>1</script>",
+        "<style title=${s}>p</style>", "<frame title=${s}/>", "<object title=${s}></object>", "<embed title=${s}/>",
+        "<base title=${s}/>", "<meta title=${s}/>", "<link title=${s}/>", "<template title=${s}>x</template>",
+        "<noscript title=${s}>x</noscript>", "<svg><animate title=${s}/></svg>", "<svg><set title=${s}/></svg>",
+        "<svg><animateMotion title=${s}/></svg>", "<svg><animateTransform title=${s}/></svg>",
+        "<svg><foreignObject title=${s}>x</foreignObject></svg>", "<fencedframe title=${s}></fencedframe>",
+        "<portal title=${s}></portal>", "<applet title=${s}></applet>", "<frameset title=${s}></frameset>"})
+    void aForbiddenElementNeverGetsAClientUpdatedAttribute(String element) {
+        String sk = "reactive component R() { state String s = \"\"; " + element + " <b on:click=${() -> s = \"x\"}>t</b> }";
+        assertEquals(1, count(sk, "CLIENT_UNSAFE_SINK"), sk + " -> " + diagnostics(sk));
     }
 
     @ParameterizedTest
@@ -5996,6 +6059,24 @@ class ReactiveHtmlCheckerTest {
         assertEquals(SukoDiagnostic.Severity.INFO, keys.severity());
     }
 
+    static long sensitiveCount(String param) {
+        return count("reactive component R(String " + param + ") { state var copy = " + param + "; <p>x</p> }", "PROP_SENSITIVE");
+    }
+
+    /** R28 (S9): casa por token do nome, incluindo os nomes que faltavam na lista da spec. */
+    @ParameterizedTest
+    @ValueSource(strings = {"csrf", "csrfToken", "nonce", "otp", "pin", "cvv", "salt", "bearerValue", "refreshToken",
+        "api_key", "APIKey", "privateKey", "userSessions", "credentials", "passwordHint"})
+    void sensitiveNamesMatchByToken(String param) {
+        assertEquals(1, sensitiveCount(param), param);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"author", "authors", "authority", "authorName", "pinned", "spinner", "tokenizer", "salted", "title"})
+    void similarLookingNamesAreNotSensitive(String param) {
+        assertEquals(0, sensitiveCount(param), param);
+    }
+
     /** Extensão de teste: o checker com formas de records conhecidas, num alvo com o vocabulário html. */
     static final class RecordsExtension implements SukoExtension {
         public String id() { return "io.suko.test.records"; }
@@ -6039,6 +6120,21 @@ class ReactiveHtmlCheckerTest {
         assertEquals(1, count(handler, "RESERVED_NAME"), diagnostics(handler).toString());
     }
 
+    /**
+     * Gate do plano 2 (R29, S1). Hoje os parâmetros de Child são constantes (vista de raiz de ilha, R18), por isso o
+     * href é TRUSTED_URL (aceite, só no servidor). Com o modo "filho reativo" um pai que muda 'target' faz o cliente
+     * reescrever o href sem passar pelo porte do SukoSafe: tem de ser RESERVED_NAME. O plano 2 remove o @Disabled
+     * na mesma task que junta o modo filho e faz este teste passar.
+     */
+    @Test
+    @Disabled("plano 2: modo filho reativo (R29)")
+    void trustedOnAParamOfAReactiveChildIsReservedOnceChildModeExists() {
+        String sk = "reactive component Child(String u) { <a href=${trustedUrl(u)}>x</a> }"
+            + " reactive component Parent() { state String target = \"/a\"; Child(u = target)"
+            + " <b on:click=${() -> target = \"/b\"}>t</b> }";
+        assertEquals(Set.of("RESERVED_NAME"), codes(sk), diagnostics(sk).toString());
+    }
+
     @Test
     void htmlEventAttributesAreStillUnsafeInsideAReactiveComponent() {
         String sk = "reactive component R(String h) { state int n = 0; <b onclick=${h} on:click=${() -> n++}>t</b> }";
@@ -6075,27 +6171,37 @@ import io.suko.lang.diagnostic.SukoDiagnostic.Severity;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.regex.Pattern;
 
+import static io.suko.jte.HtmlSecurityRules.CLIENT_FORBIDDEN_ELEMENTS;
 import static io.suko.jte.HtmlSecurityRules.lower;
 
 /**
  * As regras da 13b que dependem do alvo JTE (o cliente é JS): CLIENT_UNSUPPORTED e TYPE_NOT_INFERRED (o que o
  * {@link ClientModel} encontra), CLIENT_UNSAFE_SINK, BIND_TARGET de nome/elemento/tipo e PROP_NOT_SERIALIZABLE,
  * PROP_SENSITIVE e PROP_MAP_KEYS. Corre depois do {@link HtmlSecurityChecker} (o JteExtension regista-o a seguir)
- * e nunca reporta um ERROR num sítio onde já há um ERROR (um diagnóstico por sítio, R10).
+ * e só omite um ERROR quando o span se sobrepõe ao de um diagnóstico do par declarado em {@link #SUPPRESSED_BY}
+ * (um diagnóstico por sítio, R10 revisto): um ERROR que envolve o sítio não esconde o que está dentro.
  */
 public final class ReactiveHtmlChecker implements Checker {
 
-    /** Spec 13b, "Operações DOM e sinks" (a): elementos que o cliente nunca cria (nome local, sem maiúsculas). */
-    static final Set<String> CLIENT_FORBIDDEN_ELEMENTS = Set.of("script", "style", "iframe", "frame", "object", "embed",
-        "base", "meta", "link", "template", "animate", "set", "animatemotion", "animatetransform", "foreignobject");
+    /** R10: o código de um ERROR nosso -> os códigos de diagnósticos já presentes que o fundem. Ausente = nunca omitido. */
+    static final Map<String, Set<String>> SUPPRESSED_BY = Map.of(
+        "CLIENT_UNSAFE_SINK", Set.of("UNSAFE_SINK"),
+        "BIND_TARGET", Set.of("BIND_TARGET"),
+        "CLIENT_UNSUPPORTED", Set.of("RESERVED_NAME", "UNSAFE_SINK"),
+        "RESERVED_NAME", Set.of("RESERVED_NAME"));
 
-    /** Spec 13b, "Parâmetros que atravessam a fronteira": como prefixo ou sufixo, sem distinguir maiúsculas. */
-    static final List<String> SENSITIVE_NAMES = List.of("password", "passwd", "pwd", "secret", "token", "apikey",
-        "privatekey", "credential", "hash", "session", "cookie", "jwt", "auth", "ssn");
+    /** Spec 13b, "Parâmetros que atravessam a fronteira" (R28: a lista da spec mais os oito do fim), por tokens do nome. */
+    static final Set<String> SENSITIVE_NAMES = Set.of("password", "passwd", "pwd", "secret", "token", "apikey",
+        "privatekey", "credential", "hash", "session", "cookie", "jwt", "auth", "ssn",
+        "csrf", "nonce", "otp", "pin", "cvv", "salt", "bearer", "refresh");
+
+    private static final Pattern NAME_TOKENS = Pattern.compile("(?<=[a-z0-9])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|[_$-]+");
 
     private final JavaTypes types;
 
@@ -6220,14 +6326,23 @@ public final class ReactiveHtmlChecker implements Checker {
     }
 
     private void sensitive(String name, String label, SourceSpan span, CheckContext ctx) {
-        String lowered = name.toLowerCase(Locale.ROOT);
-        for (String word : SENSITIVE_NAMES) {
-            if (lowered.startsWith(word) || lowered.endsWith(word)) {
-                report(ctx, Severity.WARNING, "PROP_SENSITIVE", label + " parece um dado sensível ('" + word
-                    + "') e fica visível no HTML em data-suko-props; não o leia no cliente", span);
-                return;
+        sensitiveWord(name).ifPresent(word -> report(ctx, Severity.WARNING, "PROP_SENSITIVE", label
+            + " parece um dado sensível ('" + word + "') e fica visível no HTML em data-suko-props; não o leia no cliente", span));
+    }
+
+    /** R28: por tokens ('author' não casa 'auth'; 'csrfToken' casa); shortcut: 'accesstoken' é um só token e não casa, WARNING apenas. */
+    static Optional<String> sensitiveWord(String name) {
+        String[] tokens = NAME_TOKENS.split(name);
+        for (int i = 0; i < tokens.length; i++) {
+            String t = tokens[i].toLowerCase(Locale.ROOT);
+            if (SENSITIVE_NAMES.contains(t) || (t.endsWith("s") && SENSITIVE_NAMES.contains(t.substring(0, t.length() - 1)))) {
+                return Optional.of(t);
+            }
+            if (i + 1 < tokens.length && SENSITIVE_NAMES.contains(t + tokens[i + 1].toLowerCase(Locale.ROOT))) {
+                return Optional.of(t + tokens[i + 1].toLowerCase(Locale.ROOT));
             }
         }
+        return Optional.empty();
     }
 
     private void sensitiveFields(ClientType t, SourceSpan span, CheckContext ctx) {
@@ -6253,24 +6368,25 @@ public final class ReactiveHtmlChecker implements Checker {
         };
     }
 
-    /** R10: um ERROR não se repete num sítio que já tem um ERROR deste ficheiro (o core e o html-security correm antes). */
+    /** R10: um ERROR nosso só é omitido por um diagnóstico do par declarado (o core e o html-security correm antes). */
     private static void report(CheckContext ctx, Severity severity, String code, String message, SourceSpan span) {
         if (code == null) {
             return;
         }
-        if (severity == Severity.ERROR && overlapsAnError(ctx, span)) {
+        if (severity == Severity.ERROR && overlapsOneOf(ctx, span, SUPPRESSED_BY.getOrDefault(code, Set.of()))) {
             return;
         }
         ctx.report(severity, code, message, span);
     }
 
-    private static boolean overlapsAnError(CheckContext ctx, SourceSpan span) {
-        if (span == null || span.isNone() || span.startIndex() < 0) {
+    /** O endIndex do SourceSpan é inclusivo: spans adjacentes (fim + 1 = início) não se sobrepõem. */
+    private static boolean overlapsOneOf(CheckContext ctx, SourceSpan span, Set<String> codes) {
+        if (codes.isEmpty() || span == null || span.isNone() || span.startIndex() < 0) {
             return false;
         }
         for (SukoDiagnostic d : ctx.diagnostics().getDiagnostics()) {
             SourceSpan o = d.span();
-            if (d.severity() == Severity.ERROR && o != null && !o.isNone() && o.startIndex() >= 0
+            if (codes.contains(d.code()) && o != null && !o.isNone() && o.startIndex() >= 0
                     && Objects.equals(d.sourceFile(), ctx.fileName())
                     && o.startIndex() <= span.endIndex() && span.startIndex() <= o.endIndex()) {
                 return true;
@@ -6318,16 +6434,33 @@ e a última linha do ciclo passa a `walk(component.body(), slots, ctx, model);`.
                 return true;
             }
 ```
+6. Constantes partilhadas (R27). Em `HtmlSecurityRules.java` (LF) acrescentar `import java.util.stream.Collectors;` e `import java.util.stream.Stream;` e, junto às outras constantes:
+
+```java
+    /** Conteúdo que o browser executa ou reinterpreta (era privado no HtmlSecurityChecker). */
+    public static final Set<String> CONTENT_SINKS = Set.of("script", "style", "noscript", "foreignobject");
+    /** Elementos de animação SVG cujos attributeName/values/to/from/by o 14 vigia (era privado no HtmlSecurityChecker). */
+    public static final Set<String> ANIMATION = Set.of("animate", "set", "animatemotion", "animatetransform");
+    /** 13b, R27: elementos que o cliente nunca cria nem cujos atributos atualiza (nome local, minúsculas). */
+    public static final Set<String> CLIENT_FORBIDDEN_ELEMENTS = Stream.of(CONTENT_SINKS.stream(), ANIMATION.stream(),
+            Stream.of("iframe", "frame", "object", "embed", "base", "meta", "link", "template",
+                "fencedframe", "portal", "applet", "frameset"))
+        .flatMap(s -> s)
+        .collect(Collectors.toUnmodifiableSet());
+```
+
+No `HtmlSecurityChecker` apagar as linhas privadas `CONTENT_SINKS` e `ANIMATION` (a `ANIMATION_ATTRS` fica) e acrescentar `import static io.suko.jte.HtmlSecurityRules.ANIMATION;` e `import static io.suko.jte.HtmlSecurityRules.CONTENT_SINKS;` (as utilizações não mudam).
 
 Run: `scripts/verify-isolated.sh :suko-jte:test :suko-core:test`
-Expected: BUILD SUCCESSFUL — `ReactiveHtmlCheckerTest` (43 casos), `HtmlSecurityCheckerTest`, `PrefixedAttributeSecurityTest`, `ReactiveRulesTest`, `XssCorpusTest`, `GoldenParityTest` e o resto sem alterações.
+Expected: BUILD SUCCESSFUL — `ReactiveHtmlCheckerTest` (todos os casos; o `@Disabled` do gate R29 aparece como saltado e é o único), `HtmlSecurityCheckerTest`, `PrefixedAttributeSecurityTest`, `ReactiveRulesTest`, `XssCorpusTest`, `GoldenParityTest` e o resto sem alterações.
 
 - [ ] **Step 4: Commit**
 
 ```bash
 git status
 git add suko-jte/src/main/java/io/suko/jte/ReactiveHtmlChecker.java suko-jte/src/main/java/io/suko/jte/HtmlSecurityChecker.java \
-  suko-jte/src/main/java/io/suko/jte/JteExtension.java suko-core/src/test/java/io/suko/lang/security/ReactiveHtmlCheckerTest.java
+  suko-jte/src/main/java/io/suko/jte/HtmlSecurityRules.java suko-jte/src/main/java/io/suko/jte/JteExtension.java \
+  suko-core/src/test/java/io/suko/lang/security/ReactiveHtmlCheckerTest.java
 git commit -m "feat(13b): ReactiveHtmlChecker (CLIENT_*, BIND_TARGET, PROP_*) e trusted* só no render do servidor"
 ```
 
@@ -6408,27 +6541,27 @@ Expected: PASS (incluindo `CompletionTest.inTheBodyOffersVisibleComponentsAndKey
 
 - [ ] **Step 3: Documentação**
 
-`README.md`, secção "Language Syntax", nova subsecção "Reactive components (subprojeto 13b — em curso)" a seguir a "Slots (Content Parameters)": o exemplo `Counter`/`Stepper` da spec escrito com a sintaxe real (`Stepper(value = count, onChange = v -> count = v)`, R22); `state T x = ...;`/`state var`, `derived`, `on:evento=${lambda}` (lambda com ou sem parâmetro), `bind:value`/`bind:checked`; `prefixo:nome` em atributos (`xlink:href`, `hx-on:click`, `x-on:click`; `@click` continua erro); `for (var x : xs)`; as palavras reservadas novas; o subconjunto do cliente em resumo (com o `Map` só de leitura); e a nota **"até ao plano 2, o alvo `jte` recusa `reactive component` com `REACTIVE_UNSUPPORTED`"**.
+`README.md`, secção "Language Syntax", nova subsecção "Reactive components (subprojeto 13b — em curso)" a seguir a "Slots (Content Parameters)": o exemplo `Counter`/`Stepper` da spec escrito com a sintaxe real (`Stepper(value = count, onChange = v -> count = v)`, R22); `state T x = ...;`/`state var`, `derived`, `on:evento=${lambda}` (lambda com ou sem parâmetro), `bind:value`/`bind:checked`; `prefixo:nome` em atributos (`xlink:href`, `hx-on:click`, `x-on:click`; `@click` continua erro); `for (var x : xs)`; as palavras reservadas novas; o subconjunto do cliente em resumo (com o `Map` só de leitura); a nota sobre os tokens `--`/`++`/`+=` (`a--b`, `${1--1}` e `data--x` são `PARSE_ERROR`, R4; `a - -b` e `data-x` continuam válidos); e a nota **"até ao plano 2, o alvo `jte` recusa `reactive component` com `REACTIVE_UNSUPPORTED`"**.
 
 `ARCHITECTURE.md`:
 1. Diagrama: em "Análise semântica" acrescentar "regras da 13b independentes do alvo (`ReactiveChecker`)"; em "Checkers e vocabulários das extensões" acrescentar "`REACTIVE_UNSUPPORTED` por capacidade do alvo (`CapabilityChecker`) e `html-reactive` do `suko-jte`".
-2. "Limitações conhecidas": (a) `reactive`, `state`, `derived` e `new` são palavras reservadas (R3) — continuam a valer em nomes HTML e depois de `.`; (b) `++`, `--`, `+=` são tokens (`a--b` deixa de ser `a - -b`, R4); (c) lambdas só em `on:` e em argumentos de componentes; atribuições só em handlers (R5); (d) `hx-on::evento` (dois `:`) não se escreve; (e) os bullets sobre o `Dialog` sem botão de fecho e sobre a colisão de `$ident` com o Alpine passam a dizer que `x-on:click="..."` **já se escreve** desde a 13b e que a colisão de `$store`/`$dispatch` **morde agora** (mitigação `\$`).
-3. Item 13, 13b: estado "plano 1 (linguagem, API v2, tradutor) implementado; plano 2 (ilhas no `jte`) por fazer"; os rulings que mudam promessas: R1, R2, R13 (records/enums de Java desconhecidos até o item 12 ou outra fonte), R14, R15, R16 (int de 32 bits como Java — a "diferença assumida" do overflow deixou de existir), R18, R20; e a API v2: o que mudou (lista do `ExtensionApi`) e o que fica decidido para o plano 2 (R11) ou fora da 13b (R12, (c)).
+2. "Limitações conhecidas": (a) `reactive`, `state`, `derived` e `new` são palavras reservadas (R3) — continuam a valer em nomes HTML e depois de `.`; (b) `++`, `--`, `+=` são tokens (R4): `a--b`, `${1--1}`, `data--x` (nome de atributo com dois hífenes seguidos) e um `--`/`++` solto numa expressão passam a `PARSE_ERROR` em vez de `a - -b`; escreve-se `a - -b` com espaços, e `data-x` (um hífen) e o texto livre não mudam; (c) lambdas só em `on:` e em argumentos de componentes; atribuições só em handlers (R5); (d) `hx-on::evento` (dois `:`) não se escreve; (e) os bullets sobre o `Dialog` sem botão de fecho e sobre a colisão de `$ident` com o Alpine passam a dizer que `x-on:click="..."` **já se escreve** desde a 13b e que a colisão de `$store`/`$dispatch` **morde agora** (mitigação `\$`).
+3. Item 13, 13b: estado "plano 1 (linguagem, API v2, tradutor) implementado; plano 2 (ilhas no `jte`) por fazer"; os rulings que mudam promessas: R1, R2, R13 (records/enums de Java desconhecidos até o item 12 ou outra fonte), R14, R15, R16 (int de 32 bits como Java — a "diferença assumida" do overflow deixou de existir), R18, R20, R26 (contrato do `style` reativo: `cssValue` normalizado, só `setProperty`), R27 (lista de elementos proibidos alargada e única), R28 (`PROP_SENSITIVE` por tokens, `PROP_*` por campo no plano 2) e R29 (gate do `trusted*` no modo filho); o R10 revisto (supressão só por pares declarados); e a API v2: o que mudou (lista do `ExtensionApi`) e o que fica decidido para o plano 2 (R11) ou fora da 13b (R12, (c)).
 4. Item 14: lacuna (k) **fechada** (ramos `:` vivos, `PrefixedAttributeSecurityTest`); nos "Pendentes do subprojeto 14", o bullet "API v2" passa a dizer que (d) foi resolvido por `Statement.Directive` e que (a)/(b) seguem para o plano 2 e (c) fica por decidir fora da 13b.
 
 `suko-api/README.md`, nova secção "API v2 (13b)": o que muda e **o que parte numa extensão de terceiros**: `switch` exaustivos sobre `Statement` (novos `StateDecl`, `DerivedDecl`), `Expr` (novos `LambdaExpr`, `AssignExpr`, `UpdateExpr`, `NewExpr`) e `SukoDiagnostic.Severity` (novo `HINT`) deixam de compilar; padrões de record e chamadas posicionais aos construtores canónicos de `ComponentDecl`, `HtmlElement` e `ProjectIndexEntry` mudam de aridade (os construtores antigos continuam); uma extensão compilada contra a API 1 dá `EXTENSION_API_MISMATCH` e não é registada. Acrescentar `Target.capabilities()`/`CAPABILITY_REACTIVE`, `ExprNames` e o aviso de que `on:`/`bind:` estão em `HtmlElement.directives()` e nunca em `attributes()`. Atualizar "Limitações conhecidas e checklist" (o "`CheckContext` não expõe os alvos ativos" mantém-se, R12).
 
 `suko-lsp/README.md`, secção "Severidades": `HINT` → `Hint` (`REACTIVE_UNUSED`) e as palavras `state`/`derived` na completion.
 
-`docs/security.md`, secção 2: `on:`/`bind:` são sintaxe Suko, nunca atributos HTML nem emitidos tal como estão; `hx-on:*`/`x-on:*` dinâmicos são `UNSAFE_SINK` e `xlink:href` passa pelo `SukoSafe.url` (agora escrevíveis); `trustedUrl`/`trustedStyle` só no render do servidor de um reactive component (`RESERVED_NAME` no cliente, Q6); as ilhas em si (porte do `SukoSafe`, token de montagem, props) chegam no plano 2.
+`docs/security.md`, secção 2: `on:`/`bind:` são sintaxe Suko, nunca atributos HTML nem emitidos tal como estão; `hx-on:*`/`x-on:*` dinâmicos são `UNSAFE_SINK` e `xlink:href` passa pelo `SukoSafe.url` (agora escrevíveis); `trustedUrl`/`trustedStyle` só no render do servidor de um reactive component (`RESERVED_NAME` no cliente, Q6); as ilhas em si (porte do `SukoSafe`, token de montagem, props) chegam no plano 2. Acrescentar (revisão de segurança): (a) `CLIENT_UNSAFE_SINK` cobre também `noscript`, `fencedframe`, `portal`, `applet` e `frameset` (R27); (b) `PROP_SENSITIVE` compara por tokens do nome, com a lista alargada (`csrf`, `nonce`, `otp`, `pin`, `cvv`, `salt`, `bearer`, `refresh`), e é só um aviso — um nome em minúsculas sem separador (`accesstoken`) não casa (R28); (c) o contrato do `style` reativo (R26): `cssValue` devolve o valor **normalizado** (`<= U+0020` tirado das pontas), o cliente só escreve por `style.setProperty` e, com `style-src 'self'`, o atributo `style` escrito pelo servidor no 1.º render é descartado pelo browser — o valor só aparece depois da montagem (a provar em Playwright no plano 2); (d) **não ligue dados não confiáveis a propriedades de layout** (`position`, `display`, `visibility`, `pointer-events`, `opacity`): a allowlist deixa o utilizador escolher entre identificadores válidos (`fixed`, `none`, `hidden`), redressing de UI, igual ao servidor desde o 14.
 
 - [ ] **Step 4: Verificação final**
 
 Run: `scripts/verify-isolated.sh clean build`
-Expected: BUILD SUCCESSFUL (inclui o site, os componentes, o LSP e os plugins).
+Expected: BUILD SUCCESSFUL — todos os módulos do `settings.gradle.kts`: `suko-api`, `suko-jte`, `suko-core`, `suko-registry`, `suko-registry-generator`, `suko-gradle-plugin`, `suko-maven-plugin`, `suko-components`, `suko-website`, `suko-cli`, `suko-lsp` e `suko-test-ext`. A loja **não** está neste build.
 
 Run: `scripts/verify-isolated.sh -p examples/shop clean test`
-Expected: BUILD SUCCESSFUL, sem alterações nos testes da loja.
+Expected: BUILD SUCCESSFUL, sem alterações nos testes da loja (build separado, que usa o plugin do build principal por `includeBuild("../..")`).
 
 Verificações (todas na raiz, sem output esperado salvo onde dito):
 
@@ -6445,7 +6578,18 @@ crlf_check suko-api/src/main/java/io/suko/lang/ast/Statement.java suko-api/src/m
 grep -c -v $'\r$' suko-core/src/main/java/io/suko/lang/project/ProjectIndex.java   # esperado: 3
 ```
 
-Paridade do site (Review Focus 1; o HTML gerado só pode diferir no `?v=` do cache-buster): numa cópia de `bd13359` (`git archive bd13359 | tar -x -C <pasta>`) e na cópia do ramo, correr `./gradlew :suko-website:generateWebsite` **nas cópias** (nunca no checkout) e `diff -r <antes>/suko-website/build/website <depois>/suko-website/build/website | grep -v '?v='` sem diferenças de conteúdo.
+Paridade do site (Review Focus 1; o HTML gerado só pode diferir no `?v=` do cache-buster). Só pelo `scripts/verify-isolated.sh` (nunca `./gradlew` no checkout nem nas cópias à mão): o script copia o repositório do `git rev-parse --show-toplevel` do diretório onde corre para `SUKO_VERIFY_DIR`, por isso a base corre-se num worktree de `bd13359`, com outra pasta de cópia:
+
+```bash
+ROOT=$(git rev-parse --show-toplevel)
+BASE=$(mktemp -d)/base && git worktree add --detach "$BASE" bd13359
+( cd "$BASE" && SUKO_VERIFY_DIR=/tmp/suko-verify-base "$ROOT/scripts/verify-isolated.sh" :suko-website:generateWebsite )
+scripts/verify-isolated.sh :suko-website:generateWebsite                       # o ramo, em /tmp/suko-verify
+diff -r /tmp/suko-verify-base/suko-website/build/website /tmp/suko-verify/suko-website/build/website | grep -v '?v='
+git worktree remove --force "$BASE"
+```
+
+Sem diferenças de conteúdo (o `grep -v` só tira as linhas do `?v=`).
 
 - [ ] **Step 5: Commit e revisão do ramo**
 
@@ -6464,13 +6608,13 @@ Despachar o `architect` (revisão do ramo inteiro contra a spec, este plano e o 
 
 Decididas entre a escrita do plano e a sua conclusão (2026-10-17): **R13 = A** (`JavaTypes.NONE` em produção; formas de records em memória só nos testes) e **R14 = B** (o `Map` entra no subconjunto, só de leitura). Continuam em aberto:
 
-1. **Revisão do `security-specialist` às alterações de 2026-10-11 da spec** (Q4/Q5/Q6, um diagnóstico por sítio): a spec exige-a **antes do plano**; não há registo de que tenha sido feita. É pré-condição das Tasks 2, 4 e 9 — se mudar uma regra, o plano é ajustado antes de executar essas tasks.
+1. **Revisão do `security-specialist` às alterações de 2026-10-11 da spec** (Q4/Q5/Q6, um diagnóstico por sítio): **feita** (`.superpowers/sdd/13b-plano1/security-review.md`, nenhum achado bloqueia) e aplicada ao plano — ver o cabeçalho e os rulings R10 e R26–R29. Fica por decidir pelo utilizador o que o R27 decidiu por defeito (os quatro embebimentos novos e o `noscript` entram na lista de `CLIENT_UNSAFE_SINK`).
 2. **Origem dos tipos Java (antes do plano 2):** com o R13 = A, records e enums de Java são desconhecidos (`Named`), por isso o `TodoList` da spec (com `record Todo`), `new Todo(...)`, os acessores, a validação de props por forma e o `PROP_SENSITIVE` recursivo só funcionam quando houver uma fonte (item 12, uma declaração `external`/`record` em `.sk`, ou ler as fontes Java). A spec previa o item 12 feito antes da 13b (D8), mas ele foi adiado a 2026-10-06.
-3. **Modo "filho reativo" (plano 2):** a spec diz que os parâmetros de um reactive component dentro de outro são reativos; este plano trata-os como constantes (vista de raiz de ilha, R18). Quando o plano 2 juntar o modo filho, toda a expressão que lê um parâmetro num filho reativo passa a ser código do cliente (subconjunto obrigatório e sem minimização). Decidir se é aceitável ou se um componente usado como filho fica restrito.
+3. **Modo "filho reativo" (plano 2):** a spec diz que os parâmetros de um reactive component dentro de outro são reativos; este plano trata-os como constantes (vista de raiz de ilha, R18). Quando o plano 2 juntar o modo filho, toda a expressão que lê um parâmetro num filho reativo passa a ser código do cliente (subconjunto obrigatório e sem minimização). Decidir se é aceitável ou se um componente usado como filho fica restrito. **Gate já escrito (R29):** com o modo filho, `trusted*` cujo argumento lê um parâmetro de um reactive component chamado a partir de outro reactive component passa a `RESERVED_NAME`; o teste `@Disabled` da Task 9 é o critério.
 4. **`float`/`Float` (R15)** saem do cliente, ao contrário da letra da spec ("primitivos sem `long`/`char`"). Confirmar.
 5. **`int` de 32 bits (R16)**: a spec aceitava o overflow como diferença documentada; o plano faz o JS dar a volta como o Java (`| 0`, `Math.imul`). Confirmar que a mudança de promessa é bem-vinda (só ganha fidelidade).
 
-Para o plano 2 (não bloqueiam este): o porte de `SukoSafe.cssValue` tem de devolver o valor **sem espaços nas pontas** como o Java faz (`String.valueOf(v).trim()`), e não "o original" como diz a spec — o oráculo do teste diferencial é o Java; o `prelude.js` lê `e.target.value`/`checked`/`key` (só leitura) e o varrimento por allowlist do plano 2 tem de o prever.
+Para o plano 2 (não bloqueiam este; vêm da revisão de segurança): (1) o porte de `SukoSafe.cssValue` devolve o valor **sem espaços nas pontas** como o Java (`String.valueOf(v).trim()`, regra `<= U+0020`), não "o original" — o oráculo do teste diferencial é o Java; vetores mínimos e escrita só por `style.setProperty` no R26, com a prova em Playwright sob `style-src 'self'`; (2) o serializador de `data-suko-props` emite só os campos que o `ClientModel` lê, e um callback `undefined` dá erro de montagem claro (R28); (3) o gate do `trusted*` no modo filho (R29); (4) o `prelude.js` lê `e.target.value`/`checked`/`key` (só leitura) e o varrimento por allowlist do plano 2 tem de o prever.
 
 ## Self-review
 
@@ -6506,8 +6650,8 @@ Para o plano 2 (não bloqueiam este): o porte de `SukoSafe.cssValue` tem de devo
 
 ### Deixado de propósito para o plano 2
 
-Geração do `.jte` com marcadores/âncoras e do módulo ES por componente (e a capacidade `reactive` no `jte`, R1); `suko.js` (montagem, agendador, reconciliação de listas, contrato `$s`/`$p`/`$u` do R17) com o `prelude.js`; o porte do `SukoSafe` em JS (`url`, `imageUrl`, `srcset`, `imageSrcset`, `ping`, `rel`, `cssValue`), o recurso de vetores partilhados e o teste diferencial Java = JS por conjunto de opções; o serializador de `data-suko-props` (Java gerado) e a validação de props no cliente; o token de montagem; `Emitted.companions` + `ProjectOutput.Kind.CLIENT_ASSET`, o encaminhamento no core, a limpeza por manifesto e os nomes com hash (R11); `js { outputDir; basePath }`, a validação do `basePath` e as pastas de recursos dos plugins Gradle/Maven (Q1, R12 (a)); clonagem de slots `<template>` e o modo "filho reativo"; o `switch` no cliente e os atributos "inteligentes" (null/boolean) e o `style` por CSSOM; a API Java de ilhas chamadas a partir de Java (Q3, contrato com o item 12); o varrimento por allowlist das operações DOM; Playwright com CSP/Trusted Types; as ilhas da loja e do perfil `lab`; a revisão de segurança da implementação e a ronda 2 do pentest; a gramática TextMate do VSCode e a página de referência do site.
+Geração do `.jte` com marcadores/âncoras e do módulo ES por componente (e a capacidade `reactive` no `jte`, R1); `suko.js` (montagem, agendador, reconciliação de listas, contrato `$s`/`$p`/`$u` do R17) com o `prelude.js`; o porte do `SukoSafe` em JS (`url`, `imageUrl`, `srcset`, `imageSrcset`, `ping`, `rel`, `cssValue`), o recurso de vetores partilhados e o teste diferencial Java = JS por conjunto de opções; o serializador de `data-suko-props` (Java gerado) e a validação de props no cliente; o token de montagem; `Emitted.companions` + `ProjectOutput.Kind.CLIENT_ASSET`, o encaminhamento no core, a limpeza por manifesto e os nomes com hash (R11); `js { outputDir; basePath }`, a validação do `basePath` e as pastas de recursos dos plugins Gradle/Maven (Q1, R12 (a)); clonagem de slots `<template>` e o modo "filho reativo"; o `switch` no cliente e os atributos "inteligentes" (null/boolean) e o `style` por CSSOM (contrato fechado no R26: só `setProperty`/`removeProperty`); a API Java de ilhas chamadas a partir de Java (Q3, contrato com o item 12); o varrimento por allowlist das operações DOM; Playwright com CSP/Trusted Types; as ilhas da loja e do perfil `lab`; a revisão de segurança da implementação e a ronda 2 do pentest; a gramática TextMate do VSCode e a página de referência do site.
 
 ### Verificação do próprio plano
 
-O código das Tasks 1–9 foi compilado e corrido numa cópia descartável do repositório (fora de `/mnt/c`): `SukoReactiveSyntaxTest` (34), `ReactiveRulesTest` (20), `PrefixedAttributeSecurityTest` (18), os testes do cliente da Task 5, `JsTranslatorTest`, `JsHandlerTest`, os dois diferenciais (cerca de 60 expressões e 13 handlers iguais em Java e no Node), `ClientModelTest` (8) e `ReactiveHtmlCheckerTest` (43) passaram, e as suites existentes do core (615), `suko-jte`, `suko-lsp`, `suko-registry-generator` e `suko-components` ficaram verdes; o site gerado foi igual ao de `bd13359` salvo o `?v=`. O `dstr` do `prelude.js` foi comparado com o `Double.toString` do JDK em cerca de 300 000 valores. A Task 10 (texto de documentação e o teste do LSP) não foi executada antecipadamente, nem o `clean build` completo nem os testes da loja.
+O código das Tasks 1–9 foi compilado e corrido numa cópia descartável do repositório (fora de `/mnt/c`): `SukoReactiveSyntaxTest` (34), `ReactiveRulesTest` (20), `PrefixedAttributeSecurityTest` (18), os testes do cliente da Task 5, `JsTranslatorTest`, `JsHandlerTest`, os dois diferenciais (cerca de 60 expressões e 13 handlers iguais em Java e no Node), `ClientModelTest` (8) e `ReactiveHtmlCheckerTest` (43) passaram, e as suites existentes do core (615), `suko-jte`, `suko-lsp`, `suko-registry-generator` e `suko-components` ficaram verdes; o site gerado foi igual ao de `bd13359` salvo o `?v=`. O `dstr` do `prelude.js` foi comparado com o `Double.toString` do JDK em cerca de 300 000 valores. A Task 10 (texto de documentação e o teste do LSP) não foi executada antecipadamente, nem o `clean build` completo nem os testes da loja. As correções da revisão de segurança à Task 9 (R10 por pares, R27, R28, o gate R29) são posteriores a esta verificação: o código e os testes novos da Task 9 não foram compilados nem corridos; a execução da Task 9 confirma-os (a contagem de casos de `ReactiveHtmlCheckerTest` deixa de ser 43).

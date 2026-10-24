@@ -480,8 +480,11 @@ todos os componentes (M2, exceção de `style`). Agora a 13b alinha-se com o 14:
   `String.prototype.trim()`, como no porte de URLs); allowlist de correspondência
   **total** (`^...$`, ASCII, sem flag `i`/`u`): número com unidade opcional
   (`[-+]?[0-9]+(\.[0-9]+)?(%|[A-Za-z]{1,4})?`), cor `#hex` (`#[0-9A-Fa-f]{3,8}`)
-  ou identificador (`[A-Za-z-]+`); senão `unset`. O valor devolvido é o
-  original, sem alterações.
+  ou identificador (`[A-Za-z-]+`); senão `unset`. O valor devolvido é o valor
+  **normalizado** (as unidades `<= U+0020` retiradas das pontas, como o
+  `String.valueOf(v).trim()` do `SukoSafe.cssValue` Java; nunca
+  `String.prototype.trim()`), não o original: o teste diferencial compara
+  strings iguais. `null` (e um `Boxed` nulo) → `unset`, nunca o texto `null`.
 - **Operação DOM:** a lista fechada de operações ganha `style.setProperty`
   (nome de propriedade fixo em compile-time, valor vindo do porte). A
   recomendação é usar o CSSOM e não `setAttribute("style", ...)`: a CSP da loja
