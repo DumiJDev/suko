@@ -179,4 +179,34 @@ class ReactiveRulesTest {
         var page = analysis.files().get(Path.of("Page.sk")).diagnostics().getDiagnostics();
         assertTrue(page.stream().anyMatch(d -> d.code().equals("LAMBDA_ACROSS_BOUNDARY")), page.toString());
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "reactive component A() { state int x = 0; state int x = 1; <p>${x}</p> }",
+        "reactive component A() { state int x = 0; derived int x = 1; <p>${x}</p> }",
+        "reactive component A() { derived int x = 0; derived int x = 1; <p>${x}</p> }",
+        "reactive component A(int x) { state int x = 0; <p>${x}</p> }",
+        "reactive component A(int x) { derived int x = 0; <p>${x}</p> }",
+    })
+    void duplicateNamesAreRejected(String sk) {
+        assertEquals(1, count(sk, "DUPLICATE_NAME"), diagnostics(sk).toString());
+        SukoDiagnostic d = diagnostics(sk).stream().filter(x -> x.code().equals("DUPLICATE_NAME")).findFirst().orElseThrow();
+        assertEquals(SukoDiagnostic.Severity.ERROR, d.severity());
+        assertTrue(d.message().contains("'x'"), d.message());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"__proto__", "constructor", "prototype"})
+    void prototypeNamesAreReserved(String name) {
+        for (String sk : List.of(
+                "reactive component A() { state int " + name + " = 0; <p>x</p> }",
+                "reactive component A() { derived int " + name + " = 0; <p>x</p> }")) {
+            assertEquals(1, count(sk, "RESERVED_NAME"), diagnostics(sk).toString());
+        }
+    }
+
+    @Test
+    void distinctNamesAreNotDuplicates() {
+        assertEquals(0, count("reactive component A(int a) { state int x = a; derived int y = x; <p>${y}</p> }", "DUPLICATE_NAME"));
+    }
 }

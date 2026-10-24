@@ -59,8 +59,40 @@ final class ReactiveChecker {
             report(Severity.HINT, "REACTIVE_UNUSED", "'" + component.name() + "' não usa state, derived, on:, bind:"
                 + " nem lambdas: pode ser um component simples", component.nameSpan());
         }
+        duplicateAndReservedNames(component);
         derivedCycles(component);
     }
+
+    /** `state` e `derived` partilham `$s.nome` no cliente e os parâmetros `$p.nome`: um nome repetido geraria JS errado. */
+    private void duplicateAndReservedNames(ComponentDecl component) {
+        Set<String> seen = new HashSet<>();
+        for (Param p : component.params()) {
+            seen.add(p.name());
+        }
+        for (Statement s : component.body()) {
+            String name;
+            SourceSpan span;
+            if (s instanceof Statement.StateDecl d) {
+                name = d.name();
+                span = d.nameSpan();
+            } else if (s instanceof Statement.DerivedDecl d) {
+                name = d.name();
+                span = d.nameSpan();
+            } else {
+                continue;
+            }
+            if (PROTOTYPE_NAMES.contains(name)) {
+                report(Severity.ERROR, "RESERVED_NAME", "'" + name + "' não pode ser o nome de um state/derived"
+                    + " (colide com o protótipo de objetos do JavaScript)", span);
+            }
+            if (!seen.add(name)) {
+                report(Severity.ERROR, "DUPLICATE_NAME", "o nome '" + name + "' já é usado por um parâmetro, state ou"
+                    + " derived deste componente", span);
+            }
+        }
+    }
+
+    private static final Set<String> PROTOTYPE_NAMES = Set.of("__proto__", "constructor", "prototype");
 
     private void walk(List<Statement> statements, ComponentDecl component, Set<String> states, boolean[] used) {
         for (Statement s : statements) {
