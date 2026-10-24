@@ -555,6 +555,170 @@ public final class JsTranslator {
         return new Typed("$suko.rec([" + String.join(", ", names) + "], [" + String.join(", ", values) + "])", r);
     }
 
+    // ------------------------------------------------------------------ handlers (Task 7)
+
+    private static final Set<String> LIST_MUTATIONS = Set.of("add", "remove", "set", "clear");
+
+    /** Handler de {@code on:evento}: sem parâmetro (D3: o evento é assumido e ignorado) ou com um, o evento. */
+    public Result eventHandler(Expr.LambdaExpr lambda) {
+        if (lambda.params().size() > 1) {
+            return new Err(new ClientProblem(CLIENT_UNSUPPORTED, "um handler de evento recebe no máximo um parâmetro (o evento)",
+                lambda.span()));
+        }
+        return function(lambda, lambda.params().isEmpty() ? List.of() : List.of(EVENT));
+    }
+
+    /** Lambda passada a um componente reativo: {@code Runnable} (sem parâmetros) ou {@code Consumer<T>} (um). */
+    public Result callback(Expr.LambdaExpr lambda, List<ClientType> params) {
+        if (lambda.params().size() != params.size()) {
+            return new Err(new ClientProblem(CLIENT_UNSUPPORTED, "a lambda tem " + lambda.params().size()
+                + " parâmetro(s), mas o parâmetro do componente espera " + params.size(), lambda.span()));
+        }
+        return function(lambda, params);
+    }
+
+    private Result function(Expr.LambdaExpr lambda, List<ClientType> paramTypes) {
+        try {
+            ClientScope inner = scope;
+            List<String> names = new ArrayList<>();
+            for (int i = 0; i < lambda.params().size(); i++) {
+                String p = lambda.params().get(i);
+                if (scope.lookup(p).isPresent()) {
+                    throw unsupported(lambda.span(), "o parâmetro '" + p + "' tem o nome de um state, derived, parâmetro"
+                        + " ou variável do componente; use outro nome");
+                }
+                inner = inner.with(p, ClientScope.Kind.LOCAL, paramTypes.get(i));
+                names.add(JsText.identifier(p));
+            }
+            StringBuilder body = new StringBuilder();
+            for (Expr statement : lambda.body()) {
+                body.append(statement(statement, inner));
+            }
+            return new Ok("(" + String.join(", ", names) + ") => {" + body + " }", new ClientType.Callback(paramTypes));
+        } catch (Stop s) {
+            return new Err(s.problem);
+        }
+    }
+
+    private String statement(Expr st, ClientScope s) {
+        return switch (st) {
+            case Expr.AssignExpr a -> assign(a, s);
+            case Expr.UpdateExpr u -> update(u, s);
+            case Expr.CallExpr c -> callStatement(c, s);
+            default -> throw unsupported(st.span(), "não é uma instrução de um handler (atribuição a um state, ++/--/+=,"
+                + " mutação de uma List em state, chamada de um callback ou e.preventDefault())");
+        };
+    }
+
+    private String assign(Expr.AssignExpr a, ClientScope s) {
+        String name = stateTarget(a.target(), s);
+        ClientType type = s.lookup(name).orElseThrow().type();
+        Typed v = value(expr(a.value(), s), a.value().span());
+        String js;
+        if (a.operator().equals("=")) {
+            if (!ClientTypes.assignable(v.type(), type)) {
+                throw unsupported(a.value().span(), v.type().java() + " não é atribuível a '" + name + "' (" + type.java() + ")");
+            }
+            js = coerce(v, type);
+        } else if (type == STRING) {
+            js = "(\"\" + $s." + name + " + " + concatOperand(v, a.value().span()) + ")";
+        } else {
+            Typed current = number(new Typed("$s." + name, type), a.target().span());
+            Typed add = number(v, a.value().span());
+            if (current.type() == INT && add.type() == DOUBLE) {
+                throw unsupported(a.span(), "'" + name + " += double' estreita o resultado para int em Java; o cliente não"
+                    + " o faz — use um state double");
+            }
+            js = current.type() == INT
+                ? "((" + current.js() + " + " + add.js() + ") | 0)"
+                : "(" + current.js() + " + " + add.js() + ")";
+        }
+        return " $s." + name + " = " + js + "; $u(" + JsText.string(name) + ");";
+    }
+
+    private String update(Expr.UpdateExpr u, ClientScope s) {
+        String name = stateTarget(u.target(), s);
+        Typed current = number(new Typed("$s." + name, s.lookup(name).orElseThrow().type()), u.target().span());
+        String op = u.operator().equals("++") ? " + 1" : " - 1";
+        String js = current.type() == INT ? "((" + current.js() + op + ") | 0)" : "(" + current.js() + op + ")";
+        return " $s." + name + " = " + js + "; $u(" + JsText.string(name) + ");";
+    }
+
+    private static String stateTarget(Expr target, ClientScope s) {
+        if (!(target instanceof Expr.PrimaryExpr p) || !io.suko.lang.ast.ExprNames.isIdentifier(p.text())) {
+            throw unsupported(target.span(), "só um state pode ser alterado: escreva o nome do state (não a.b nem uma expressão)");
+        }
+        ClientScope.Binding b = s.lookup(p.text()).orElseThrow(() -> unsupported(target.span(),
+            "'" + p.text() + "' não é um state deste componente"));
+        if (b.type() == UNKNOWN) {
+            throw silent(target.span());
+        }
+        return switch (b.kind()) {
+            case STATE -> p.text();
+            case DERIVED -> throw unsupported(target.span(), "'" + p.text() + "' é derived e não é atribuível");
+            case PARAM -> throw unsupported(target.span(), "'" + p.text() + "' é um parâmetro; no cliente os parâmetros"
+                + " são só de leitura (use um state)");
+            case LOCAL -> throw unsupported(target.span(), "'" + p.text() + "' é uma variável local; só um state pode ser alterado");
+        };
+    }
+
+    private String callStatement(Expr.CallExpr c, ClientScope s) {
+        if (c.callee() instanceof Expr.AccessExpr a && LIST_MUTATIONS.contains(a.memberName())) {
+            if (a.target() instanceof Expr.PrimaryExpr t
+                    && s.lookup(t.text()).map(b -> b.type() instanceof ClientType.ListOf).orElse(false)) {
+                return listMutation(t, a.memberName(), c, s);
+            }
+            Typed receiver = value(expr(a.target(), s), a.target().span());
+            if (receiver.type() instanceof ClientType.ListOf) {
+                throw unsupported(c.span(), "só uma List guardada num state pode ser alterada (a alteração não seria propagada)");
+            }
+        }
+        return " " + expr(c, s).js() + ";";
+    }
+
+    private String listMutation(Expr.PrimaryExpr target, String m, Expr.CallExpr c, ClientScope s) {
+        ClientScope.Binding b = s.lookup(target.text()).orElseThrow();
+        if (b.kind() != ClientScope.Kind.STATE) {
+            throw unsupported(c.span(), "só uma List guardada num state pode ser alterada (a alteração de '" + target.text()
+                + "' não seria propagada)");
+        }
+        ClientType element = ((ClientType.ListOf) b.type()).element();
+        String list = "$s." + target.text();
+        List<Typed> a = args(c, s);
+        String js = switch (m) {
+            case "add" -> {
+                if (a.size() != 1) {
+                    throw unsupported(c.span(), "List.add(i, x) fica fora da v1: use add(x)");
+                }
+                yield list + ".push(" + element(a.get(0), element, c.args().get(0).span()) + ")";
+            }
+            case "remove" -> {
+                arity(a, 1, c, m);
+                if (a.get(0).type() != INT) {
+                    throw unsupported(c.args().get(0).span(), "remove() só com um índice int (remove(Object) fica fora da v1)");
+                }
+                yield "$suko.removeAt(" + list + ", " + a.get(0).js() + ")";
+            }
+            case "set" -> {
+                arity(a, 2, c, m);
+                yield "$suko.setAt(" + list + ", " + index(a.get(0), c.args().get(0).span()).js() + ", "
+                    + element(a.get(1), element, c.args().get(1).span()) + ")";
+            }
+            default -> {
+                arity(a, 0, c, m);
+                yield "$suko.clear(" + list + ")";
+            }
+        };
+        return " " + js + "; $u(" + JsText.string(target.text()) + ");";
+    }
+
+    private static String element(Typed v, ClientType element, SourceSpan span) {
+        if (!ClientTypes.assignable(v.type(), element)) {
+            throw unsupported(span, v.type().java() + " não é atribuível a um elemento " + element.java());
+        }
+        return coerce(v, element);
+    }
+
     // ------------------------------------------------------------------ apoio
 
     private static Typed value(Typed t, SourceSpan span) {

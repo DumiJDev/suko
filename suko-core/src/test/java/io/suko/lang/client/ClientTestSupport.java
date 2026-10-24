@@ -190,7 +190,9 @@ final class ClientTestSupport {
                 Object[] fin = (Object[]) type.getMethod("c" + i).invoke(null);
 
                 JsTranslator translator = new JsTranslator(scope, TYPES);
-                JsTranslator.Result result = translator.expression(expr(c.source()));
+                JsTranslator.Result result = c.handler()
+                    ? translator.eventHandler(lambda("() -> { " + c.source() + " }"))
+                    : translator.expression(expr(c.source()));
                 if (!(result instanceof JsTranslator.Ok ok)) {
                     throw new AssertionError("não traduz: " + c.source() + " -> " + ((JsTranslator.Err) result).problem());
                 }

@@ -46,6 +46,28 @@ class PreludeDifferentialTest {
     }
 
     @Test
+    void preludeListIndexesMatchJava() throws Exception {
+        List<String> java = new ArrayList<>();
+        List<Integer> list = new ArrayList<>(List.of(10, 20, 30));
+        for (int i : new int[] {0, 2, 3, -1}) {
+            try {
+                java.add(String.valueOf(list.get(i)));
+            } catch (IndexOutOfBoundsException e) {
+                java.add("RangeError");
+            }
+        }
+        String module = IMPORT + """
+            const r = (f) => { try { return String(f()); } catch (e) { return e.constructor.name; } };
+            const l = [10, 20, 30];
+            for (const i of [0, 2, 3, -1]) console.log(r(() => $suko.get(l, i)));
+            console.log(r(() => $suko.removeAt(l, 5)) + " " + r(() => $suko.setAt(l, -1, 1)) + " " + r(() => $suko.removeAt(l, 1)) + " " + l);
+            """;
+        List<String> js = NodeRunner.run(module).lines().toList();
+        assertEquals(java, js.subList(0, 4));
+        assertEquals("RangeError RangeError 20 10,30", js.get(4));
+    }
+
+    @Test
     void doubleToStringMatchesJava() throws Exception {
         List<Double> values = new ArrayList<>(List.of(0.0, -0.0, 1.0, -1.0, 0.1, 0.3, 0.1 + 0.2, 100.0, 1e7, 9999999.0,
             9999999.999, 1e-3, 0.00099, 1e23, 2e22, 1e21, 123456789.0, 1.5e300, Double.MIN_VALUE, Double.MAX_VALUE,
