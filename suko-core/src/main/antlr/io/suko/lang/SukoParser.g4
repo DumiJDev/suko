@@ -25,15 +25,26 @@ compilationUnit
     ;
 
 packageDecl
-    : PACKAGE qualifiedName SEMI
+    : PACKAGE packageName SEMI
     ;
 
 importDecl
-    : IMPORT qualifiedName (AS Identifier)? SEMI
+    : IMPORT packageName (AS Identifier)? SEMI
     ;
 
+// 13b: `package app.state;` e `import app.reactive.X;` aceitam as palavras reservadas como segmento.
+packageName
+    : nameSegment (DOT nameSegment)*
+    ;
+
+// Na chamada de componente só o primeiro segmento é Identifier (`state ...` abriria um reactiveDecl);
+// `app.state.Card()` faz parse.
 qualifiedName
-    : Identifier (DOT Identifier)*
+    : Identifier (DOT nameSegment)*
+    ;
+
+nameSegment
+    : Identifier | REACTIVE | STATE | DERIVED | NEW
     ;
 
 // --- Declaração de componente ---

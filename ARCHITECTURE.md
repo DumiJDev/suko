@@ -579,8 +579,10 @@ arquitetura):
   utilizador no subprojeto 9 (D3 rejeitada), com este custo aceite.
 - **13b (plano 1): palavras, tokens e formas que mudam.** (a) `reactive`,
   `state`, `derived` e `new` são palavras reservadas (R3): continuam a valer
-  em nomes HTML e depois de `.`/`?.`, mas um parâmetro ou variável com esse
-  nome deixa de fazer parse. (b) `++`, `--`, `+=` são tokens (R4): `a--b`,
+  em nomes HTML, depois de `.`/`?.` e como segmento de `package`/`import`/nome
+  qualificado de chamada (`package app.state;`, `app.reactive.Card()`), mas um
+  parâmetro, variável ou o primeiro segmento de uma chamada de componente com
+  esse nome deixa de fazer parse (fica reservado só em posição de identificador). (b) `++`, `--`, `+=` são tokens (R4): `a--b`,
   `${1--1}`, `data--x` (dois hífenes seguidos num nome de atributo) e um
   `--`/`++` solto numa expressão passam a `PARSE_ERROR`; escreve-se `a - -b`;
   `data-x` e o texto livre não mudam. (c) Lambdas só em `on:` e em argumentos

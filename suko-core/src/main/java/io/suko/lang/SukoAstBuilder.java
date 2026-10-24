@@ -62,7 +62,7 @@ public class SukoAstBuilder {
     public SukoFile build(SukoParser.CompilationUnitContext ctx) {
         Optional<String> packageName = ctx.packageDecl() == null
             ? Optional.empty()
-            : Optional.of(ctx.packageDecl().qualifiedName().getText());
+            : Optional.of(ctx.packageDecl().packageName().getText());
         Optional<SourceSpan> packageSpan = ctx.packageDecl() == null
             ? Optional.empty()
             : Optional.of(spanOf(ctx.packageDecl()));
@@ -72,7 +72,7 @@ public class SukoAstBuilder {
             Optional<String> alias = importCtx.Identifier() == null
                 ? Optional.empty()
                 : Optional.of(importCtx.Identifier().getText());
-            imports.add(new ImportDecl(importCtx.qualifiedName().getText(), alias, spanOf(importCtx)));
+            imports.add(new ImportDecl(importCtx.packageName().getText(), alias, spanOf(importCtx)));
         }
 
         List<ComponentDecl> components = new ArrayList<>();

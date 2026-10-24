@@ -322,4 +322,22 @@ class SukoReactiveSyntaxTest {
         }
         assertTrue(blocks >= 1, "nenhum bloco suko no README");
     }
+
+    /** As palavras da 13b continuam a servir de segmento de package/import/nome qualificado. */
+    @Test
+    void reservedWordsAreValidPackageAndQualifiedNameSegments() {
+        SukoFile f = parse("""
+            package app.state;
+            import app.reactive.Card;
+            import derived.new.Other as O;
+            component Page() {
+              app.state.Card()
+            }
+            """);
+        assertEquals("app.state", f.packageName().orElseThrow());
+        assertEquals(List.of("app.reactive.Card", "derived.new.Other"),
+            f.imports().stream().map(ImportDecl::qualifiedName).toList());
+        assertEquals("app.state.Card",
+            assertInstanceOf(Statement.ComponentCallStmt.class, f.components().get(0).body().get(0)).componentName());
+    }
 }

@@ -185,7 +185,7 @@ reactive component Counter(int start) {
 - `on:event=${lambda}`: the lambda may take zero or one parameter. `bind:value` (input, textarea, select; `String`, `int` or `double` state) and `bind:checked` (input; `boolean` state) need `${expression}` without quotes. `on:`/`bind:` are Suko syntax, never HTML attributes.
 - `prefix:name` attributes are accepted (`xlink:href`, `hx-on:click`, `x-on:click`); `@click` is still a syntax error. Dynamic `hx-on:*` / `x-on:*` stay `UNSAFE_SINK`.
 - `for (var x : xs)` now parses.
-- New reserved words: `reactive`, `state`, `derived`, `new` (still accepted inside HTML names such as `data-state` and after `.`).
+- New reserved words: `reactive`, `state`, `derived`, `new` (still accepted inside HTML names such as `data-state`, after `.`, and as segments of `package`/`import` names such as `package app.state;`).
 - The client runs a small Java subset translated to JS (32-bit `int` arithmetic like Java, `String`, `List`, read-only `Map` with `get`/`containsKey`/`size`/`isEmpty`, no `long`/`char`/`float`); anything else is `CLIENT_UNSUPPORTED`.
 - `++`, `--` and `+=` are tokens: `a--b`, `${1--1}` and `data--x` are `PARSE_ERROR`; write `a - -b`. `data-x` and free text are unchanged.
 
