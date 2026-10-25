@@ -5,7 +5,8 @@ import java.util.List;
 public sealed interface Expr permits
     Expr.PrimaryExpr, Expr.StringLiteralExpr, Expr.AccessExpr, Expr.CallExpr,
     Expr.NotExpr, Expr.UnaryMinusExpr, Expr.BinaryExpr, Expr.TernaryExpr, Expr.ParenExpr,
-    Expr.SafeAccessExpr, Expr.ElvisExpr {
+    Expr.SafeAccessExpr, Expr.ElvisExpr,
+    Expr.LambdaExpr, Expr.AssignExpr, Expr.UpdateExpr, Expr.NewExpr {
 
     SourceSpan span();
 
@@ -23,6 +24,13 @@ public sealed interface Expr permits
             case ParenExpr p -> "(" + p.inner().pretty() + ")";
             case SafeAccessExpr s -> s.target().pretty() + "?." + s.memberName();
             case ElvisExpr e -> e.left().pretty() + " ?: " + e.right().pretty();
+            case LambdaExpr l -> (l.params().size() == 1 ? l.params().get(0) : "(" + String.join(", ", l.params()) + ")")
+                + " -> " + (l.block()
+                    ? "{ " + String.join(" ", l.body().stream().map(x -> x.pretty() + ";").toList()) + " }"
+                    : l.body().get(0).pretty());
+            case AssignExpr a -> a.target().pretty() + " " + a.operator() + " " + a.value().pretty();
+            case UpdateExpr u -> u.prefix() ? u.operator() + u.target().pretty() : u.target().pretty() + u.operator();
+            case NewExpr n -> "new " + n.typeName() + "(" + String.join(", ", n.args().stream().map(Expr::pretty).toList()) + ")";
         };
     }
 
@@ -85,5 +93,24 @@ public sealed interface Expr permits
     }
 
     record ElvisExpr(Expr left, Expr right, SourceSpan span) implements Expr {
+    }
+
+    /** {@code () -> corpo}, {@code e -> corpo}, {@code (e) -> { a; b; }} (13b). Só como valor de {@code on:} ou
+     * argumento de uma chamada de componente. {@code body} tem uma expressão por instrução; {@code block}
+     * indica que foi escrita com chavetas.
+     */
+    record LambdaExpr(List<String> params, List<Expr> body, boolean block, SourceSpan span) implements Expr {
+    }
+
+    /** {@code alvo = valor} / {@code alvo += valor} — só como instrução do corpo de uma lambda (13b). */
+    record AssignExpr(Expr target, String operator, Expr value, SourceSpan span) implements Expr {
+    }
+
+    /** {@code ++alvo}, {@code alvo--}, ... — só como instrução do corpo de uma lambda (13b). */
+    record UpdateExpr(Expr target, String operator, boolean prefix, SourceSpan span) implements Expr {
+    }
+
+    /** {@code new Tipo(args)}: Java tal como está no servidor; no cliente só records (13b). */
+    record NewExpr(String typeName, List<Expr> args, SourceSpan span) implements Expr {
     }
 }

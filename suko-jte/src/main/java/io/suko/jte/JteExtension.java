@@ -18,5 +18,7 @@ public final class JteExtension implements SukoExtension {
         ctx.target(new JteTarget());
         ctx.vocabulary(new HtmlVocabulary());
         ctx.checker(new HtmlSecurityChecker());
+        // Depois do html-security, de propósito: um diagnóstico por sítio (R10 do plano 1 da 13b).
+        ctx.checker(new ReactiveHtmlChecker());
     }
 }

@@ -170,6 +170,7 @@ final class DiagnosticsService {
             case ERROR -> DiagnosticSeverity.Error;
             case WARNING -> DiagnosticSeverity.Warning;
             case INFO -> DiagnosticSeverity.Information;
+            case HINT -> DiagnosticSeverity.Hint;
         };
     }
 }

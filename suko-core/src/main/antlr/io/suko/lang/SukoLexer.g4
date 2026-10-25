@@ -35,6 +35,12 @@ IMPORT    : 'import';
 AS        : 'as';
 PUBLIC    : 'public';
 COMPONENT : 'component';
+// 13b: palavras reservadas como `var` (R3 do plano). Continuam a valer como segmento de um nome de
+// tag/atributo (`data-state`) e como nome de membro (`order.state()`): ver `htmlNamePart`/`memberName`.
+REACTIVE  : 'reactive';
+STATE     : 'state';
+DERIVED   : 'derived';
+NEW       : 'new';
 VAR       : 'var';
 IF        : 'if';
 ELSE      : 'else';
@@ -106,6 +112,12 @@ QCOLON    : '?:';
 QUESTION  : '?';
 SLASHGT   : '/>';
 LTSLASH   : '</';
+// 13b: instruções dos handlers (`count++`, `n += 1`). Maximal-munch: `--` ganha a `-`, e `<!--` continua a ser
+// INVALID_DECL (mais comprido). Em texto livre nada muda: o textRun aceita qualquer token e o texto é
+// recuperado pela posição no fonte.
+INC       : '++';
+DEC       : '--';
+PLUSEQ    : '+=';
 PLUS      : '+';
 MINUS     : '-';
 STAR      : '*';

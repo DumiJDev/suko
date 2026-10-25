@@ -93,10 +93,15 @@ final class AstQuery {
                 for (Statement.Attribute attribute : element.attributes()) {
                     expr(attribute.value(), out);
                 }
+                for (Statement.Directive directive : element.directives()) {
+                    expr(directive.value(), out);
+                }
                 statements(element.children(), out);
             }
             case Statement.Interpolation interpolation -> expr(interpolation.expr(), out);
             case Statement.VarDecl varDecl -> expr(varDecl.value(), out);
+            case Statement.StateDecl state -> expr(state.value(), out);
+            case Statement.DerivedDecl derived -> expr(derived.value(), out);
             case Statement.IfStmt ifStmt -> {
                 expr(ifStmt.condition(), out);
                 statements(ifStmt.thenBranch(), out);
@@ -161,6 +166,13 @@ final class AstQuery {
             }
             case Expr.PrimaryExpr primary -> {
             }
+            case Expr.LambdaExpr lambda -> lambda.body().forEach(x -> expr(x, out));
+            case Expr.AssignExpr assign -> {
+                expr(assign.target(), out);
+                expr(assign.value(), out);
+            }
+            case Expr.UpdateExpr update -> expr(update.target(), out);
+            case Expr.NewExpr newExpr -> newExpr.args().forEach(x -> expr(x, out));
         }
     }
 

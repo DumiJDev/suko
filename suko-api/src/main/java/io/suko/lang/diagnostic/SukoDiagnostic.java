@@ -11,7 +11,7 @@ public record SukoDiagnostic(
 ) {
 
     public enum Severity {
-        ERROR, WARNING, INFO
+        ERROR, WARNING, INFO, HINT
     }
 
     @Override

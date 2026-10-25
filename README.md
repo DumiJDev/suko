@@ -163,6 +163,32 @@ component Page() {
 }
 ```
 
+### Reactive components (subproject 13b, in progress)
+
+> Until plan 2 lands, the `jte` target rejects every `reactive component` with `REACTIVE_UNSUPPORTED`: the syntax parses and is checked, but nothing is emitted yet.
+
+A `reactive component` holds client-side state. `state` and `derived` are declared at the top of its body; `on:event=${lambda}` and `bind:value` / `bind:checked` wire the DOM to them:
+
+```suko
+reactive component Counter(int start) {
+  state int count = start;
+  state var step = 1;
+  derived String label = "Clicked " + count + " times";
+
+  <button on:click=${() -> count += step}>${label}</button>
+  <input type="number" bind:value=${step} />
+  Stepper(value = count, onChange = v -> count = v)
+}
+```
+
+- `state T x = ...;` / `state var x = ...;`, `derived T x = ...;` / `derived var x = ...;` (derived values are recomputed; cycles are `DERIVED_CYCLE`; a repeated name among parameters, `state` and `derived` is `DUPLICATE_NAME`; `__proto__`, `constructor` and `prototype` are `RESERVED_NAME`).
+- `on:event=${lambda}`: the lambda may take zero or one parameter. `bind:value` (input, textarea, select; `String`, `int` or `double` state) and `bind:checked` (input; `boolean` state) need `${expression}` without quotes. `on:`/`bind:` are Suko syntax, never HTML attributes.
+- `prefix:name` attributes are accepted (`xlink:href`, `hx-on:click`, `x-on:click`); `@click` is still a syntax error. Dynamic `hx-on:*` / `x-on:*` stay `UNSAFE_SINK`.
+- `for (var x : xs)` now parses.
+- New reserved words: `reactive`, `state`, `derived`, `new` (still accepted inside HTML names such as `data-state`, after `.`, and as segments of `package`/`import` names such as `package app.state;`).
+- The client runs a small Java subset translated to JS (32-bit `int` arithmetic like Java, `String`, `List`, read-only `Map` with `get`/`containsKey`/`size`/`isEmpty`, no `long`/`char`/`float`); anything else is `CLIENT_UNSUPPORTED`.
+- `++`, `--` and `+=` are tokens: `a--b`, `${1--1}` and `data--x` are `PARSE_ERROR`; write `a - -b`. `data-x` and free text are unchanged.
+
 ### Examples
 
 The `examples/shop` directory is a runnable e-commerce shop (Spring Boot + H2) written in Suko: catalogue, product page, search, reviews, cart and checkout, with Spring Security (CSRF, session handling) and an XSS corpus. It is a separate Gradle build that uses the `io.suko.lang` plugin through `includeBuild("../..")`, so it is not part of the root build. Run its tests with `./gradlew -p examples/shop test`. Its `.sk` sources (`examples/shop/src/main/suko`) are also a root of the compiler's golden test (`GoldenParityTest`).
@@ -361,6 +387,8 @@ gradle build
 gradle test
 ```
 
+`:suko-core:test` needs Node.js 18+ on the `PATH` (or `SUKO_NODE` pointing at the executable): the subproject 13b client tests run the generated JavaScript and fail without it.
+
 ### Architecture
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed pipeline architecture and design decisions.
@@ -372,6 +400,7 @@ Each subproject has a specification document in `docs/superpowers/specs/` and an
 ## Requirements
 
 - Java 21+ (records, sealed interfaces, pattern-matching `switch`)
+- Node.js 18+ (only to run the `suko-core` tests; or set `SUKO_NODE`)
 - Gradle 9.x (no wrapper is committed — use a system install) or Maven 3.9+
 
 ## License

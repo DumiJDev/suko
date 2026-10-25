@@ -25,21 +25,32 @@ compilationUnit
     ;
 
 packageDecl
-    : PACKAGE qualifiedName SEMI
+    : PACKAGE packageName SEMI
     ;
 
 importDecl
-    : IMPORT qualifiedName (AS Identifier)? SEMI
+    : IMPORT packageName (AS Identifier)? SEMI
     ;
 
+// 13b: `package app.state;` e `import app.reactive.X;` aceitam as palavras reservadas como segmento.
+packageName
+    : nameSegment (DOT nameSegment)*
+    ;
+
+// Na chamada de componente só o primeiro segmento é Identifier (`state ...` abriria um reactiveDecl);
+// `app.state.Card()` faz parse.
 qualifiedName
-    : Identifier (DOT Identifier)*
+    : Identifier (DOT nameSegment)*
+    ;
+
+nameSegment
+    : Identifier | REACTIVE | STATE | DERIVED | NEW
     ;
 
 // --- Declaração de componente ---
 
 componentDecl
-    : PUBLIC? COMPONENT Identifier typeParameters? LPAREN paramList? RPAREN componentBody
+    : PUBLIC? REACTIVE? COMPONENT Identifier typeParameters? LPAREN paramList? RPAREN componentBody
     ;
 
 typeParameters
@@ -84,7 +95,8 @@ templateBlock
     ;
 
 templateStatement
-    : varDecl
+    : reactiveDecl
+    | varDecl
     | ifStmt
     | forStmt
     | switchStmt
@@ -128,6 +140,13 @@ textRun
     : ( ~(LBRACE | RBRACE | LT | LTSLASH | EXPR_INTERP_START | DOCTYPE | INVALID_DECL) )+
     ;
 
+// 13b: `state T x = e;`, `state var x = e;`, `derived ...`. Aceite em qualquer posição de instrução para o
+// erro ser claro: o construtor do AST recusa-a fora do topo de um reactive component (PARSE_ERROR) e o
+// verificador dá REACTIVE_REQUIRED num component simples.
+reactiveDecl
+    : kind=(STATE | DERIVED) (VAR | type) Identifier EQ expression SEMI
+    ;
+
 varDecl
     : VAR Identifier EQ expression SEMI
     ;
@@ -137,7 +156,7 @@ ifStmt
     ;
 
 forStmt
-    : FOR LPAREN type Identifier COLON expression RPAREN templateBlock
+    : FOR LPAREN (VAR | type) Identifier COLON expression RPAREN templateBlock
     ;
 
 switchStmt
@@ -155,7 +174,15 @@ defaultCase
 // --- Chamada de componente, estilo Compose/Flutter ---
 
 componentCall
-    : qualifiedName typeArguments? LPAREN argList? RPAREN slotBlock?
+    : qualifiedName typeArguments? LPAREN componentArgList? RPAREN slotBlock?
+    ;
+
+componentArgList
+    : componentArg (COMMA componentArg)*
+    ;
+
+componentArg
+    : (Identifier EQ)? (lambda | expression)
     ;
 
 argList
@@ -189,7 +216,12 @@ namedSlot
 // o nome a partir de Identifier/MINUS já lexados separadamente, em vez
 // de alargar o Identifier léxico (o que quebraria "a-b" em expressões).
 htmlName
-    : Identifier (MINUS Identifier)*
+    : htmlNamePart (MINUS htmlNamePart)*
+    ;
+
+// As palavras reservadas da 13b continuam a valer dentro de nomes HTML (`data-state`, `data-new`).
+htmlNamePart
+    : Identifier | REACTIVE | STATE | DERIVED | NEW
     ;
 
 htmlElement
@@ -198,10 +230,22 @@ htmlElement
     | LT tag=htmlName attribute* GT {isVoidElementName($tag.text)}?                                          # VoidElement
     ;
 
+// 13b (Q4): `prefixo:nome` só em nomes de atributo. Os três pedaços têm de estar colados (o espaço é
+// `skip`, por isso quem o garante é o construtor do AST, pelas posições). `on:`/`bind:` viram
+// Statement.Directive; qualquer outro prefixo (`xlink:href`, `hx-on:click`) é um atributo HTML normal.
+attrName
+    : htmlName (COLON htmlName)?
+    ;
+
 attribute
-    : htmlName EQ stringLiteral
-    | htmlName EQ interpolation
-    | htmlName
+    : attrName EQ stringLiteral
+    | attrName EQ interpolation
+    | attrName EQ lambdaInterpolation
+    | attrName
+    ;
+
+lambdaInterpolation
+    : EXPR_INTERP_START lambda RBRACE
     ;
 
 // Interpolação de uma expressão. UMA regra para as três posições em que
@@ -222,12 +266,37 @@ interpolation
     : (EXPR_INTERP_START | legacy=LBRACE) expression RBRACE
     ;
 
+// 13b: lambdas só como valor de atributo (`on:click=${() -> ...}`) e argumento de componente. As
+// atribuições e os `++`/`--`/`+=` só existem como instruções do corpo (não são expressões).
+lambda
+    : lambdaParams ARROW lambdaBody
+    ;
+
+lambdaParams
+    : LPAREN RPAREN
+    | LPAREN Identifier RPAREN
+    | Identifier
+    ;
+
+lambdaBody
+    : LBRACE (clientStatement SEMI)* RBRACE
+    | clientStatement
+    ;
+
+clientStatement
+    : expression op=(EQ | PLUSEQ) expression         # AssignStatement
+    | op=(INC | DEC) expression                      # PrefixUpdateStatement
+    | expression op=(INC | DEC)                      # PostfixUpdateStatement
+    | expression                                     # ExpressionStatement
+    ;
+
 // --- Expressões ---
 
 expression
     : primary                                                # PrimaryExpr
-    | expression QDOT Identifier                             # SafeAccessExpr
-    | expression DOT Identifier                              # AccessExpr
+    | NEW Identifier LPAREN argList? RPAREN                   # NewExpr
+    | expression QDOT memberName                             # SafeAccessExpr
+    | expression DOT memberName                              # AccessExpr
     | expression LPAREN argList? RPAREN                       # CallExpr
     | NOT expression                                          # NotExpr
     | MINUS expression                                        # UnaryMinusExpr
@@ -240,6 +309,11 @@ expression
     | expression QCOLON expression                            # ElvisExpr
     | expression QUESTION expression COLON expression         # TernaryExpr
     | LPAREN expression RPAREN                                 # ParenExpr
+    ;
+
+// Um record Java pode ter um componente chamado `state` (`order.state()`): as palavras da 13b valem como membro.
+memberName
+    : Identifier | REACTIVE | STATE | DERIVED
     ;
 
 primary

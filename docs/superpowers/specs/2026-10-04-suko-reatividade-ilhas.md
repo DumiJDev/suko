@@ -1,7 +1,7 @@
 # Suko — Subprojeto 13b: reatividade em ilhas no alvo JTE
 
 Data: 2026-10-04
-Estado: **rascunho para revisão do utilizador.** Desenho aprovado secção a
+Estado: **plano 1 (linguagem, API v2, tradutor) implementado no ramo `feat/13b-ilhas`; plano 2 (ilhas no `jte`) por fazer.** Desenho aprovado secção a
 secção na conversa de 2026-10-04.
 Ordem: **spec agora, implementação depois do item 12** (interop Java),
 decidido pelo utilizador a 2026-10-04. Depende do 13a (API de extensões).
@@ -326,12 +326,13 @@ além de records. Cresce por decisão explícita.
   (`PROP_MAP_KEYS`) já tem severidade onde cair, e o Gradle e o Maven
   imprimem-no em sucesso (R3 do 14).
 
-**Ainda por fazer: o que a 13b exige e sobe `ExtensionApi.VERSION` para 2**
-(nada foi publicado):
+**O que a 13b exigia e sobe `ExtensionApi.VERSION` para 2** (feito no plano 1,
+`VERSION = 2`, exceto onde indicado; nada foi publicado):
 
 - `Target.emit` devolve um só `Emitted`. Os `.js` por componente precisam de
   várias saídas por componente, ou então de serem emitidos por
-  `emitProject` (que vê o projeto inteiro). Escolhe-se no plano.
+  `emitProject` (que vê o projeto inteiro). Escolhe-se no plano. *(Por fazer:
+  decidido para o plano 2, R11, `Emitted.companions`/`CLIENT_ASSET`.)*
 - **Capacidades do alvo** (`reactive`), lidas pelo verificador. O
   `CheckContext` expõe vocabulários ativos, não alvos, e o
   `REACTIVE_UNSUPPORTED` precisa dos alvos.
@@ -480,8 +481,11 @@ todos os componentes (M2, exceção de `style`). Agora a 13b alinha-se com o 14:
   `String.prototype.trim()`, como no porte de URLs); allowlist de correspondência
   **total** (`^...$`, ASCII, sem flag `i`/`u`): número com unidade opcional
   (`[-+]?[0-9]+(\.[0-9]+)?(%|[A-Za-z]{1,4})?`), cor `#hex` (`#[0-9A-Fa-f]{3,8}`)
-  ou identificador (`[A-Za-z-]+`); senão `unset`. O valor devolvido é o
-  original, sem alterações.
+  ou identificador (`[A-Za-z-]+`); senão `unset`. O valor devolvido é o valor
+  **normalizado** (as unidades `<= U+0020` retiradas das pontas, como o
+  `String.valueOf(v).trim()` do `SukoSafe.cssValue` Java; nunca
+  `String.prototype.trim()`), não o original: o teste diferencial compara
+  strings iguais. `null` (e um `Boxed` nulo) → `unset`, nunca o texto `null`.
 - **Operação DOM:** a lista fechada de operações ganha `style.setProperty`
   (nome de propriedade fixo em compile-time, valor vindo do porte). A
   recomendação é usar o CSSOM e não `setAttribute("style", ...)`: a CSP da loja

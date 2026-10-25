@@ -11,6 +11,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Regras de segurança HTML partilhadas pelo emissor (que embrulha/sanitiza) e
@@ -18,6 +20,20 @@ import java.util.regex.Pattern;
  * (subprojeto 14). Nomes de elemento e atributo comparam-se em minúsculas.
  */
 public final class HtmlSecurityRules {
+
+    /** Início da mensagem do UNSAFE_SINK de conteúdo dinâmico (o ReactiveHtmlChecker distingue-o pelo prefixo). */
+    public static final String DYNAMIC_CONTENT_MESSAGE_PREFIX = "Conteúdo dinâmico dentro de <";
+
+    /** Conteúdo que o browser executa ou reinterpreta (era privado no HtmlSecurityChecker). */
+    public static final Set<String> CONTENT_SINKS = Set.of("script", "style", "noscript", "foreignobject");
+    /** Elementos de animação SVG cujos attributeName/values/to/from/by o 14 vigia (era privado no HtmlSecurityChecker). */
+    public static final Set<String> ANIMATION = Set.of("animate", "set", "animatemotion", "animatetransform");
+    /** 13b, R27: elementos que o cliente nunca cria nem cujos atributos atualiza (nome local, minúsculas). */
+    public static final Set<String> CLIENT_FORBIDDEN_ELEMENTS = Stream.of(CONTENT_SINKS.stream(), ANIMATION.stream(),
+            Stream.of("iframe", "frame", "object", "embed", "base", "meta", "link", "template",
+                "fencedframe", "portal", "applet", "frameset"))
+        .flatMap(s -> s)
+        .collect(Collectors.toUnmodifiableSet());
 
     public static final Set<String> LOADING_LINK_RELS =
         Set.of("stylesheet", "import", "preload", "modulepreload", "icon", "manifest");

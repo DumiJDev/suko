@@ -88,7 +88,7 @@ public final class TolerantParser {
 
     /**
      * Offsets (em UTF-16 do {@code source}) onde começa cada declaração de
-     * componente: {@code [public] component Nome (} ou {@code <}, sendo a
+     * componente: {@code [public] [reactive] component Nome (} ou {@code <}, sendo a
      * primeira coisa da sua linha.
      */
     private static List<Integer> componentStarts(String source) {
@@ -114,9 +114,13 @@ public final class TolerantParser {
                 continue;
             }
             int first = i;
-            if (i > 0 && tokens.get(i - 1).getType() == SukoLexer.PUBLIC
-                    && tokens.get(i - 1).getLine() == token.getLine()) {
-                first = i - 1;
+            if (first > 0 && tokens.get(first - 1).getType() == SukoLexer.REACTIVE
+                    && tokens.get(first - 1).getLine() == token.getLine()) {
+                first--;
+            }
+            if (first > 0 && tokens.get(first - 1).getType() == SukoLexer.PUBLIC
+                    && tokens.get(first - 1).getLine() == token.getLine()) {
+                first--;
             }
             boolean firstOnLine = first == 0 || tokens.get(first - 1).getLine() < tokens.get(first).getLine();
             if (firstOnLine) {

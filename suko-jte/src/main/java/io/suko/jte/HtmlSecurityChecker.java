@@ -3,6 +3,9 @@ package io.suko.jte;
 import io.suko.ext.CheckContext;
 import io.suko.ext.Checker;
 import io.suko.ext.SecurityOptions;
+import io.suko.jte.client.Callees;
+import io.suko.jte.client.ClientModel;
+import io.suko.jte.client.JavaTypes;
 import io.suko.lang.ast.*;
 import io.suko.lang.diagnostic.SukoDiagnostic.Severity;
 
@@ -13,6 +16,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import static io.suko.jte.HtmlSecurityRules.ANIMATION;
+import static io.suko.jte.HtmlSecurityRules.CONTENT_SINKS;
 import static io.suko.jte.HtmlSecurityRules.isLiteral;
 import static io.suko.jte.HtmlSecurityRules.lower;
 
@@ -24,8 +29,6 @@ import static io.suko.jte.HtmlSecurityRules.lower;
 public final class HtmlSecurityChecker implements Checker {
 
     private static final Set<String> RESERVED = Set.of("trustedUrl", "trustedStyle", "trustedHtml");
-    private static final Set<String> CONTENT_SINKS = Set.of("script", "style", "noscript", "foreignobject");
-    private static final Set<String> ANIMATION = Set.of("animate", "set", "animatemotion", "animatetransform");
     private static final Set<String> ANIMATION_ATTRS = Set.of("attributename", "values", "to", "from", "by");
 
     @Override
@@ -38,7 +41,10 @@ public final class HtmlSecurityChecker implements Checker {
         if (!ctx.activeVocabularies().contains("html")) {
             return;
         }
+        Callees callees = new Callees(file, ctx.project());
         for (ComponentDecl component : file.components()) {
+            // 13b (Q6): num reactive component, saber que atributos o cliente atualiza (trusted* só no servidor).
+            ClientModel model = component.reactive() ? ClientModel.of(component, callees, JavaTypes.NONE) : null;
             reserved(component.name(), component.nameSpan(), "componente", ctx);
             Set<String> slots = new HashSet<>();
             for (Param p : component.params()) {
@@ -56,40 +62,51 @@ public final class HtmlSecurityChecker implements Checker {
                     scan(sp.defaultValue().get(), ctx);
                 }
             }
-            walk(component.body(), slots, ctx);
+            walk(component.body(), slots, ctx, model);
         }
     }
 
-    private void walk(List<Statement> statements, Set<String> slots, CheckContext ctx) {
+    private void walk(List<Statement> statements, Set<String> slots, CheckContext ctx, ClientModel model) {
         for (Statement s : statements) {
             switch (s) {
                 case Statement.HtmlElement e -> {
-                    element(e, slots, ctx);
-                    walk(e.children(), slots, ctx);
+                    element(e, slots, ctx, model);
+                    for (Statement.Directive d : e.directives()) {
+                        scan(d.value(), ctx);
+                    }
+                    walk(e.children(), slots, ctx, model);
+                }
+                case Statement.StateDecl st -> {
+                    reserved(st.name(), st.nameSpan(), "state", ctx);
+                    scan(st.value(), ctx);
+                }
+                case Statement.DerivedDecl d -> {
+                    reserved(d.name(), d.nameSpan(), "derived", ctx);
+                    scan(d.value(), ctx);
                 }
                 case Statement.IfStmt i -> {
                     scan(i.condition(), ctx);
-                    walk(i.thenBranch(), slots, ctx);
-                    walk(i.elseBranch(), slots, ctx);
+                    walk(i.thenBranch(), slots, ctx, model);
+                    walk(i.elseBranch(), slots, ctx, model);
                 }
                 case Statement.ForStmt f -> {
                     scan(f.iterable(), ctx);
-                    walk(f.body(), slots, ctx);
+                    walk(f.body(), slots, ctx, model);
                 }
                 case Statement.SwitchStmt sw -> {
                     scan(sw.subject(), ctx);
                     for (Statement.SwitchCase c : sw.cases()) {
                         scan(c.matchValue(), ctx);
-                        walk(c.body(), slots, ctx);
+                        walk(c.body(), slots, ctx, model);
                     }
-                    walk(sw.defaultCase(), slots, ctx);
+                    walk(sw.defaultCase(), slots, ctx, model);
                 }
                 case Statement.ComponentCallStmt call -> {
                     for (Statement.Arg arg : call.args()) {
                         scan(arg.value(), ctx);
                     }
                     for (Statement.SlotFill fill : call.slotFills()) {
-                        walk(fill.body(), slots, ctx);
+                        walk(fill.body(), slots, ctx, model);
                     }
                 }
                 case Statement.VarDecl v -> {
@@ -146,6 +163,13 @@ public final class HtmlSecurityChecker implements Checker {
                 scan(x.left(), ctx);
                 scan(x.right(), ctx);
             }
+            case Expr.LambdaExpr l -> l.body().forEach(x -> scan(x, ctx));
+            case Expr.AssignExpr a -> {
+                scan(a.target(), ctx);
+                scan(a.value(), ctx);
+            }
+            case Expr.UpdateExpr u -> scan(u.target(), ctx);
+            case Expr.NewExpr n -> n.args().forEach(x -> scan(x, ctx));
         }
     }
 
@@ -156,7 +180,7 @@ public final class HtmlSecurityChecker implements Checker {
         }
     }
 
-    private void element(Statement.HtmlElement e, Set<String> slots, CheckContext ctx) {
+    private void element(Statement.HtmlElement e, Set<String> slots, CheckContext ctx, ClientModel model) {
         SecurityOptions options = ctx.options();
         String tag = lower(e.tagName());
         uppercase(e.tagName(), e.span(), "elemento", ctx);
@@ -168,7 +192,7 @@ public final class HtmlSecurityChecker implements Checker {
 
         if (CONTENT_SINKS.contains(tag) && hasDynamicContent(e.children())) {
             ctx.report(Severity.ERROR, "UNSAFE_SINK",
-                "Conteúdo dinâmico dentro de <" + e.tagName() + "> é executado ou reinterpretado pelo browser; use texto literal"
+                HtmlSecurityRules.DYNAMIC_CONTENT_MESSAGE_PREFIX + e.tagName() + "> é executado ou reinterpretado pelo browser; use texto literal"
                     + (tag.equals("script") || tag.equals("style") ? " e passe os dados por atributos data-*" : ""), e.span());
         }
         if (options.strictCsp()) {
@@ -185,7 +209,7 @@ public final class HtmlSecurityChecker implements Checker {
             uppercase(a.name(), a.span(), "atributo", ctx);
             Expr v = a.value();
 
-            if (trusted(a, tag, name, options, ctx)) {
+            if (trusted(a, tag, name, options, ctx, model != null && model.isClientAttribute(a))) {
                 continue;
             }
             scan(v, ctx);
@@ -213,7 +237,7 @@ public final class HtmlSecurityChecker implements Checker {
     }
 
     /** Devolve {@code true} se o valor é uma chamada {@code trusted*} (já tratada, bem ou mal). */
-    private boolean trusted(Statement.Attribute a, String tag, String name, SecurityOptions options, CheckContext ctx) {
+    private boolean trusted(Statement.Attribute a, String tag, String name, SecurityOptions options, CheckContext ctx, boolean client) {
         for (String fn : RESERVED) {
             var arg = HtmlSecurityRules.trustedArgument(a.value(), fn);
             if (arg.isEmpty()) {
@@ -227,6 +251,11 @@ public final class HtmlSecurityChecker implements Checker {
                 default -> false;
             };
             scan(arg.get(), ctx);
+            if (ok && client) {
+                ctx.report(Severity.ERROR, "RESERVED_NAME", fn + "(...) só é válido no render do servidor: um atributo"
+                    + " atualizado no cliente passa sempre pelo porte do SukoSafe (13b, Q6)", a.span());
+                return true;
+            }
             if (!ok) {
                 ctx.report(Severity.ERROR, "RESERVED_NAME",
                     fn + "(...) não é válido no atributo '" + a.name() + "'"
@@ -267,7 +296,9 @@ public final class HtmlSecurityChecker implements Checker {
             return;
         }
         String text = v instanceof Expr.StringLiteralExpr s ? Expr.pretty(s.parts()).trim().toLowerCase(Locale.ROOT) : "";
-        boolean inline = name.equals("style") || name.startsWith("on") || name.startsWith("x-")
+        // mesma normalização do sinkReason: htmx/Alpine aceitam o prefixo data- (data-hx-on:click, data-x-data)
+        String code = name.startsWith("data-") ? name.substring(5) : name;
+        boolean inline = name.equals("style") || name.startsWith("on") || code.startsWith("x-") || code.startsWith("hx-on")
             || (HtmlSecurityRules.isUrlAttribute(tag, name, ctx.options()) && text.replaceAll("[\\t\\n\\r]", "").startsWith("javascript:"));
         if (inline) {
             ctx.report(Severity.WARNING, "CSP_INLINE",
@@ -289,6 +320,8 @@ public final class HtmlSecurityChecker implements Checker {
                         return true;
                     }
                 }
+                case Statement.StateDecl st -> { }
+                case Statement.DerivedDecl d -> { }
                 case Statement.IfStmt i -> {
                     if (hasDynamicContent(i.thenBranch()) || hasDynamicContent(i.elseBranch())) {
                         return true;

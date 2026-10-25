@@ -108,7 +108,7 @@ public class ProjectIndex implements ProjectView {
                 index.byQualifiedName.put(qualifiedName, new ProjectIndexEntry(
                     qualifiedName, component.name(), skFile, component.isPublic(),
                     component.params().stream().map(ParamInfo::of).toList(),
-                    component.span(), component.nameSpan()));
+                    component.span(), component.nameSpan(), component.reactive()));
             }
         }
 

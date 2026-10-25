@@ -119,6 +119,32 @@ Maven: `<security>` com `urlSchemes`, `imageDataTypes`, `codeAttributes`, `urlAt
   aceitar segmentos de caminho); o `pathSegment` é aplicado apenas a embeds de origem constante.
 - `SukoSafe.pathSegment` só é seguro depois de um prefixo literal `esquema://host/`.
 
+### Reatividade (13b, plano 1)
+
+- `on:`/`bind:` são sintaxe Suko, nunca atributos HTML nem emitidos tal como estão. `hx-on:*` e
+  `x-on:*` dinâmicos são `UNSAFE_SINK` e `xlink:href` passa pelo `SukoSafe.url` (agora escrevíveis).
+- `trustedUrl`/`trustedStyle` só no render do servidor de um reactive component (`RESERVED_NAME` no
+  cliente). As ilhas em si (porte do `SukoSafe`, token de montagem, props) chegam no plano 2.
+- **Geradores que ignoram `syntaxIssues()`** (F2 da revisão final): `RegistryGenerator`,
+  `WebsiteGenerator` e `ProjectIndex` constroem o AST sem ler `SukoAstBuilder.syntaxIssues()`.
+  É seguro porque o `JteEmitter` falha fechado (lança `IllegalStateException` perante
+  `Directive`, `StateDecl`, `DerivedDecl`, lambdas, atribuições e `++`/`--`) e esses geradores
+  não emitem HTML a partir de entrada de utilizador; quem acrescentar um gerador novo deve
+  ler `syntaxIssues()` ou depender do mesmo fail-closed.
+- Nomes de `state`/`derived` iguais a `__proto__`, `constructor` ou `prototype` são
+  `RESERVED_NAME`, e nomes repetidos são `DUPLICATE_NAME` (F1 da revisão final).
+- `CLIENT_UNSAFE_SINK` cobre também `noscript`, `fencedframe`, `portal`, `applet` e `frameset`.
+- `PROP_SENSITIVE` compara por tokens do nome, com a lista alargada (`csrf`, `nonce`, `otp`, `pin`,
+  `cvv`, `salt`, `bearer`, `refresh`), e é só um aviso: um nome em minúsculas sem separador
+  (`accesstoken`) não casa.
+- Contrato do `style` reativo: `cssValue` devolve o valor **normalizado** (`<= U+0020` tirado das
+  pontas), o cliente só escreve por `style.setProperty` e, com `style-src 'self'`, o atributo `style`
+  escrito pelo servidor no 1.º render é descartado pelo browser: o valor só aparece depois da
+  montagem (a provar em Playwright no plano 2).
+- **Não ligue dados não confiáveis a propriedades de layout** (`position`, `display`, `visibility`,
+  `pointer-events`, `opacity`): a allowlist deixa o utilizador escolher entre identificadores
+  válidos (`fixed`, `none`, `hidden`), redressing de UI, igual ao servidor desde o 14.
+
 ## 3. O que não é do Suko
 
 - **CSRF**: é da aplicação (na loja, Spring Security).

@@ -19,6 +19,25 @@ public class SukoAstBuilder {
     private final boolean tolerant;
     private final boolean sourceHasSurrogates;
 
+    /**
+     * Erro de forma detetado ao construir o AST (13b): prefixo reservado com maiúsculas, espaços à volta de
+     * ':', lambda fora de on:, state/derived fora do sítio. O caminho estrito (JteCompiler) reporta-o como
+     * PARSE_ERROR com a posição real; os caminhos silenciosos (ProjectIndex, RegistryGenerator) e o
+     * tolerante (LSP) ignoram-no, como já ignoram os erros do ANTLR.
+     */
+    public record SyntaxIssue(String message, SourceSpan span) {
+    }
+
+    private final List<SyntaxIssue> syntaxIssues = new ArrayList<>();
+
+    public List<SyntaxIssue> syntaxIssues() {
+        return List.copyOf(syntaxIssues);
+    }
+
+    private void issue(String message, SourceSpan span) {
+        syntaxIssues.add(new SyntaxIssue(message, span));
+    }
+
     public SukoAstBuilder(String source) {
         this(source, false);
     }
@@ -43,7 +62,7 @@ public class SukoAstBuilder {
     public SukoFile build(SukoParser.CompilationUnitContext ctx) {
         Optional<String> packageName = ctx.packageDecl() == null
             ? Optional.empty()
-            : Optional.of(ctx.packageDecl().qualifiedName().getText());
+            : Optional.of(ctx.packageDecl().packageName().getText());
         Optional<SourceSpan> packageSpan = ctx.packageDecl() == null
             ? Optional.empty()
             : Optional.of(spanOf(ctx.packageDecl()));
@@ -53,7 +72,7 @@ public class SukoAstBuilder {
             Optional<String> alias = importCtx.Identifier() == null
                 ? Optional.empty()
                 : Optional.of(importCtx.Identifier().getText());
-            imports.add(new ImportDecl(importCtx.qualifiedName().getText(), alias, spanOf(importCtx)));
+            imports.add(new ImportDecl(importCtx.packageName().getText(), alias, spanOf(importCtx)));
         }
 
         List<ComponentDecl> components = new ArrayList<>();
@@ -113,7 +132,7 @@ public class SukoAstBuilder {
                 span = spanOf(ctx.getStart());
             }
             return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, span,
-                ctx.PUBLIC() != null, spanOf(ctx.Identifier().getSymbol()));
+                ctx.PUBLIC() != null, spanOf(ctx.Identifier().getSymbol()), ctx.REACTIVE() != null);
         } catch (RuntimeException e) {
             return null;
         }
@@ -137,7 +156,7 @@ public class SukoAstBuilder {
         List<Statement> body = buildComponentBody(ctx.componentBody());
 
         return new ComponentDecl(ctx.Identifier().getText(), typeParameters, params, body, spanOf(ctx),
-            ctx.PUBLIC() != null, spanOf(ctx.Identifier().getSymbol()));
+            ctx.PUBLIC() != null, spanOf(ctx.Identifier().getSymbol()), ctx.REACTIVE() != null);
     }
 
     private static final Type CONTENT_ELEMENT_TYPE = new Type("Object", List.of(), 0);
@@ -229,6 +248,9 @@ public class SukoAstBuilder {
     }
 
     Statement buildStatement(SukoParser.TemplateStatementContext ctx) {
+        if (ctx.reactiveDecl() != null) {
+            return buildReactiveDecl(ctx);
+        }
         if (ctx.componentCall() != null) {
             return buildComponentCallStmt(ctx.componentCall());
         }
@@ -279,15 +301,16 @@ public class SukoAstBuilder {
     // o emitter aprender a resolver sub-pacotes, se isso vier a ser suportado.
     private Statement.ComponentCallStmt buildComponentCallStmt(SukoParser.ComponentCallContext ctx) {
         List<Statement.Arg> args = new ArrayList<>();
-        if (ctx.argList() != null) {
-            for (SukoParser.ArgContext argCtx : ctx.argList().arg()) {
+        if (ctx.componentArgList() != null) {
+            for (SukoParser.ComponentArgContext argCtx : ctx.componentArgList().componentArg()) {
                 Optional<String> name = argCtx.Identifier() == null
                     ? Optional.empty()
                     : Optional.of(argCtx.Identifier().getText());
-                SourceSpan argSpan = argCtx.Identifier() == null
-                    ? spanOf(argCtx.expression())
-                    : spanOf(argCtx.Identifier().getSymbol());
-                args.add(new Statement.Arg(name, buildExpr(argCtx.expression()), argSpan));
+                Expr value = argCtx.lambda() != null ? buildLambda(argCtx.lambda()) : buildExpr(argCtx.expression());
+                SourceSpan argSpan = argCtx.Identifier() != null
+                    ? spanOf(argCtx.Identifier().getSymbol())
+                    : argCtx.lambda() != null ? spanOf(argCtx.lambda()) : spanOf(argCtx.expression());
+                args.add(new Statement.Arg(name, value, argSpan));
             }
         }
         List<Statement.SlotFill> slotFills = new ArrayList<>();
@@ -338,9 +361,50 @@ public class SukoAstBuilder {
         return new Statement.IfStmt(condition, thenBranch, elseBranch, spanOf(ctx));
     }
 
+    private Statement buildReactiveDecl(SukoParser.TemplateStatementContext stmtCtx) {
+        SukoParser.ReactiveDeclContext ctx = stmtCtx.reactiveDecl();
+        Optional<Type> type = ctx.VAR() != null ? Optional.empty() : Optional.of(buildType(ctx.type()));
+        String name = ctx.Identifier().getText();
+        Expr value = buildExpr(ctx.expression());
+        SourceSpan span = spanOf(ctx);
+        SourceSpan nameSpan = spanOf(ctx.Identifier().getSymbol());
+        boolean state = ctx.kind.getType() == SukoParser.STATE;
+        if (!atTopOfReactiveBody(stmtCtx)) {
+            issue("'" + (state ? "state" : "derived") + "' só pode aparecer no topo do corpo de um reactive component,"
+                + " antes do markup", span);
+        }
+        return state
+            ? new Statement.StateDecl(type, name, value, span, nameSpan)
+            : new Statement.DerivedDecl(type, name, value, span, nameSpan);
+    }
+
+    /** Num component que não é reativo devolve true: aí quem fala é o REACTIVE_REQUIRED do verificador. */
+    private static boolean atTopOfReactiveBody(SukoParser.TemplateStatementContext stmtCtx) {
+        org.antlr.v4.runtime.ParserRuleContext p = stmtCtx;
+        while (p != null && !(p instanceof SukoParser.ComponentDeclContext)) {
+            p = p.getParent();
+        }
+        if (!(p instanceof SukoParser.ComponentDeclContext component) || component.REACTIVE() == null) {
+            return true;
+        }
+        if (!(stmtCtx.getParent() instanceof SukoParser.ComponentBodyContext body)) {
+            return false;
+        }
+        for (SukoParser.TemplateStatementContext sibling : body.templateStatement()) {
+            if (sibling == stmtCtx) {
+                return true;
+            }
+            if (sibling.reactiveDecl() == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private Statement.ForStmt buildForStmt(SukoParser.ForStmtContext ctx) {
+        Type itemType = ctx.VAR() != null ? new Type("var", List.of(), 0) : buildType(ctx.type());
         return new Statement.ForStmt(
-            buildType(ctx.type()),
+            itemType,
             ctx.Identifier().getText(),
             buildExpr(ctx.expression()),
             buildStatements(ctx.templateBlock().templateStatement()),
@@ -386,41 +450,127 @@ public class SukoAstBuilder {
 
     private Statement.HtmlElement buildHtmlElement(SukoParser.HtmlElementContext ctx) {
         if (ctx instanceof SukoParser.SelfClosingElementContext c) {
-            return new Statement.HtmlElement(c.htmlName().getText(), buildAttributes(c.attribute()),
-                List.of(), true, spanOf(ctx));
+            AttributeParts parts = buildAttributes(c.attribute());
+            return new Statement.HtmlElement(c.htmlName().getText(), parts.attributes(),
+                List.of(), true, spanOf(ctx), parts.directives());
         }
         if (ctx instanceof SukoParser.OpenElementContext c) {
-            return new Statement.HtmlElement(c.htmlName(0).getText(), buildAttributes(c.attribute()),
-                buildStatements(c.templateStatement()), false, spanOf(ctx));
+            AttributeParts parts = buildAttributes(c.attribute());
+            return new Statement.HtmlElement(c.htmlName(0).getText(), parts.attributes(),
+                buildStatements(c.templateStatement()), false, spanOf(ctx), parts.directives());
         }
         if (ctx instanceof SukoParser.VoidElementContext c) {
-            return new Statement.HtmlElement(c.htmlName().getText(), buildAttributes(c.attribute()),
-                List.of(), true, spanOf(ctx));
+            AttributeParts parts = buildAttributes(c.attribute());
+            return new Statement.HtmlElement(c.htmlName().getText(), parts.attributes(),
+                List.of(), true, spanOf(ctx), parts.directives());
         }
         throw new IllegalStateException("Tipo de htmlElement desconhecido: " + ctx.getClass());
     }
 
-    private List<Statement.Attribute> buildAttributes(List<SukoParser.AttributeContext> ctxs) {
+    private record AttributeParts(List<Statement.Attribute> attributes, List<Statement.Directive> directives) {
+    }
+
+    /** Atributos HTML e diretivas da 13b (`on:`/`bind:`, só com o prefixo exatamente em minúsculas). */
+    private AttributeParts buildAttributes(List<SukoParser.AttributeContext> ctxs) {
         List<Statement.Attribute> attributes = new ArrayList<>();
+        List<Statement.Directive> directives = new ArrayList<>();
         for (SukoParser.AttributeContext attrCtx : ctxs) {
-            String name = attrCtx.htmlName().getText();
+            SukoParser.AttrNameContext nameCtx = attrCtx.attrName();
+            String prefix = nameCtx.htmlName(0).getText();
+            boolean prefixed = nameCtx.COLON() != null;
+            String local = prefixed ? nameCtx.htmlName(1).getText() : null;
+            String name = prefixed ? prefix + ":" + local : prefix;
+            SourceSpan span = spanOf(attrCtx);
+            SourceSpan nameSpan = spanOf(nameCtx);
+            boolean spaced = prefixed && !adjacent(nameCtx);
+            if (spaced) {
+                issue("'" + name + "': um nome de atributo com ':' escreve-se sem espaços", nameSpan);
+            }
+            if (prefixed && (prefix.equals("on") || prefix.equals("bind"))) {
+                directives.add(buildDirective(attrCtx, prefix.equals("on"), local, span, nameSpan, spaced));
+                continue;
+            }
+            boolean reserved = prefixed && (prefix.equalsIgnoreCase("on") || prefix.equalsIgnoreCase("bind"));
+            if (reserved) {
+                String lower = prefix.toLowerCase(java.util.Locale.ROOT);
+                issue("'" + prefix + ":' é um prefixo reservado do Suko e escreve-se em minúsculas: " + lower + ":" + local,
+                    nameSpan);
+            }
+            boolean lambda = attrCtx.lambdaInterpolation() != null;
+            if (lambda && !reserved) { // com prefixo reservado já há um PARSE_ERROR neste nome
+                issue("uma lambda só é aceite como valor de on:evento (ex.: on:click=${() -> ...})"
+                    + " ou como argumento de um componente reativo", span);
+            }
             Expr value = attrCtx.stringLiteral() != null
                 ? buildStringLiteral(attrCtx.stringLiteral())
                 : attrCtx.interpolation() != null
                     ? buildExpr(attrCtx.interpolation().expression())
-                    : new Expr.PrimaryExpr("true", spanOf(attrCtx));
+                    : lambda
+                        ? buildLambda(attrCtx.lambdaInterpolation().lambda())
+                        : new Expr.PrimaryExpr("true", spanOf(attrCtx));
             boolean legacyBraceForm = attrCtx.interpolation() != null
                 && attrCtx.interpolation().legacy != null;
-            attributes.add(new Statement.Attribute(name, value, legacyBraceForm, spanOf(attrCtx)));
+            attributes.add(new Statement.Attribute(name, value, legacyBraceForm, span));
         }
-        return attributes;
+        return new AttributeParts(attributes, directives);
+    }
+
+    /** `prefixo:nome` só com os três pedaços colados: o lexer descarta o espaço, por isso comparam-se posições. */
+    private static boolean adjacent(SukoParser.AttrNameContext ctx) {
+        int prefixEnd = ctx.htmlName(0).getStop().getStopIndex();
+        int colon = ctx.COLON().getSymbol().getStartIndex();
+        int localStart = ctx.htmlName(1).getStart().getStartIndex();
+        return colon == prefixEnd + 1 && localStart == colon + 1;
+    }
+
+    private Statement.Directive buildDirective(SukoParser.AttributeContext attrCtx, boolean on, String local,
+                                               SourceSpan span, SourceSpan nameSpan, boolean spaced) {
+        Expr value;
+        if (on && attrCtx.lambdaInterpolation() != null) {
+            value = buildLambda(attrCtx.lambdaInterpolation().lambda());
+        } else if (!on && attrCtx.interpolation() != null && attrCtx.interpolation().legacy == null) {
+            value = buildExpr(attrCtx.interpolation().expression());
+        } else {
+            // um só PARSE_ERROR por sítio: a adjacência já falhou neste nome
+            if (!spaced) issue(on
+                ? "on:" + local + " espera uma lambda: on:" + local + "=${() -> ...} (sem aspas)"
+                : "bind:" + local + " espera o nome de um state: bind:" + local + "=${nome} (sem aspas)", span);
+            value = new Expr.PrimaryExpr("null", span);
+        }
+        return new Statement.Directive(on ? Statement.Directive.Kind.ON : Statement.Directive.Kind.BIND,
+            local, value, span, nameSpan);
+    }
+
+    private Expr.LambdaExpr buildLambda(SukoParser.LambdaContext ctx) {
+        List<String> params = ctx.lambdaParams().Identifier() == null
+            ? List.of()
+            : List.of(ctx.lambdaParams().Identifier().getText());
+        SukoParser.LambdaBodyContext body = ctx.lambdaBody();
+        List<Expr> statements = new ArrayList<>();
+        for (SukoParser.ClientStatementContext st : body.clientStatement()) {
+            statements.add(buildClientStatement(st));
+        }
+        return new Expr.LambdaExpr(params, statements, body.LBRACE() != null, spanOf(ctx));
+    }
+
+    private Expr buildClientStatement(SukoParser.ClientStatementContext ctx) {
+        return switch (ctx) {
+            case SukoParser.AssignStatementContext c -> new Expr.AssignExpr(
+                buildExpr(c.expression(0)), c.op.getText(), buildExpr(c.expression(1)), spanOf(c));
+            case SukoParser.PrefixUpdateStatementContext c ->
+                new Expr.UpdateExpr(buildExpr(c.expression()), c.op.getText(), true, spanOf(c));
+            case SukoParser.PostfixUpdateStatementContext c ->
+                new Expr.UpdateExpr(buildExpr(c.expression()), c.op.getText(), false, spanOf(c));
+            case SukoParser.ExpressionStatementContext c -> buildExpr(c.expression());
+            default -> throw new IllegalStateException("instrução de lambda desconhecida: " + ctx.getText());
+        };
     }
 
     Expr buildExpr(SukoParser.ExpressionContext ctx) {
         return switch (ctx) {
             case SukoParser.PrimaryExprContext c -> buildPrimary(c.primary());
             case SukoParser.AccessExprContext c ->
-                new Expr.AccessExpr(buildExpr(c.expression()), c.Identifier().getText(), spanOf(c));
+                new Expr.AccessExpr(buildExpr(c.expression()), c.memberName().getText(), spanOf(c));
             case SukoParser.CallExprContext c -> new Expr.CallExpr(
                 buildExpr(c.expression()), buildArgs(c.argList()), spanOf(c));
             case SukoParser.NotExprContext c -> new Expr.NotExpr(buildExpr(c.expression()), spanOf(c));
@@ -442,9 +592,19 @@ public class SukoAstBuilder {
                 buildExpr(c.expression(0)), buildExpr(c.expression(1)), buildExpr(c.expression(2)), spanOf(c));
             case SukoParser.ParenExprContext c -> new Expr.ParenExpr(buildExpr(c.expression()), spanOf(c));
             case SukoParser.SafeAccessExprContext c ->
-                new Expr.SafeAccessExpr(buildExpr(c.expression()), c.Identifier().getText(), spanOf(c));
+                new Expr.SafeAccessExpr(buildExpr(c.expression()), c.memberName().getText(), spanOf(c));
             case SukoParser.ElvisExprContext c ->
                 new Expr.ElvisExpr(buildExpr(c.expression(0)), buildExpr(c.expression(1)), spanOf(c));
+            case SukoParser.NewExprContext c -> {
+                if (c.argList() != null) {
+                    for (SukoParser.ArgContext a : c.argList().arg()) {
+                        if (a.Identifier() != null) {
+                            issue("new " + c.Identifier().getText() + "(...) não aceita argumentos com nome", spanOf(a));
+                        }
+                    }
+                }
+                yield new Expr.NewExpr(c.Identifier().getText(), buildArgs(c.argList()), spanOf(c));
+            }
             default -> throw new IllegalStateException(
                 "Tipo de expressão ainda não suportado: " + ctx.getClass());
         };
